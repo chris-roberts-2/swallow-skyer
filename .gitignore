@@ -1,3 +1,8 @@
+# NOTES
+# If you’re installing or running Python stuff → make sure you see (venv) in your terminal
+#   Activate venv -> source venv/bin/activate
+
+
 # Python
 venv/
 __pycache__/
@@ -18,5 +23,4 @@ build/
 .DS_Store
 Thumbs.db
 
-# Secrets
-secret/
+
