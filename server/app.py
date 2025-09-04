@@ -18,11 +18,17 @@ class User(db.Model):
 with app.app_context():
     db.create_all()
 
-# Example route
+# Example routes
 @app.route('/users', methods=['GET'])
 def get_users():
     users = User.query.all()
     return jsonify([{'id': u.id, 'name': u.name} for u in users])
 
+@app.route("/api/hello", methods=['GET'])
+def hello():
+    return {"message": "Hello from Flask!"}
+
+# Run the app
 if __name__ == '__main__':
     app.run(debug=True)
+
