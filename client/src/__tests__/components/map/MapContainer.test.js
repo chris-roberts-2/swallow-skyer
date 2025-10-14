@@ -16,33 +16,33 @@ describe('MapContainer', () => {
     {
       id: '1',
       latitude: 40.7128,
-      longitude: -74.0060,
-      caption: 'Test photo'
-    }
+      longitude: -74.006,
+      caption: 'Test photo',
+    },
   ];
 
   it('renders map container', () => {
     render(
-      <MapContainer 
+      <MapContainer
         photos={mockPhotos}
         onPhotoSelect={jest.fn()}
         onLocationClick={jest.fn()}
       />
     );
-    
+
     expect(screen.getByRole('img', { hidden: true })).toBeInTheDocument();
   });
 
   it('handles photo selection', () => {
     const onPhotoSelect = jest.fn();
     render(
-      <MapContainer 
+      <MapContainer
         photos={mockPhotos}
         onPhotoSelect={onPhotoSelect}
         onLocationClick={jest.fn()}
       />
     );
-    
+
     // Test photo selection logic
     expect(onPhotoSelect).toBeDefined();
   });

@@ -5,11 +5,11 @@ const PhotoUpload = ({ onUpload, location }) => {
   const [caption, setCaption] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
-  const handleFileChange = (e) => {
+  const handleFileChange = e => {
     setFile(e.target.files[0]);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
     if (!file || !location) return;
 
@@ -38,12 +38,12 @@ const PhotoUpload = ({ onUpload, location }) => {
           type="text"
           placeholder="Add a caption..."
           value={caption}
-          onChange={(e) => setCaption(e.target.value)}
+          onChange={e => setCaption(e.target.value)}
           className="caption-input"
         />
       </div>
-      <button 
-        type="submit" 
+      <button
+        type="submit"
         disabled={!file || isUploading}
         className="upload-btn"
       >

@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 class ApiClient {
   constructor() {
@@ -17,7 +18,7 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }

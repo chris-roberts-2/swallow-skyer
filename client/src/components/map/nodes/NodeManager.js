@@ -14,13 +14,13 @@ class NodeManager {
   addPhotoNode(photo, coordinates) {
     const nodeId = this.generateNodeId(coordinates);
     const photoNode = new PhotoNode(photo, coordinates, nodeId);
-    
+
     this.nodes.set(nodeId, photoNode);
     this.renderNode(photoNode);
-    
+
     // Check for clustering
     this.updateClusters(coordinates);
-    
+
     return photoNode;
   }
 
@@ -38,7 +38,7 @@ class NodeManager {
   updatePhotoStack(coordinates, photos) {
     const nodeId = this.generateNodeId(coordinates);
     const existingNode = this.nodes.get(nodeId);
-    
+
     if (existingNode) {
       existingNode.updatePhotos(photos);
     } else if (photos.length > 0) {
@@ -65,7 +65,7 @@ class NodeManager {
     return {
       id: photoNode.id,
       coordinates: photoNode.coordinates,
-      element: photoNode.getElement()
+      element: photoNode.getElement(),
     };
   }
 
@@ -73,7 +73,7 @@ class NodeManager {
   updateClusters(centerCoordinates = null) {
     const zoom = this.map.getZoom();
     const shouldCluster = zoom < 10; // Cluster when zoomed out
-    
+
     if (shouldCluster) {
       this.createClusters(centerCoordinates);
     } else {
@@ -87,9 +87,9 @@ class NodeManager {
     const nodes = Array.from(this.nodes.values());
     const cluster = new NodeCluster(nodes, {
       maxZoom: 10,
-      radius: 50
+      radius: 50,
     });
-    
+
     this.clusters.set('main', cluster);
     cluster.render(this.map);
   }
@@ -107,7 +107,7 @@ class NodeManager {
 
   // Get nodes by coordinates
   getNodesByCoordinates(coordinates, radius = 0.001) {
-    return this.getAllNodes().filter(node => 
+    return this.getAllNodes().filter(node =>
       this.isWithinRadius(node.coordinates, coordinates, radius)
     );
   }

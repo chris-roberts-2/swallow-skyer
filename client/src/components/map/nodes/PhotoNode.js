@@ -88,9 +88,7 @@ class PhotoNode {
         <div className="node-pin">
           <span className="photo-count">{this.getPhotoCount()}</span>
         </div>
-        {this.getPhotoCount() > 1 && (
-          <div className="stack-indicator">+</div>
-        )}
+        {this.getPhotoCount() > 1 && <div className="stack-indicator">+</div>}
       </div>
     );
   }
@@ -125,7 +123,7 @@ class PhotoNode {
       coordinates: this.coordinates,
       photos: this.photos,
       isActive: this.isActive,
-      isVisible: this.isVisible
+      isVisible: this.isVisible,
     };
   }
 }

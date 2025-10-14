@@ -18,7 +18,9 @@ class SupabaseService {
   async getPhotos() {
     const { data, error } = await supabase
       .from('photos')
-      .select('id, filename, caption, latitude, longitude, altitude, created_at, updated_at, user_id, file_url')
+      .select(
+        'id, filename, caption, latitude, longitude, altitude, created_at, updated_at, user_id, file_url'
+      )
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -28,7 +30,9 @@ class SupabaseService {
   async getPhotosByLocation(latitude, longitude, radius = 0.001) {
     const { data, error } = await supabase
       .from('photos')
-      .select('id, filename, caption, latitude, longitude, altitude, created_at, updated_at, user_id, file_url')
+      .select(
+        'id, filename, caption, latitude, longitude, altitude, created_at, updated_at, user_id, file_url'
+      )
       .gte('latitude', latitude - radius)
       .lte('latitude', latitude + radius)
       .gte('longitude', longitude - radius)
@@ -61,10 +65,7 @@ class SupabaseService {
   }
 
   async deletePhotoMetadata(id) {
-    const { error } = await supabase
-      .from('photos')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from('photos').delete().eq('id', id);
 
     if (error) throw error;
   }
@@ -106,7 +107,7 @@ class SupabaseService {
     return {
       photoCount: data.length,
       coordinates: { latitude, longitude },
-      radius
+      radius,
     };
   }
 }

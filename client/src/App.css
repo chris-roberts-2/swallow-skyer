@@ -71,3 +71,188 @@
   line-height: 1.6;
   margin-bottom: 1rem;
 }
+
+/* Map Marker Styles */
+.map-marker {
+  cursor: pointer;
+  position: relative;
+}
+
+.marker-pin {
+  width: 30px;
+  height: 30px;
+  background: #4CAF50;
+  border: 3px solid white;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.marker-pin:hover {
+  transform: rotate(-45deg) scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.photo-count {
+  transform: rotate(45deg);
+  color: white;
+  font-weight: bold;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.map-marker.active .marker-pin {
+  background: #FF5722;
+  transform: rotate(-45deg) scale(1.2);
+}
+
+/* Selected Marker Info */
+.selected-marker-info {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 300px;
+  max-width: 400px;
+}
+
+/* Photo Stack Styles */
+.photo-stack {
+  padding: 16px;
+}
+
+.stack-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.stack-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.toggle-btn {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.toggle-btn:hover {
+  background: #e0e0e0;
+}
+
+.stack-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Photo Card Styles */
+.photo-card {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.photo-card:hover {
+  border-color: #4CAF50;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
+}
+
+.photo-thumbnail {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-right: 12px;
+}
+
+.photo-info {
+  flex: 1;
+  text-align: left;
+}
+
+.photo-caption {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.photo-date {
+  font-size: 12px;
+  color: #666;
+}
+
+/* Photo Node Styles */
+.photo-node {
+  position: relative;
+  cursor: pointer;
+}
+
+.node-pin {
+  width: 25px;
+  height: 25px;
+  background: #2196F3;
+  border: 2px solid white;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.node-pin .photo-count {
+  transform: rotate(45deg);
+  color: white;
+  font-weight: bold;
+  font-size: 10px;
+}
+
+.photo-node.active .node-pin {
+  background: #FF9800;
+  transform: rotate(-45deg) scale(1.2);
+}
+
+.photo-node.has-multiple .node-pin {
+  background: #9C27B0;
+}
+
+.stack-indicator {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  background: #FF5722;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  border: 2px solid white;
+}

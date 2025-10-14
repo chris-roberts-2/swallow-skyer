@@ -19,7 +19,7 @@ test('renders navigation links', () => {
   render(<AppWithRouter />);
   const homeLink = screen.getByText(/home/i);
   const mapLink = screen.getByText(/map/i);
-  
+
   expect(homeLink).toBeInTheDocument();
   expect(mapLink).toBeInTheDocument();
 });

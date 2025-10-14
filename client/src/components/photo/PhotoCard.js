@@ -2,13 +2,13 @@ import React from 'react';
 
 const PhotoCard = ({ photo, onClick, stackIndex = 0 }) => {
   return (
-    <div 
+    <div
       className="photo-card"
       onClick={onClick}
       style={{ zIndex: 1000 - stackIndex }}
     >
-      <img 
-        src={photo.thumbnailUrl || photo.url} 
+      <img
+        src={photo.thumbnailUrl || photo.url}
         alt={photo.caption || 'Photo'}
         className="photo-thumbnail"
       />

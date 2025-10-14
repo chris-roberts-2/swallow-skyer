@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   BrowserRouter as Router,
   Routes,
@@ -7,12 +7,34 @@ import {
 } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import PhotoStack from './components/map/PhotoStack';
 import './App.css';
+
+// Sample data for testing
+const samplePhotos = [
+  {
+    id: 1,
+    caption: 'Sample Photo 1',
+    latitude: 37.7749,
+    longitude: -122.4194,
+    url: 'https://via.placeholder.com/300x200/4CAF50/white?text=Sample+Photo+1',
+    createdAt: '2024-01-01',
+  },
+  {
+    id: 2,
+    caption: 'Sample Photo 2',
+    latitude: 37.7849,
+    longitude: -122.4094,
+    url: 'https://via.placeholder.com/300x200/2196F3/white?text=Sample+Photo+2',
+    createdAt: '2024-01-02',
+  },
+];
 
 // Sample route component
 const MapPage = () => {
   const mapContainer = useRef(null);
   const map = useRef(null);
+  const [selectedMarker, setSelectedMarker] = useState(null);
 
   useEffect(() => {
     if (map.current) return; // Initialize map only once
@@ -39,12 +61,40 @@ const MapPage = () => {
           },
         ],
       },
-      center: [0, 0], // Default center
-      zoom: 2, // Default zoom level
+      center: [-122.4194, 37.7749], // San Francisco coordinates
+      zoom: 10, // Better zoom level for city view
     });
 
     // Add navigation controls
     map.current.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+    // Add rotation control
+    map.current.addControl(
+      new maplibregl.NavigationControl({
+        showCompass: true,
+        showZoom: true,
+      }),
+      'top-left'
+    );
+
+    // Add sample markers
+    samplePhotos.forEach(photo => {
+      const markerElement = document.createElement('div');
+      markerElement.className = 'map-marker';
+      markerElement.innerHTML = `
+        <div class="marker-pin">
+          <span class="photo-count">1</span>
+        </div>
+      `;
+
+      new maplibregl.Marker(markerElement)
+        .setLngLat([photo.longitude, photo.latitude])
+        .addTo(map.current);
+
+      markerElement.addEventListener('click', () => {
+        setSelectedMarker(photo);
+      });
+    });
 
     // Cleanup on unmount
     return () => {
@@ -55,9 +105,23 @@ const MapPage = () => {
     };
   }, []);
 
+  const handlePhotoSelect = photo => {
+    // Photo selection handler - can be extended later
+    setSelectedMarker(photo);
+  };
+
   return (
     <div className="map-container">
       <div ref={mapContainer} className="map" />
+      {selectedMarker && (
+        <div className="selected-marker-info">
+          <PhotoStack
+            photos={[selectedMarker]}
+            onPhotoSelect={handlePhotoSelect}
+            onToggle={() => setSelectedMarker(null)}
+          />
+        </div>
+      )}
     </div>
   );
 };

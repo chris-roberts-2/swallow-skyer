@@ -87,13 +87,36 @@ swallow-skyer/
 
 ## Getting Started
 
-### Prerequisites
+### Quick Setup (Recommended)
 
+Use the automated setup script for the easiest installation:
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd swallow-skyer
+
+# Run the setup script
+./scripts/setup.sh
+
+# Configure your environment files with real credentials
+# Edit .env, server/.env, and client/.env files
+
+# Start the development servers
+source venv/bin/activate && cd server && flask run  # Terminal 1
+cd client && npm start                               # Terminal 2
+```
+
+### Manual Setup
+
+If you prefer manual setup or need to troubleshoot:
+
+#### Prerequisites
 - Node.js 18+
 - Python 3.8+
 - Git
 
-### Installation
+#### Installation Steps
 
 1. **Clone the repository**
    ```bash
@@ -101,24 +124,38 @@ swallow-skyer/
    cd swallow-skyer
    ```
 
-2. **Set up environment variables**
+2. **Set up Python virtual environment**
    ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
+   python3 -m venv venv
+   source venv/bin/activate
    ```
 
-3. **Install dependencies**
+3. **Install backend dependencies**
    ```bash
-   # Frontend
-   cd client
-   npm install
-   
-   # Backend
-   cd ../server
+   cd server
    pip install -r requirements.txt
    ```
 
-4. **Set up the database**
+4. **Install frontend dependencies**
+   ```bash
+   cd ../client
+   npm install
+   ```
+
+5. **Configure environment variables**
+   ```bash
+   # Copy example files
+   cp .env.example .env
+   cp server/.env.example server/.env
+   cp client/.env.example client/.env
+   
+   # Edit the files with your actual credentials:
+   # - Supabase URL and service key
+   # - Cloudflare R2 credentials
+   # - API URLs
+   ```
+
+6. **Initialize database**
    ```bash
    cd server
    flask db init
@@ -126,20 +163,49 @@ swallow-skyer/
    flask db upgrade
    ```
 
-5. **Start the development servers**
+7. **Start the development servers**
    ```bash
    # Terminal 1 - Backend
+   source venv/bin/activate
    cd server
-   python app.py
+   flask run
    
    # Terminal 2 - Frontend
    cd client
    npm start
    ```
 
-6. **Access the application**
+8. **Access the application**
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:5000
+
+## Project Status
+
+**Current Stage: 1.7 - Documentation & Setup Scripts**
+
+### Development Branches
+- `foundation` - Current development branch (Stage 1.x)
+- `main` - Production-ready code
+
+### Completed Features
+- ✅ **Stage 1.1-1.4**: Foundational project structure and architecture
+- ✅ **Stage 1.5**: Supabase & Cloudflare R2 integration
+- ✅ **Stage 1.6**: Basic MapLibre integration in frontend
+- ✅ **Stage 1.7**: Documentation & setup scripts
+
+### Architecture Overview
+- **Frontend**: React 19 + MapLibre GL JS with interactive map and photo markers
+- **Backend**: Flask 3+ with Supabase metadata storage and R2 file storage
+- **Database**: SQLite (dev) / PostgreSQL via Supabase (prod)
+- **Storage**: Cloudflare R2 for photo files
+- **Maps**: OpenStreetMap tiles via MapLibre GL
+
+### Key Components
+- **Map Integration**: Interactive MapLibre map with navigation controls
+- **Photo Markers**: Clickable markers with photo stack display
+- **API Integration**: RESTful API with health checks and integration tests
+- **Environment Setup**: Automated setup script with environment configuration
+- **Code Quality**: ESLint/Prettier formatting, comprehensive testing setup
 
 ## API Documentation
 
@@ -173,9 +239,19 @@ swallow-skyer/
 cd client
 npm test
 
+# Frontend linting
+npm run lint
+npm run lint:fix
+
 # Backend tests
 cd server
-python -m pytest
+pytest
+
+# Backend integration test
+curl http://localhost:5000/api/test/supabase-r2
+
+# Health check
+curl http://localhost:5000/api/health
 ```
 
 ### Database Migrations
