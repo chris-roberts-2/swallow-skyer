@@ -4,20 +4,20 @@
 
 ## Scripts in this folder:
 
-- `foundation.sh` - Push changes to the foundation branch
+- `Integration.sh` - Push changes to the foundation branch
 - `main.sh` - Push changes to the main branch
 
 ## Usage:
 
 Make scripts executable:
 ```bash
-chmod +x ./git-push-commands/foundation.sh
+chmod +x ./git-push-commands/Integration.sh
 chmod +x ./git-push-commands/main.sh
 ```
 
 Run scripts:
 ```bash
-./git-push-commands/foundation.sh
+./git-push-commands/Integration.sh
 ./git-push-commands/main.sh
 ```
 

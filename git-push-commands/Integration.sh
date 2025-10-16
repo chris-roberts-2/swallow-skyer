@@ -1,8 +1,8 @@
 #!/bin/bash
-# WARNING: Do not delete or move this script. Essential for foundation branch Git operations.
+# WARNING: Do not delete or move this script. Essential for Integration branch Git operations.
 
-# Swallow Skyer - Foundation Branch Push Commands
-# This script contains commands to commit and push changes to the foundation branch (current stage #1)
+# Swallow Skyer - Integration Branch Push Commands
+# This script contains commands to commit and push changes to the Integration branch (active development)
 
 echo "=== Swallow Skyer - Foundation Branch Push Commands ==="
 echo ""
@@ -11,13 +11,13 @@ echo ""
 echo "1. Checking current branch..."
 git branch
 
-# Switch to foundation branch
-echo "2. Switching to foundation branch..."
-git checkout foundation
+# Switch to Integration branch
+echo "2. Switching to Integration branch..."
+git checkout Integration
 
 # Pull latest changes from remote
 echo "3. Pulling latest changes from remote..."
-git pull origin foundation
+git pull origin Integration
 
 # Add all changes
 echo "4. Adding all changes..."
@@ -28,8 +28,8 @@ echo "5. Committing changes..."
 git commit -m "feat: establish foundational project structure and architecture"
 
 # Push to foundation branch
-echo "6. Pushing to foundation branch..."
-git push origin foundation
+echo "6. Pushing to Integration branch..."
+git push origin Integration
 
 echo ""
 echo "=== Push to foundation branch completed! ==="

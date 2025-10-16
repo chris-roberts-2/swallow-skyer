@@ -8,8 +8,9 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from server/.env
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -40,7 +41,11 @@ def create_app(config_name=None):
 
     # Initialize extensions with app
     db.init_app(app)
-    CORS(app)  # Enable CORS for all routes
+    frontend_origin = os.environ.get("FRONTEND_ORIGIN", "http://localhost:3000")
+    CORS(
+        app,
+        resources={r"/*": {"origins": frontend_origin}},
+    )
 
     # Import models to ensure they are registered
     from app import models
@@ -53,5 +58,9 @@ def create_app(config_name=None):
     from app.routes import main_bp
 
     app.register_blueprint(main_bp)
+
+    @app.route("/api/test/connection", methods=["GET"])
+    def test_connection():
+        return {"status": "success", "message": "Backend connected"}
 
     return app

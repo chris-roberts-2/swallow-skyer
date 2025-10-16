@@ -94,7 +94,7 @@ swallow-skyer/
 ### Git Workflow (`git-push-commands/`)
 
 **Automation Scripts:**
-- `foundation.sh` - Foundation branch operations
+- `Integration.sh` - Foundation branch operations
 - `main.sh` - Main branch operations
 
 ## Data Flow

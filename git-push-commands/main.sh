@@ -1,5 +1,5 @@
 #!/bin/bash
-# WARNING: Do not delete or move this script. Essential for foundation branch Git operations.
+# WARNING: Do not delete or move this script. Essential for main branch Git operations.
 
 # Swallow Skyer - Main Branch Push Commands
 # This script contains commands to commit and push changes to the main branch
