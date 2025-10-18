@@ -4,7 +4,7 @@
 # Swallow Skyer - Integration Branch Push Commands
 # This script contains commands to commit and push changes to the Integration branch (active development)
 
-echo "=== Swallow Skyer - Foundation Branch Push Commands ==="
+echo "=== Swallow Skyer - Integration Branch Push Commands ==="
 echo ""
 
 # Check current branch
@@ -25,7 +25,7 @@ git add .
 
 # Commit with descriptive message
 echo "5. Committing changes..."
-git commit -m "feat: establish foundational project structure and architecture"
+git commit -m "feat(photos): Supabase/R2 photo pipeline, /api/photos, presigned URLs, tests, frontend MapLibre example, path alignment, upload schema updates"
 
 # Push to foundation branch
 echo "6. Pushing to Integration branch..."

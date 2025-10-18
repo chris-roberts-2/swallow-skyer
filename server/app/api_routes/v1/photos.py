@@ -1,41 +1,78 @@
 from flask import Blueprint, request, jsonify
-from app import db
-from app.models import Photo
-from app.services.photo_service import PhotoService
-from app.utils.validators import validate_photo_data
-import os
+from app.services.storage.supabase_client import supabase_client
+from app.services.storage.r2_client import r2_client
+from typing import Dict, Any
 
 bp = Blueprint('photos_v1', __name__)
-photo_service = PhotoService()
 
 @bp.route('/', methods=['GET'])
 def get_photos():
-    """Get all photos with optional filtering - API v1"""
+    """Get all photos with optional filtering - API v1 (Supabase)"""
     try:
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 20, type=int)
-        lat = request.args.get('lat', type=float)
-        lng = request.args.get('lng', type=float)
-        radius = request.args.get('radius', 0.01, type=float)
+        # Parse query parameters
+        limit = request.args.get('limit', 50, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        since = request.args.get('since', type=str)
+        bbox = request.args.get('bbox', type=str)
+        user_id = request.args.get('user_id', type=str)
         
-        photos = photo_service.get_photos(
-            page=page,
-            per_page=per_page,
-            latitude=lat,
-            longitude=lng,
-            radius=radius
+        # Enforce max limit
+        if limit > 200:
+            limit = 200
+        
+        # Query Supabase
+        result = supabase_client.get_photos(
+            limit=limit,
+            offset=offset,
+            since=since,
+            bbox=bbox,
+            user_id=user_id
         )
         
+        photos = result.get('data', [])
+        total = result.get('count', 0)
+        
+        # Process each photo to ensure URL is set
+        processed_photos = []
+        for photo in photos:
+            processed_photo = _process_photo_urls(photo)
+            processed_photos.append(processed_photo)
+        
         return jsonify({
-            'version': 'v1',
-            'photos': [photo.to_dict() for photo in photos['items']],
-            'total': photos['total'],
-            'page': page,
-            'per_page': per_page,
-            'pages': photos['pages']
+            'photos': processed_photos,
+            'pagination': {
+                'limit': limit,
+                'offset': offset,
+                'total': total
+            }
         })
     except Exception as e:
-        return jsonify({'error': str(e), 'version': 'v1'}), 500
+        return jsonify({'error': str(e)}), 500
+
+
+def _process_photo_urls(photo: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Process photo to ensure it has a valid URL.
+    Prefer explicit 'url' field; fallback to generating presigned URL from 'r2_key'.
+    
+    Args:
+        photo (Dict[str, Any]): Photo data from Supabase
+        
+    Returns:
+        Dict[str, Any]: Photo with valid URL
+    """
+    # If photo already has a URL and it's not empty, use it
+    if photo.get('url') and photo['url'].strip():
+        return photo
+    
+    # Otherwise, generate presigned URL from r2_key
+    r2_key = photo.get('r2_key')
+    if r2_key:
+        presigned_url = r2_client.generate_presigned_url(r2_key, expires_in=600)
+        if presigned_url:
+            photo['url'] = presigned_url
+    
+    return photo
 
 @bp.route('/<photo_id>', methods=['GET'])
 def get_photo(photo_id):

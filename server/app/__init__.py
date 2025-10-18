@@ -56,8 +56,10 @@ def create_app(config_name=None):
 
     # Register blueprints
     from app.routes import main_bp
+    from app.api_routes.v1.photos import bp as photos_v1_bp
 
     app.register_blueprint(main_bp)
+    app.register_blueprint(photos_v1_bp, url_prefix="/api/v1/photos")
 
     @app.route("/api/test/connection", methods=["GET"])
     def test_connection():

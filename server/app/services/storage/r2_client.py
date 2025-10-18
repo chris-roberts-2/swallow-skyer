@@ -73,6 +73,44 @@ class R2Client:
             print(f"Error generating file URL: {e}")
             return None
 
+    def generate_presigned_url(self, key: str, expires_in: int = 600) -> Optional[str]:
+        """
+        Generate presigned URL for private R2 object.
+
+        Args:
+            key (str): Object key/path in bucket
+            expires_in (int): URL expiration time in seconds (default 600 = 10 minutes)
+
+        Returns:
+            Optional[str]: Presigned URL or None if error
+        """
+        if not self.client:
+            print("R2 client not initialized - check environment variables")
+            return None
+
+        try:
+            url = self.client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": self.bucket_name, "Key": key},
+                ExpiresIn=expires_in,
+            )
+            return url
+        except ClientError as e:
+            print(f"Error generating presigned URL: {e}")
+            return None
+
+    def get_public_url(self, key: str) -> Optional[str]:
+        """
+        Get public URL for R2 object (alias for get_file_url for clarity).
+
+        Args:
+            key (str): Object key/path in bucket
+
+        Returns:
+            Optional[str]: Public URL or None if error
+        """
+        return self.get_file_url(key)
+
     def delete_file(self, key: str) -> bool:
         """
         Delete file from R2 storage.

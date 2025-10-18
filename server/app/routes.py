@@ -83,13 +83,74 @@ def create_user():
 @main_bp.route("/api/photos", methods=["GET"])
 def get_photos():
     """
-    Get all photos.
+    Get photos from Supabase with optional filtering.
+
+    Query params:
+      - limit (int, default 50, max 200)
+      - offset (int, default 0)
+      - since (ISO timestamptz)
+      - bbox (lat_min,lng_min,lat_max,lng_max)
+      - user_id (uuid)
 
     Returns:
-        dict: List of photos
+        dict: photos + pagination metadata
     """
-    photos = Photo.query.all()
-    return jsonify([photo.to_dict() for photo in photos])
+    try:
+        # Parse query parameters
+        limit = request.args.get("limit", 50, type=int)
+        offset = request.args.get("offset", 0, type=int)
+        since = request.args.get("since", type=str)
+        bbox = request.args.get("bbox", type=str)
+        user_id = request.args.get("user_id", type=str)
+
+        # Enforce max limit
+        if limit and limit > 200:
+            limit = 200
+
+        # Basic bbox validation (optional, tolerant)
+        if bbox:
+            parts = bbox.split(",")
+            if len(parts) != 4:
+                return jsonify({"error": "Invalid bbox format. Expected lat_min,lng_min,lat_max,lng_max"}), 400
+            try:
+                _ = list(map(float, parts))
+            except ValueError:
+                return jsonify({"error": "Invalid bbox coordinates."}), 400
+
+        # Query Supabase
+        result = supabase_client.get_photos(
+            limit=limit,
+            offset=offset,
+            since=since,
+            bbox=bbox,
+            user_id=user_id,
+        )
+
+        photos = result.get("data", [])
+        total = result.get("count", 0)
+
+        # Ensure URL present (prefer explicit url; fallback to presigned from r2_key)
+        processed = []
+        for p in photos:
+            url_val = (p.get("url") or "").strip()
+            if not url_val:
+                r2_key = p.get("r2_key")
+                if r2_key:
+                    presigned = r2_client.generate_presigned_url(r2_key, expires_in=600)
+                    if presigned:
+                        p["url"] = presigned
+            processed.append(p)
+
+        return jsonify({
+            "photos": processed,
+            "pagination": {
+                "limit": limit or 50,
+                "offset": offset or 0,
+                "total": total,
+            },
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @main_bp.route("/api/photos", methods=["POST"])
@@ -331,14 +392,16 @@ def upload_photo():
 
     # Store metadata in Supabase
     photo_data = {
-        "filename": safe_name,
+        "id": None,  # allow default
         "user_id": user_id,
+        "r2_key": key,
+        "url": file_url,
         "latitude": lat_val,
         "longitude": lon_val,
-        "url": file_url,
     }
     if timestamp:
-        photo_data["timestamp"] = timestamp
+        # Save to taken_at column if provided
+        photo_data["taken_at"] = timestamp
 
     if not supabase_client.client:
         return (
