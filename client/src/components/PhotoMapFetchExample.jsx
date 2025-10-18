@@ -44,10 +44,12 @@ const PhotoMapFetchExample = () => {
 
         // Fetch photos with default params (50 most recent)
         const response = await fetchPhotos({ limit: 50 });
-        
+
+        // eslint-disable-next-line no-console
         console.log('Fetched photos:', response);
         setPhotos(response.photos || []);
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error('Failed to fetch photos:', err);
         setError(err.message);
       } finally {
@@ -133,9 +135,16 @@ const PhotoMapFetchExample = () => {
 
     try {
       setLoading(true);
-      const response = await fetchPhotosInBounds(latMin, lngMin, latMax, lngMax, 100);
+      const response = await fetchPhotosInBounds(
+        latMin,
+        lngMin,
+        latMax,
+        lngMax,
+        100
+      );
       setPhotos(response.photos || []);
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('Failed to fetch photos in bounds:', err);
       setError(err.message);
     } finally {
@@ -200,7 +209,9 @@ const PhotoMapFetchExample = () => {
           minWidth: '200px',
         }}
       >
-        <h3 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>Photo Markers</h3>
+        <h3 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>
+          Photo Markers
+        </h3>
         <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#666' }}>
           Showing {photos.length} photo{photos.length !== 1 ? 's' : ''}
         </p>
@@ -226,4 +237,3 @@ const PhotoMapFetchExample = () => {
 };
 
 export default PhotoMapFetchExample;
-

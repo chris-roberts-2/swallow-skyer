@@ -6,7 +6,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 /**
  * Fetch photos from the backend API.
- * 
+ *
  * @param {Object} params - Query parameters
  * @param {number} params.limit - Maximum number of photos to return (default: 50, max: 200)
  * @param {number} params.offset - Number of photos to skip for pagination (default: 0)
@@ -17,15 +17,15 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
  */
 export const fetchPhotos = async (params = {}) => {
   const queryParams = new URLSearchParams();
-  
+
   if (params.limit !== undefined) queryParams.append('limit', params.limit);
   if (params.offset !== undefined) queryParams.append('offset', params.offset);
   if (params.since) queryParams.append('since', params.since);
   if (params.bbox) queryParams.append('bbox', params.bbox);
   if (params.user_id) queryParams.append('user_id', params.user_id);
-  
+
   const url = `${API_BASE_URL}/api/photos?${queryParams.toString()}`;
-  
+
   try {
     const response = await fetch(url, {
       method: 'GET',
@@ -33,15 +33,16 @@ export const fetchPhotos = async (params = {}) => {
         'Content-Type': 'application/json',
       },
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || `HTTP error ${response.status}`);
     }
-    
+
     const data = await response.json();
     return data;
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error('Error fetching photos:', error);
     throw error;
   }
@@ -49,7 +50,7 @@ export const fetchPhotos = async (params = {}) => {
 
 /**
  * Fetch photos within a bounding box (useful for map viewport).
- * 
+ *
  * @param {number} latMin - Minimum latitude
  * @param {number} lngMin - Minimum longitude
  * @param {number} latMax - Maximum latitude
@@ -57,14 +58,20 @@ export const fetchPhotos = async (params = {}) => {
  * @param {number} limit - Maximum number of photos
  * @returns {Promise<Object>} Response with photos array
  */
-export const fetchPhotosInBounds = async (latMin, lngMin, latMax, lngMax, limit = 100) => {
+export const fetchPhotosInBounds = async (
+  latMin,
+  lngMin,
+  latMax,
+  lngMax,
+  limit = 100
+) => {
   const bbox = `${latMin},${lngMin},${latMax},${lngMax}`;
   return fetchPhotos({ bbox, limit });
 };
 
 /**
  * Fetch recent photos since a given timestamp.
- * 
+ *
  * @param {string} sinceTimestamp - ISO 8601 timestamp
  * @param {number} limit - Maximum number of photos
  * @returns {Promise<Object>} Response with photos array
@@ -72,4 +79,3 @@ export const fetchPhotosInBounds = async (latMin, lngMin, latMax, lngMax, limit 
 export const fetchRecentPhotos = async (sinceTimestamp, limit = 50) => {
   return fetchPhotos({ since: sinceTimestamp, limit });
 };
-

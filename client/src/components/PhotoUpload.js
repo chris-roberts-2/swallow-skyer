@@ -9,11 +9,11 @@ const PhotoUpload = () => {
   const [message, setMessage] = React.useState('');
   const [progress, setProgress] = React.useState(0);
 
-  const onFileChange = (e) => {
+  const onFileChange = e => {
     setFile(e.target.files?.[0] || null);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
     setStatus('loading');
     setMessage('');
@@ -45,7 +45,7 @@ const PhotoUpload = () => {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', url, true);
 
-        xhr.upload.onprogress = (evt) => {
+        xhr.upload.onprogress = evt => {
           if (evt.lengthComputable) {
             const percent = Math.round((evt.loaded / evt.total) * 100);
             setProgress(percent);
@@ -111,7 +111,7 @@ const PhotoUpload = () => {
               type="number"
               step="any"
               value={latitude}
-              onChange={(e) => setLatitude(e.target.value)}
+              onChange={e => setLatitude(e.target.value)}
             />
           </label>
         </div>
@@ -122,7 +122,7 @@ const PhotoUpload = () => {
               type="number"
               step="any"
               value={longitude}
-              onChange={(e) => setLongitude(e.target.value)}
+              onChange={e => setLongitude(e.target.value)}
             />
           </label>
         </div>
@@ -132,7 +132,7 @@ const PhotoUpload = () => {
             <input
               type="text"
               value={userId}
-              onChange={(e) => setUserId(e.target.value)}
+              onChange={e => setUserId(e.target.value)}
             />
           </label>
         </div>
@@ -171,5 +171,3 @@ const PhotoUpload = () => {
 };
 
 export default PhotoUpload;
-
-

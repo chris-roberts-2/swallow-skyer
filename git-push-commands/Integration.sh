@@ -25,7 +25,7 @@ git add .
 
 # Commit with descriptive message
 echo "5. Committing changes..."
-git commit -m "feat(photos): Supabase/R2 photo pipeline, /api/photos, presigned URLs, tests, frontend MapLibre example, path alignment, upload schema updates"
+git commit -m "fix(frontend): wire Photos Map route, API base 127.0.0.1, lint/prettier fixes\n\n- Add Photos Map route in App.js\n- Set REACT_APP_API_URL to http://127.0.0.1:5000 for local dev\n- Address ESLint/Prettier issues in photos.js and PhotoMapFetchExample.jsx\n- Ensure frontend fetches /api/photos successfully"
 
 # Push to foundation branch
 echo "6. Pushing to Integration branch..."

@@ -9,6 +9,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import PhotoStack from './components/map/PhotoStack';
 import './App.css';
+import PhotoMapFetchExample from './components/PhotoMapFetchExample.jsx';
 
 // Sample data for testing
 const samplePhotos = [
@@ -147,7 +148,8 @@ function App() {
         <header className="App-header">
           <h1>Swallow Skyer</h1>
           <nav>
-            <a href="/">Home</a> | <a href="/map">Map</a>
+            <a href="/">Home</a> | <a href="/map">Map</a> |{' '}
+            <a href="/photos-map">Photos Map</a>
           </nav>
         </header>
 
@@ -155,6 +157,7 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/map" element={<MapPage />} />
+            <Route path="/photos-map" element={<PhotoMapFetchExample />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
