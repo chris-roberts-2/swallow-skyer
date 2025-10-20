@@ -33,7 +33,9 @@ def create_app(config_name=None):
         os.environ.get("SECRET_KEY") or "dev-secret-key-change-in-production"
     )
     # Use absolute path for SQLite database
-    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'instance', 'database.db')
+    db_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "instance", "database.db"
+    )
     app.config["SQLALCHEMY_DATABASE_URI"] = (
         os.environ.get("DATABASE_URL") or f"sqlite:///{db_path}"
     )
@@ -43,8 +45,7 @@ def create_app(config_name=None):
     db.init_app(app)
     frontend_origin = os.environ.get("FRONTEND_ORIGIN", "http://localhost:3000")
     CORS(
-        app,
-        resources={r"/*": {"origins": frontend_origin}},
+        app, resources={r"/*": {"origins": frontend_origin}},
     )
 
     # Import models to ensure they are registered

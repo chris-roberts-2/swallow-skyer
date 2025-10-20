@@ -10,4 +10,4 @@ This module provides services for:
 from .supabase_service import SupabaseStorageService
 from .r2_service import R2StorageService
 
-__all__ = ['SupabaseStorageService', 'R2StorageService']
+__all__ = ["SupabaseStorageService", "R2StorageService"]

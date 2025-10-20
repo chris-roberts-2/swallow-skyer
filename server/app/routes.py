@@ -111,7 +111,14 @@ def get_photos():
         if bbox:
             parts = bbox.split(",")
             if len(parts) != 4:
-                return jsonify({"error": "Invalid bbox format. Expected lat_min,lng_min,lat_max,lng_max"}), 400
+                return (
+                    jsonify(
+                        {
+                            "error": "Invalid bbox format. Expected lat_min,lng_min,lat_max,lng_max"
+                        }
+                    ),
+                    400,
+                )
             try:
                 _ = list(map(float, parts))
             except ValueError:
@@ -119,11 +126,7 @@ def get_photos():
 
         # Query Supabase
         result = supabase_client.get_photos(
-            limit=limit,
-            offset=offset,
-            since=since,
-            bbox=bbox,
-            user_id=user_id,
+            limit=limit, offset=offset, since=since, bbox=bbox, user_id=user_id,
         )
 
         photos = result.get("data", [])
@@ -141,14 +144,16 @@ def get_photos():
                         p["url"] = presigned
             processed.append(p)
 
-        return jsonify({
-            "photos": processed,
-            "pagination": {
-                "limit": limit or 50,
-                "offset": offset or 0,
-                "total": total,
-            },
-        })
+        return jsonify(
+            {
+                "photos": processed,
+                "pagination": {
+                    "limit": limit or 50,
+                    "offset": offset or 0,
+                    "total": total,
+                },
+            }
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -231,9 +236,9 @@ def test_supabase_r2_integration():
     results = {
         "supabase": {"status": "unknown", "details": ""},
         "r2": {"status": "unknown", "details": ""},
-        "integration": {"status": "unknown", "details": ""}
+        "integration": {"status": "unknown", "details": ""},
     }
-    
+
     # Test Supabase connection
     try:
         if supabase_client.client:
@@ -241,23 +246,29 @@ def test_supabase_r2_integration():
             results["supabase"]["details"] = "Client initialized successfully"
         else:
             results["supabase"]["status"] = "error"
-            results["supabase"]["details"] = "Client not initialized - check environment variables"
+            results["supabase"][
+                "details"
+            ] = "Client not initialized - check environment variables"
     except Exception as e:
         results["supabase"]["status"] = "error"
         results["supabase"]["details"] = f"Error: {str(e)}"
-    
+
     # Test R2 connection
     try:
         if r2_client.client:
             results["r2"]["status"] = "connected"
-            results["r2"]["details"] = f"Client initialized for bucket: {r2_client.bucket_name}"
+            results["r2"][
+                "details"
+            ] = f"Client initialized for bucket: {r2_client.bucket_name}"
         else:
             results["r2"]["status"] = "error"
-            results["r2"]["details"] = "Client not initialized - check environment variables"
+            results["r2"][
+                "details"
+            ] = "Client not initialized - check environment variables"
     except Exception as e:
         results["r2"]["status"] = "error"
         results["r2"]["details"] = f"Error: {str(e)}"
-    
+
     # Test integration (store metadata in Supabase with R2 URL)
     try:
         if supabase_client.client and r2_client.client:
@@ -268,30 +279,38 @@ def test_supabase_r2_integration():
                 "latitude": 37.7749,
                 "longitude": -122.4194,
                 "url": r2_client.get_file_url("test-photos/test-photo.jpg"),
-                "timestamp": "2024-01-01T00:00:00Z"
+                "timestamp": "2024-01-01T00:00:00Z",
             }
-            
+
             # Store in Supabase (this would fail with placeholder credentials)
             stored_metadata = supabase_client.store_photo_metadata(test_photo_data)
-            
+
             if stored_metadata:
                 results["integration"]["status"] = "success"
-                results["integration"]["details"] = "Successfully stored metadata with R2 URL"
+                results["integration"][
+                    "details"
+                ] = "Successfully stored metadata with R2 URL"
             else:
                 results["integration"]["status"] = "partial"
-                results["integration"]["details"] = "R2 URL generated but Supabase storage failed (expected with placeholder credentials)"
+                results["integration"][
+                    "details"
+                ] = "R2 URL generated but Supabase storage failed (expected with placeholder credentials)"
         else:
             results["integration"]["status"] = "error"
-            results["integration"]["details"] = "Cannot test integration - clients not initialized"
+            results["integration"][
+                "details"
+            ] = "Cannot test integration - clients not initialized"
     except Exception as e:
         results["integration"]["status"] = "error"
         results["integration"]["details"] = f"Integration test error: {str(e)}"
-    
-    return jsonify({
-        "status": "test_completed",
-        "results": results,
-        "message": "Integration test completed - check individual service status"
-    })
+
+    return jsonify(
+        {
+            "status": "test_completed",
+            "results": results,
+            "message": "Integration test completed - check individual service status",
+        }
+    )
 
 
 @main_bp.route("/api/photos/upload", methods=["POST"])
@@ -318,7 +337,9 @@ def upload_photo():
     mimetype = getattr(file, "mimetype", "") or ""
     if not mimetype.startswith("image/"):
         return (
-            jsonify({"status": "error", "message": "Invalid file type. Image required"}),
+            jsonify(
+                {"status": "error", "message": "Invalid file type. Image required"}
+            ),
             400,
         )
 
@@ -339,10 +360,9 @@ def upload_photo():
 
     if latitude is None or longitude is None:
         return (
-            jsonify({
-                "status": "error",
-                "message": "latitude and longitude are required",
-            }),
+            jsonify(
+                {"status": "error", "message": "latitude and longitude are required",}
+            ),
             400,
         )
 
@@ -358,10 +378,12 @@ def upload_photo():
     # Ensure storage client is configured
     if not r2_client.client:
         return (
-            jsonify({
-                "status": "error",
-                "message": "Storage not configured. Check R2 environment variables.",
-            }),
+            jsonify(
+                {
+                    "status": "error",
+                    "message": "Storage not configured. Check R2 environment variables.",
+                }
+            ),
             500,
         )
 
@@ -405,10 +427,12 @@ def upload_photo():
 
     if not supabase_client.client:
         return (
-            jsonify({
-                "status": "error",
-                "message": "Database not configured. Check Supabase environment variables.",
-            }),
+            jsonify(
+                {
+                    "status": "error",
+                    "message": "Database not configured. Check Supabase environment variables.",
+                }
+            ),
             500,
         )
 
@@ -416,19 +440,17 @@ def upload_photo():
         stored = supabase_client.store_photo_metadata(photo_data)
     except Exception as e:
         return (
-            jsonify({
-                "status": "error",
-                "message": f"Failed to store metadata: {str(e)}",
-            }),
+            jsonify(
+                {"status": "error", "message": f"Failed to store metadata: {str(e)}",}
+            ),
             500,
         )
 
     if not stored:
         return (
-            jsonify({
-                "status": "error",
-                "message": "Could not store metadata in Supabase",
-            }),
+            jsonify(
+                {"status": "error", "message": "Could not store metadata in Supabase",}
+            ),
             502,
         )
 
