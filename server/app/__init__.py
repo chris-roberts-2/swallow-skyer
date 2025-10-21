@@ -10,7 +10,8 @@ from dotenv import load_dotenv
 
 # Load environment variables from server/.env
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-load_dotenv(os.path.join(BASE_DIR, ".env"))
+# Ensure .env values override any inherited shell vars during dev
+load_dotenv(os.path.join(BASE_DIR, ".env"), override=True)
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -44,9 +45,9 @@ def create_app(config_name=None):
     # Initialize extensions with app
     db.init_app(app)
     frontend_origin = os.environ.get("FRONTEND_ORIGIN", "http://localhost:3000")
-    CORS(
-        app, resources={r"/*": {"origins": frontend_origin}},
-    )
+    # Allow comma-separated origins (e.g., http://localhost:3000,http://localhost:3001)
+    origin_list = [o.strip() for o in frontend_origin.split(",") if o.strip()]
+    CORS(app, resources={r"/*": {"origins": origin_list}})
 
     # Import models to ensure they are registered
     from app import models

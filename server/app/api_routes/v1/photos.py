@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+import os
 from app.services.storage.supabase_client import supabase_client
 from app.services.storage.r2_client import r2_client
 from app.models import Photo
@@ -61,16 +62,22 @@ def _process_photo_urls(photo: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: Photo with valid URL
     """
-    # If photo already has a URL and it's not empty, use it
+    # Prefer generating a fresh URL from r2_key to avoid stale/unreachable URLs
+    r2_key = photo.get("r2_key")
+    prefer_public = os.getenv("PREFER_PUBLIC_URLS", "true").lower() == "true"
+    if r2_key:
+        url = None
+        if prefer_public and getattr(r2_client, "public_url", None):
+            url = r2_client.get_public_url(r2_key)
+        if not url:
+            url = r2_client.generate_presigned_url(r2_key, expires_in=600)
+        if url:
+            photo["url"] = url
+            return photo
+
+    # Fallback: keep existing url if present
     if photo.get("url") and photo["url"].strip():
         return photo
-
-    # Otherwise, generate presigned URL from r2_key
-    r2_key = photo.get("r2_key")
-    if r2_key:
-        presigned_url = r2_client.generate_presigned_url(r2_key, expires_in=600)
-        if presigned_url:
-            photo["url"] = presigned_url
 
     return photo
 

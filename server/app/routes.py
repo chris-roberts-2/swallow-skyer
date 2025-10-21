@@ -413,8 +413,9 @@ def upload_photo():
         )
 
     # Store metadata in Supabase
+    # Build Supabase metadata payload. Do not include 'id' so the default
+    # database value (gen_random_uuid()) is used.
     photo_data = {
-        "id": None,  # allow default
         "user_id": user_id,
         "r2_key": key,
         "url": file_url,
