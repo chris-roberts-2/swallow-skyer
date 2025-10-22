@@ -112,6 +112,74 @@ class SupabaseClient:
             print(f"Error deleting photo metadata: {e}")
             return False
 
+    def get_photos(
+        self,
+        limit: Optional[int] = 50,
+        offset: Optional[int] = 0,
+        since: Optional[str] = None,
+        bbox: Optional[str] = None,
+        user_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get photos with filtering and pagination.
+
+        Args:
+            limit (Optional[int]): Maximum number of photos to return
+            offset (Optional[int]): Number of photos to skip
+            since (Optional[str]): ISO timestamp - filter photos taken after this date
+            bbox (Optional[str]): Bounding box "lat_min,lng_min,lat_max,lng_max"
+            user_id (Optional[str]): Filter by user ID
+
+        Returns:
+            Dict[str, Any]: Dict with 'data' (photos list) and 'count' (total)
+        """
+        if not self.client:
+            print("Supabase client not initialized - check environment variables")
+            return {"data": [], "count": 0}
+
+        try:
+            # Start query
+            query = self.client.table("photos").select("*", count="exact")
+
+            # Apply user filter
+            if user_id:
+                query = query.eq("user_id", user_id)
+
+            # Apply timestamp filter
+            if since:
+                query = query.gte("taken_at", since)
+
+            # Apply bounding box filter
+            if bbox:
+                coords = bbox.split(",")
+                if len(coords) == 4:
+                    lat_min, lng_min, lat_max, lng_max = map(float, coords)
+                    query = (
+                        query.gte("latitude", lat_min)
+                        .lte("latitude", lat_max)
+                        .gte("longitude", lng_min)
+                        .lte("longitude", lng_max)
+                    )
+
+            # Apply ordering (newest first)
+            query = query.order("taken_at", desc=True)
+
+            # Apply pagination
+            if limit:
+                query = query.limit(limit)
+            if offset:
+                query = query.offset(offset)
+
+            response = query.execute()
+
+            return {
+                "data": response.data if response.data else [],
+                "count": response.count if hasattr(response, "count") else 0,
+            }
+        except Exception as e:
+            print(f"Error getting photos: {e}")
+            return {"data": [], "count": 0}
+
     def get_photos_by_location(
         self, latitude: float, longitude: float, radius: float = 0.01
     ) -> List[Dict[str, Any]]:

@@ -81,7 +81,7 @@
 .marker-pin {
   width: 30px;
   height: 30px;
-  background: #4CAF50;
+  background: #4caf50;
   border: 3px solid white;
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
@@ -106,7 +106,7 @@
 }
 
 .map-marker.active .marker-pin {
-  background: #FF5722;
+  background: #ff5722;
   transform: rotate(-45deg) scale(1.2);
 }
 
@@ -176,7 +176,7 @@
 }
 
 .photo-card:hover {
-  border-color: #4CAF50;
+  border-color: #4caf50;
   box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
 }
 
@@ -214,7 +214,7 @@
 .node-pin {
   width: 25px;
   height: 25px;
-  background: #2196F3;
+  background: #2196f3;
   border: 2px solid white;
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
@@ -232,12 +232,12 @@
 }
 
 .photo-node.active .node-pin {
-  background: #FF9800;
+  background: #ff9800;
   transform: rotate(-45deg) scale(1.2);
 }
 
 .photo-node.has-multiple .node-pin {
-  background: #9C27B0;
+  background: #9c27b0;
 }
 
 .stack-indicator {
@@ -246,7 +246,7 @@
   right: -8px;
   width: 16px;
   height: 16px;
-  background: #FF5722;
+  background: #ff5722;
   color: white;
   border-radius: 50%;
   display: flex;

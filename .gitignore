@@ -24,3 +24,6 @@ build/
 Thumbs.db
 
 
+# Local credentials (explicitly ignored)
+.git/keys.env
+

@@ -1,9 +1,11 @@
 # Frontend Testing Structure
 
 ## Purpose
+
 This directory contains all React component and unit tests for the Swallow Skyer frontend.
 
 ## Organization
+
 ```
 __tests__/
 ├── components/          # Component tests
@@ -17,16 +19,19 @@ __tests__/
 ```
 
 ## Testing Framework
+
 - **Jest** - Test runner and assertion library
 - **React Testing Library** - Component testing utilities
 - **MSW** - API mocking (if needed)
 
 ## Test Naming Convention
+
 - Component tests: `ComponentName.test.js`
 - Service tests: `serviceName.test.js`
 - Utility tests: `utilityName.test.js`
 
 ## Running Tests
+
 ```bash
 npm test                    # Run all tests
 npm test -- --watch        # Watch mode

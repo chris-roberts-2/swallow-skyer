@@ -8,7 +8,10 @@ import {
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import PhotoStack from './components/map/PhotoStack';
+import UploadForm from './components/UploadForm';
 import './App.css';
+import PhotoMapFetchExample from './components/PhotoMapFetchExample.jsx';
+import PhotoMapLive from './PhotoMapLive';
 
 // Sample data for testing
 const samplePhotos = [
@@ -112,6 +115,7 @@ const MapPage = () => {
 
   return (
     <div className="map-container">
+      <UploadForm />
       <div ref={mapContainer} className="map" />
       {selectedMarker && (
         <div className="selected-marker-info">
@@ -147,7 +151,8 @@ function App() {
         <header className="App-header">
           <h1>Swallow Skyer</h1>
           <nav>
-            <a href="/">Home</a> | <a href="/map">Map</a>
+            <a href="/">Home</a> | <a href="/map">Map</a> |{' '}
+            <a href="/photos-map">Photos Map</a>
           </nav>
         </header>
 
@@ -155,6 +160,7 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/map" element={<MapPage />} />
+            <Route path="/photos-map" element={<PhotoMapLive />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

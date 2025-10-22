@@ -8,8 +8,10 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from server/.env
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Ensure .env values override any inherited shell vars during dev
+load_dotenv(os.path.join(BASE_DIR, ".env"), override=True)
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -32,7 +34,9 @@ def create_app(config_name=None):
         os.environ.get("SECRET_KEY") or "dev-secret-key-change-in-production"
     )
     # Use absolute path for SQLite database
-    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'instance', 'database.db')
+    db_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "instance", "database.db"
+    )
     app.config["SQLALCHEMY_DATABASE_URI"] = (
         os.environ.get("DATABASE_URL") or f"sqlite:///{db_path}"
     )
@@ -40,7 +44,10 @@ def create_app(config_name=None):
 
     # Initialize extensions with app
     db.init_app(app)
-    CORS(app)  # Enable CORS for all routes
+    frontend_origin = os.environ.get("FRONTEND_ORIGIN", "http://localhost:3000")
+    # Allow comma-separated origins (e.g., http://localhost:3000,http://localhost:3001)
+    origin_list = [o.strip() for o in frontend_origin.split(",") if o.strip()]
+    CORS(app, resources={r"/*": {"origins": origin_list}})
 
     # Import models to ensure they are registered
     from app import models
@@ -51,7 +58,13 @@ def create_app(config_name=None):
 
     # Register blueprints
     from app.routes import main_bp
+    from app.api_routes.v1.photos import bp as photos_v1_bp
 
     app.register_blueprint(main_bp)
+    app.register_blueprint(photos_v1_bp, url_prefix="/api/v1/photos")
+
+    @app.route("/api/test/connection", methods=["GET"])
+    def test_connection():
+        return {"status": "success", "message": "Backend connected"}
 
     return app
