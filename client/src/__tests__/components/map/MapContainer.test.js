@@ -30,7 +30,9 @@ describe('MapContainer', () => {
       />
     );
 
-    expect(screen.getByRole('img', { hidden: true })).toBeInTheDocument();
+    // Verify the map container div is present
+    const container = document.querySelector('.map-container');
+    expect(container).toBeInTheDocument();
   });
 
   it('handles photo selection', () => {

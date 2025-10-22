@@ -2,7 +2,10 @@
  * Photos API service for fetching photo data from backend.
  */
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL ||
+  process.env.REACT_APP_API_URL ||
+  'http://localhost:5000';
 
 /**
  * Fetch photos from the backend API.

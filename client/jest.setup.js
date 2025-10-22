@@ -38,6 +38,7 @@ jest.mock('maplibre-gl', () => {
     NavigationControl: class {},
     LngLatBounds: class {
       extend() { return this; }
+      isEmpty() { return true; }
     },
   };
 });

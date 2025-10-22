@@ -2,7 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-const apiBase = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5000';
+const apiBase =
+  process.env.REACT_APP_API_BASE_URL ||
+  process.env.REACT_APP_API_URL ||
+  'http://127.0.0.1:5000';
 const r2PublicBase = process.env.REACT_APP_R2_PUBLIC_URL || '';
 
 const PhotoMapLive = () => {
