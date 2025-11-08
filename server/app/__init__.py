@@ -44,7 +44,10 @@ def create_app(config_name=None):
 
     # Initialize extensions with app
     db.init_app(app)
-    frontend_origin = os.environ.get("FRONTEND_ORIGIN", "http://localhost:3000")
+    # Support multiple local dev ports by default; override with FRONTEND_ORIGIN env var
+    frontend_origin = os.environ.get(
+        "FRONTEND_ORIGIN", "http://localhost:3000,http://localhost:3001"
+    )
     # Allow comma-separated origins (e.g., http://localhost:3000,http://localhost:3001)
     origin_list = [o.strip() for o in frontend_origin.split(",") if o.strip()]
     CORS(app, resources={r"/*": {"origins": origin_list}})
