@@ -2,7 +2,8 @@
 API routes for Swallow Skyer backend.
 """
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_from_directory
+import os
 from uuid import uuid4
 from werkzeug.utils import secure_filename
 from app import db
@@ -42,6 +43,48 @@ def health():
 
     return jsonify({"status": "ok", "database": db_status, "version": "1.0.0"})
 
+
+@main_bp.route("/uploads/<path:filename>", methods=["GET"])
+def serve_uploaded_file(filename: str):
+    """
+    Serve files saved by the local PhotoService in the 'uploads' directory.
+    This enables the frontend to load thumbnails/full images via absolute URLs.
+    """
+    uploads_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "uploads"
+    )
+    return send_from_directory(os.path.normpath(uploads_dir), filename)
+
+
+@main_bp.route("/api/uploads/list", methods=["GET"])
+def list_uploaded_files():
+    """
+    List files under the local 'uploads' directory for the frontend to render a tree.
+    Returns a flat list of relative paths with size and modified timestamps.
+    """
+    uploads_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "uploads"
+    )
+    files = []
+    try:
+        for root, _, filenames in os.walk(uploads_dir):
+            for name in filenames:
+                full_path = os.path.join(root, name)
+                rel_path = os.path.relpath(full_path, uploads_dir)
+                try:
+                    stat = os.stat(full_path)
+                    files.append(
+                        {
+                            "path": f"uploads/{rel_path.replace(os.sep, '/')}",
+                            "size": stat.st_size,
+                            "modified_at": int(stat.st_mtime),
+                        }
+                    )
+                except OSError:
+                    continue
+        return jsonify({"files": files})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @main_bp.route("/api/users", methods=["GET"])
 def get_users():

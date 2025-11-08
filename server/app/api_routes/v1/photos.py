@@ -14,7 +14,12 @@ photo_service = PhotoService()
 
 @bp.route("/", methods=["GET"])
 def get_photos():
-    """Get all photos with optional filtering - API v1 (Supabase)"""
+    """Get all photos with optional filtering - API v1.
+
+    Returns a union of:
+    - Supabase-stored photos (if Supabase client is configured)
+    - Local SQLite photos saved by PhotoService (with absolute URLs to /uploads)
+    """
     try:
         # Parse query parameters
         limit = request.args.get("limit", 50, type=int)
@@ -27,19 +32,38 @@ def get_photos():
         if limit > 200:
             limit = 200
 
-        # Query Supabase
-        result = supabase_client.get_photos(
-            limit=limit, offset=offset, since=since, bbox=bbox, user_id=user_id
-        )
-
-        photos = result.get("data", [])
-        total = result.get("count", 0)
-
-        # Process each photo to ensure URL is set
         processed_photos = []
-        for photo in photos:
-            processed_photo = _process_photo_urls(photo)
-            processed_photos.append(processed_photo)
+        total = 0
+
+        # Query Supabase first if available
+        if supabase_client.client:
+            result = supabase_client.get_photos(
+                limit=limit, offset=offset, since=since, bbox=bbox, user_id=user_id
+            )
+            photos = result.get("data", []) or []
+            total += result.get("count", 0) or 0
+            for photo in photos:
+                processed_photos.append(_process_photo_urls(photo))
+
+        # Also append local DB photos for dev/local uploads
+        local_photos = Photo.query.all()
+        for p in local_photos:
+            # Build absolute URL pointing to /uploads route
+            file_path = (p.file_path or "").lstrip("/")
+            url = f"{request.host_url.rstrip('/')}/{file_path}"
+            processed_photos.append(
+                {
+                    "id": p.id,
+                    "user_id": p.user_id,
+                    "latitude": p.latitude,
+                    "longitude": p.longitude,
+                    "url": url,
+                    "taken_at": None,
+                    "created_at": p.created_at.isoformat() if p.created_at else None,
+                    "r2_key": None,
+                }
+            )
+        total += len(local_photos or [])
 
         return jsonify(
             {

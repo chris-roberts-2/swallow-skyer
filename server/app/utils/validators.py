@@ -12,7 +12,15 @@ def validate_photo_data(file, latitude, longitude):
     if file and not file.filename:
         errors.append("No file selected")
 
-    if file and file.content_length > 10 * 1024 * 1024:  # 10MB
+    # Some servers may not populate content_length; treat missing as 0
+    if file:
+        try:
+            size = getattr(file, "content_length", None)
+            size = 0 if size is None else int(size)
+        except Exception:
+            size = 0
+        if size > 10 * 1024 * 1024:  # 10MB
+            errors.append("File too large (max 10MB)")
         errors.append("File too large (max 10MB)")
 
     # Validate coordinates

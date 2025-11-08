@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import UploadForm from './components/UploadForm';
 
 const apiBase =
   process.env.REACT_APP_API_BASE_URL ||
@@ -15,11 +16,17 @@ const PhotoMapLive = () => {
 
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
+    // Continental USA bounds
+    const usaBounds = [
+      [-125.0, 24.0], // SW
+      [-66.5, 49.5], // NE
+    ];
     mapInstance.current = new maplibregl.Map({
       container: mapRef.current,
       style: 'https://demotiles.maplibre.org/style.json',
-      center: [-79.9959, 40.4406],
-      zoom: 11,
+      center: [-98.5, 39.8], // USA center
+      zoom: 3.5,
+      maxBounds: usaBounds,
     });
     mapInstance.current.addControl(
       new maplibregl.NavigationControl(),
@@ -56,6 +63,8 @@ const PhotoMapLive = () => {
         const lat =
           typeof p.latitude === 'number' ? p.latitude : Number(p.latitude);
         if (Number.isNaN(lng) || Number.isNaN(lat)) return;
+        // Heuristic for USA-only deployments: if longitude is positive, assume West hemisphere
+        const adjLng = lng > 0 ? -lng : lng;
 
         // Build popup content via DOM for robust CORS/onerror fallback handling
         const container = document.createElement('div');
@@ -79,10 +88,16 @@ const PhotoMapLive = () => {
         ts.style.fontSize = '12px';
         ts.style.color = '#666';
         let takenText = '';
-        if (p.taken_at) {
-          takenText = new Date(p.taken_at).toLocaleString();
+        const iso = p.taken_at || p.created_at;
+        if (iso) {
+          takenText = new Date(iso).toLocaleString();
         }
-        ts.textContent = takenText;
+        ts.textContent = takenText || '';
+
+        const coords = document.createElement('div');
+        coords.style.fontSize = '12px';
+        coords.style.color = '#666';
+        coords.textContent = `Lat: ${lat.toFixed(5)}  Lng: ${adjLng.toFixed(5)}`;
 
         const primarySrc = String(p.url || '');
         const publicFallback =
@@ -104,6 +119,7 @@ const PhotoMapLive = () => {
         container.appendChild(img);
         container.appendChild(fallback);
         container.appendChild(ts);
+        container.appendChild(coords);
 
         const popup = new maplibregl.Popup({ offset: 25 }).setDOMContent(
           container
@@ -118,12 +134,12 @@ const PhotoMapLive = () => {
         el.style.boxShadow = '0 0 6px rgba(0,0,0,0.4)';
 
         new maplibregl.Marker({ element: el })
-          .setLngLat([lng, lat])
+          .setLngLat([adjLng, lat])
           .setPopup(popup)
           .addTo(mapInstance.current)
           .togglePopup();
 
-        bounds.extend([lng, lat]);
+        bounds.extend([adjLng, lat]);
       });
 
     if (!bounds.isEmpty()) {
@@ -131,7 +147,25 @@ const PhotoMapLive = () => {
     }
   }, [photos]);
 
-  return <div ref={mapRef} style={{ width: '100%', height: '90vh' }} />;
+  return (
+    <div style={{ width: '100%', height: '90vh', position: 'relative' }}>
+      <div
+        style={{
+          position: 'absolute',
+          zIndex: 2,
+          top: 8,
+          left: 8,
+          background: 'rgba(255,255,255,0.95)',
+          padding: 8,
+          borderRadius: 6,
+          boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+        }}
+      >
+        <UploadForm />
+      </div>
+      <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
+    </div>
+  );
 };
 
 export default PhotoMapLive;

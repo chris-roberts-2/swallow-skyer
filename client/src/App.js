@@ -10,7 +10,6 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import PhotoStack from './components/map/PhotoStack';
 import UploadForm from './components/UploadForm';
 import './App.css';
-import PhotoMapFetchExample from './components/PhotoMapFetchExample.jsx';
 import PhotoMapLive from './PhotoMapLive';
 
 // Sample data for testing
@@ -33,116 +32,78 @@ const samplePhotos = [
   },
 ];
 
-// Sample route component
-const MapPage = () => {
-  const mapContainer = useRef(null);
-  const map = useRef(null);
-  const [selectedMarker, setSelectedMarker] = useState(null);
+// Replace Home with a status/dashboard and uploads tree
+const HomePage = () => {
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const apiBase =
+    process.env.REACT_APP_API_BASE_URL ||
+    process.env.REACT_APP_API_URL ||
+    'http://127.0.0.1:5000';
 
   useEffect(() => {
-    if (map.current) return; // Initialize map only once
-
-    map.current = new maplibregl.Map({
-      container: mapContainer.current,
-      style: {
-        version: 8,
-        sources: {
-          'raster-tiles': {
-            type: 'raster',
-            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-            tileSize: 256,
-            attribution: '&copy; OpenStreetMap contributors',
-          },
-        },
-        layers: [
-          {
-            id: 'simple-tiles',
-            type: 'raster',
-            source: 'raster-tiles',
-            minzoom: 0,
-            maxzoom: 22,
-          },
-        ],
-      },
-      center: [-122.4194, 37.7749], // San Francisco coordinates
-      zoom: 10, // Better zoom level for city view
-    });
-
-    // Add navigation controls
-    map.current.addControl(new maplibregl.NavigationControl(), 'top-right');
-
-    // Add rotation control
-    map.current.addControl(
-      new maplibregl.NavigationControl({
-        showCompass: true,
-        showZoom: true,
-      }),
-      'top-left'
-    );
-
-    // Add sample markers
-    samplePhotos.forEach(photo => {
-      const markerElement = document.createElement('div');
-      markerElement.className = 'map-marker';
-      markerElement.innerHTML = `
-        <div class="marker-pin">
-          <span class="photo-count">1</span>
-        </div>
-      `;
-
-      new maplibregl.Marker(markerElement)
-        .setLngLat([photo.longitude, photo.latitude])
-        .addTo(map.current);
-
-      markerElement.addEventListener('click', () => {
-        setSelectedMarker(photo);
-      });
-    });
-
-    // Cleanup on unmount
-    return () => {
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
+    const load = async () => {
+      try {
+        const res = await fetch(`${apiBase}/api/uploads/list`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Failed to load uploads');
+        setFiles(Array.isArray(data.files) ? data.files : []);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error(e);
+        setError(e.message || 'Failed to load uploads');
+      } finally {
+        setLoading(false);
       }
     };
-  }, []);
+    load();
+  }, [apiBase]);
 
-  const handlePhotoSelect = photo => {
-    // Photo selection handler - can be extended later
-    setSelectedMarker(photo);
-  };
+  const org =
+    process.env.REACT_APP_ORG_NAME ||
+    'Swallow Robotics (set REACT_APP_ORG_NAME)';
+  const project =
+    process.env.REACT_APP_PROJECT_NAME ||
+    'Swallow Skyer (set REACT_APP_PROJECT_NAME)';
+  const user =
+    process.env.REACT_APP_USER_NAME ||
+    'Unknown User (set REACT_APP_USER_NAME)';
 
   return (
-    <div className="map-container">
-      <UploadForm />
-      <div ref={mapContainer} className="map" />
-      {selectedMarker && (
-        <div className="selected-marker-info">
-          <PhotoStack
-            photos={[selectedMarker]}
-            onPhotoSelect={handlePhotoSelect}
-            onToggle={() => setSelectedMarker(null)}
-          />
-        </div>
+    <div className="home-page">
+      <h1>Home</h1>
+      <div style={{ marginBottom: 12 }}>
+        <div><strong>Organization:</strong>&nbsp;{org}</div>
+        <div><strong>Project:</strong>&nbsp;{project}</div>
+        <div><strong>User:</strong>&nbsp;{user}</div>
+      </div>
+      <h3>Raw Images (uploads/)</h3>
+      {loading ? (
+        <div>Loading...</div>
+      ) : error ? (
+        <div style={{ color: 'red' }}>{error}</div>
+      ) : files.length === 0 ? (
+        <div>No files found.</div>
+      ) : (
+        <ul style={{ lineHeight: 1.6 }}>
+          {files.map(f => (
+            <li key={f.path}>
+              <a href={`${apiBase}/${f.path}`} target="_blank" rel="noreferrer">
+                {f.path}
+              </a>{' '}
+              <span style={{ color: '#666', fontSize: 12 }}>
+                ({Math.round((f.size || 0) / 1024)} KB)
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
 };
 
-// Sample home component
-const HomePage = () => {
-  return (
-    <div className="home-page">
-      <h1>Welcome to Swallow Skyer</h1>
-      <p>
-        A platform for storing and managing photos on a map based on GPS
-        coordinates.
-      </p>
-      <p>Navigate to the map to get started!</p>
-    </div>
-  );
-};
+// (Old welcome removed; replaced with dashboard above)
 
 function App() {
   return (
@@ -151,16 +112,14 @@ function App() {
         <header className="App-header">
           <h1>Swallow Skyer</h1>
           <nav>
-            <a href="/">Home</a> | <a href="/map">Map</a> |{' '}
-            <a href="/photos-map">Photos Map</a>
+            <a href="/">Home</a> | <a href="/map">Map</a>
           </nav>
         </header>
 
         <main className="App-main">
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/map" element={<MapPage />} />
-            <Route path="/photos-map" element={<PhotoMapLive />} />
+            <Route path="/map" element={<PhotoMapLive />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
