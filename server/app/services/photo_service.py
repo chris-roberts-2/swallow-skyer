@@ -24,7 +24,13 @@ class PhotoService:
         if not self.allowed_file(file.filename):
             raise ValueError("Invalid file type")
 
-        if file.content_length > self.max_file_size:
+        # content_length may be None in some environments; guard accordingly
+        try:
+            size = getattr(file, "content_length", None)
+            size = 0 if size is None else int(size)
+        except Exception:
+            size = 0
+        if size > self.max_file_size:
             raise ValueError("File too large")
 
         # Generate unique filename

@@ -23,8 +23,15 @@ const UploadForm = () => {
       setIsUploading(true);
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('latitude', latitude);
-      formData.append('longitude', longitude);
+      // Normalize coordinates for USA-only usage:
+      // If longitude is positive, assume West hemisphere and invert.
+      const latNum = Number(latitude);
+      let lngNum = Number(longitude);
+      if (!Number.isNaN(lngNum) && lngNum > 0) {
+        lngNum = -Math.abs(lngNum);
+      }
+      formData.append('latitude', String(latNum));
+      formData.append('longitude', String(lngNum));
       if (takenAt) formData.append('timestamp', takenAt);
 
       // Use v1 upload route

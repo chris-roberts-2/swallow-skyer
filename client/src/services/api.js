@@ -11,11 +11,18 @@ class ApiClient {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+    const isFormData = options && options.body instanceof FormData;
     const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      // Do NOT set Content-Type for FormData; let the browser add the boundary.
+      // Default to JSON for non-FormData requests.
+      headers: isFormData
+        ? {
+            ...(options.headers || {}),
+          }
+        : {
+            'Content-Type': 'application/json',
+            ...(options.headers || {}),
+          },
       ...options,
     };
 
