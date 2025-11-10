@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request, send_from_directory
 import os
 from uuid import uuid4
 from werkzeug.utils import secure_filename
+from datetime import datetime
 from app import db
 from app.models import User, Photo, Location
 from app.services.storage.supabase_client import supabase_client
@@ -69,6 +70,10 @@ def list_uploaded_files():
     try:
         for root, _, filenames in os.walk(uploads_dir):
             for name in filenames:
+                # Exclude README and non-image files from the list
+                lower = name.lower()
+                if lower.endswith(".md") or lower.endswith(".txt"):
+                    continue
                 full_path = os.path.join(root, name)
                 rel_path = os.path.relpath(full_path, uploads_dir)
                 try:
@@ -111,9 +116,13 @@ def create_user():
     if not data or not data.get("name"):
         return jsonify({"error": "Name is required"}), 400
 
+    if not data.get("email"):
+        return jsonify({"error": "Email is required"}), 400
+
     user = User(
         name=data["name"],
-        email=data.get("email"),
+        email=data["email"],
+        username=data.get("username"),
         profile_picture_url=data.get("profile_picture_url"),
     )
 
@@ -214,6 +223,16 @@ def create_photo():
     if not data or not all(k in data for k in ["filename", "latitude", "longitude"]):
         return jsonify({"error": "filename, latitude, and longitude are required"}), 400
 
+    taken_at_value = data.get("taken_at")
+    taken_at = None
+    if taken_at_value:
+        try:
+            # Support both ISO strings with Z suffix and without timezone
+            cleaned = taken_at_value.replace("Z", "+00:00") if taken_at_value.endswith("Z") else taken_at_value
+            taken_at = datetime.fromisoformat(cleaned)
+        except (ValueError, TypeError):
+            taken_at = None
+
     photo = Photo(
         filename=data["filename"],
         caption=data.get("caption"),
@@ -221,7 +240,9 @@ def create_photo():
         longitude=data["longitude"],
         altitude=data.get("altitude"),
         user_id=data.get("user_id"),
-        file_url=data.get("file_url"),
+        url=data.get("url") or data.get("file_url"),
+        r2_key=data.get("r2_key"),
+        taken_at=taken_at,
     )
 
     db.session.add(photo)

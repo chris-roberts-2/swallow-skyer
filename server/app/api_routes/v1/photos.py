@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 import os
+from datetime import datetime, timezone
 from app.services.storage.supabase_client import supabase_client
 from app.services.storage.r2_client import r2_client
 from app.models import Photo
@@ -64,6 +65,59 @@ def get_photos():
                 }
             )
         total += len(local_photos or [])
+
+        # Include any raw files in uploads/ not present in the DB, with sensible defaults
+        try:
+            uploads_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "uploads")
+            uploads_root = os.path.normpath(uploads_root)
+            existing_paths = set()
+            # Track paths from local DB entries to avoid duplicates
+            for item in processed_photos:
+                path = (item.get("url") or "").replace(request.host_url.rstrip("/") + "/", "")
+                if path:
+                    existing_paths.add(path)
+
+            default_lat = 40.4676
+            default_lng = -79.9606
+            default_iso = datetime(2025, 10, 11, 18, 30, 0, tzinfo=timezone.utc).isoformat()
+            image_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+            if os.path.isdir(uploads_root):
+                for root_dir, _, files in os.walk(uploads_root):
+                    for name in files:
+                        lower = name.lower()
+                        # Skip non-images and readmes
+                        if not any(lower.endswith(ext) for ext in image_exts):
+                            continue
+                        if lower.endswith(".md") or lower.endswith(".txt"):
+                            continue
+
+                        full_path = os.path.join(root_dir, name)
+                        rel_path = os.path.relpath(full_path, uploads_root).replace(os.sep, "/")
+                        rel_with_prefix = f"uploads/{rel_path}"
+
+                        if rel_with_prefix in existing_paths:
+                            continue
+
+                        url = f"{request.host_url.rstrip('/')}/{rel_with_prefix}"
+                        processed_photos.append(
+                            {
+                                "id": f"raw-{rel_with_prefix}",
+                                "user_id": None,
+                                "latitude": default_lat,
+                                "longitude": default_lng,
+                                "url": url,
+                                "taken_at": default_iso,
+                                "created_at": default_iso,
+                                "r2_key": None,
+                            }
+                        )
+                # total should count these additional raw files as well
+                # Note: total remains a hint; we set to length of processed for simplicity
+                total = len(processed_photos)
+        except Exception:
+            # Non-fatal: if directory listing fails, we still return DB/Supabase items
+            pass
 
         return jsonify(
             {

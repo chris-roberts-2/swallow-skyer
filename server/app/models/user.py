@@ -7,9 +7,10 @@ class User(db.Model):
     __tablename__ = "users"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    username = db.Column(db.String(80), unique=True, nullable=False)
+    name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    display_name = db.Column(db.String(120))
+    username = db.Column(db.String(80), unique=True, nullable=True)
+    profile_picture_url = db.Column(db.String(512), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -19,9 +20,10 @@ class User(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
-            "username": self.username,
+            "name": self.name,
             "email": self.email,
-            "display_name": self.display_name,
+            "username": self.username,
+            "profile_picture_url": self.profile_picture_url,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "is_active": self.is_active,
