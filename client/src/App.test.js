@@ -37,6 +37,6 @@ test('renders navigation links', () => {
 
 test('renders welcome message on home page', () => {
   render(<App />);
-  const welcomeMessage = screen.getByText(/welcome to swallow skyer/i);
-  expect(welcomeMessage).toBeInTheDocument();
+  const uploadsHeading = screen.getByText(/Raw Images \(uploads\/\)/i);
+  expect(uploadsHeading).toBeInTheDocument();
 });

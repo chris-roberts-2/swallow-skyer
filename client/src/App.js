@@ -37,28 +37,51 @@ const HomePage = () => {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const apiBase =
-    process.env.REACT_APP_API_BASE_URL ||
-    process.env.REACT_APP_API_URL ||
-    'http://127.0.0.1:5000';
+  const envBase =
+    process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL || '';
+  const defaultBase = 'http://127.0.0.1:5001';
+  const [resolvedApiBase, setResolvedApiBase] = useState(envBase || defaultBase);
 
   useEffect(() => {
     const load = async () => {
-      try {
-        const res = await fetch(`${apiBase}/api/uploads/list`);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error || 'Failed to load uploads');
-        setFiles(Array.isArray(data.files) ? data.files : []);
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error(e);
-        setError(e.message || 'Failed to load uploads');
-      } finally {
-        setLoading(false);
+      setLoading(true);
+      const candidatesRaw = [
+        'http://127.0.0.1:5001', // prefer 5001 to avoid macOS AirPlay on 5000
+        envBase,
+        'http://localhost:5001',
+        'http://127.0.0.1:5000',
+        'http://localhost:5000',
+      ].filter(Boolean);
+      const candidates = Array.from(new Set(candidatesRaw));
+
+      let lastErr = null;
+      for (const base of candidates) {
+        try {
+          const res = await fetch(`${base}/api/uploads/list`, { method: 'GET' });
+          // If CORS blocks, this may throw before we can read json
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            lastErr = new Error(data?.error || `Failed to load uploads (status ${res.status})`);
+            continue;
+          }
+          setResolvedApiBase(base);
+          setFiles(Array.isArray(data.files) ? data.files : []);
+          setError('');
+          setLoading(false);
+          return;
+        } catch (e) {
+          lastErr = e;
+          continue;
+        }
       }
+      // If all candidates failed
+      // eslint-disable-next-line no-console
+      console.error(lastErr);
+      setError((lastErr && lastErr.message) || 'Failed to load uploads');
+      setLoading(false);
     };
     load();
-  }, [apiBase]);
+  }, [envBase]);
 
   const org =
     process.env.REACT_APP_ORG_NAME ||
@@ -89,7 +112,7 @@ const HomePage = () => {
         <ul style={{ lineHeight: 1.6 }}>
           {files.map(f => (
             <li key={f.path}>
-              <a href={`${apiBase}/${f.path}`} target="_blank" rel="noreferrer">
+              <a href={`${resolvedApiBase}/${f.path}`} target="_blank" rel="noreferrer">
                 {f.path}
               </a>{' '}
               <span style={{ color: '#666', fontSize: 12 }}>

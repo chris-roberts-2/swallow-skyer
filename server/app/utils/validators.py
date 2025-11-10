@@ -21,7 +21,6 @@ def validate_photo_data(file, latitude, longitude):
             size = 0
         if size > 10 * 1024 * 1024:  # 10MB
             errors.append("File too large (max 10MB)")
-        errors.append("File too large (max 10MB)")
 
     # Validate coordinates
     if not isinstance(latitude, (int, float)) or not -90 <= latitude <= 90:

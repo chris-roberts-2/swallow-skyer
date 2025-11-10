@@ -8,13 +8,16 @@ class Photo(db.Model):
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     filename = db.Column(db.String(255), nullable=False)
-    original_filename = db.Column(db.String(255), nullable=False)
-    file_path = db.Column(db.String(500), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=True)
+    file_path = db.Column(db.String(500), nullable=True)
     thumbnail_path = db.Column(db.String(500))
     caption = db.Column(db.Text)
     latitude = db.Column(db.Float, nullable=False)
     longitude = db.Column(db.Float, nullable=False)
     altitude = db.Column(db.Float)
+    url = db.Column(db.String(2048))
+    r2_key = db.Column(db.String(512))
+    taken_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -35,6 +38,9 @@ class Photo(db.Model):
             "latitude": self.latitude,
             "longitude": self.longitude,
             "altitude": self.altitude,
+            "url": self.url,
+            "r2_key": self.r2_key,
+            "taken_at": self.taken_at.isoformat() if self.taken_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "user_id": self.user_id,

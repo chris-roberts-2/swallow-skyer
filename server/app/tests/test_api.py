@@ -82,7 +82,10 @@ def test_get_photos_empty(client):
     response = client.get("/api/photos")
     assert response.status_code == 200
     data = response.get_json()
-    assert data == []
+    assert isinstance(data, dict)
+    assert data.get("photos") == []
+    pagination = data.get("pagination", {})
+    assert pagination.get("total") == 0
 
 
 def test_create_photo(client):
@@ -98,11 +101,14 @@ def test_create_photo(client):
     assert response.status_code == 201
 
     data = response.get_json()
+    assert isinstance(data, dict)
     assert data["filename"] == "test_photo.jpg"
     assert data["caption"] == "Test photo"
     assert data["latitude"] == 40.7128
     assert data["longitude"] == -74.0060
     assert "id" in data
+    assert "created_at" in data
+    assert "url" in data
 
 
 def test_create_photo_missing_required_fields(client):
