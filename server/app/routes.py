@@ -3,6 +3,7 @@ API routes for Swallow Skyer backend.
 """
 
 from flask import Blueprint, jsonify, request, send_from_directory
+from sqlalchemy import text
 import os
 from uuid import uuid4
 from werkzeug.utils import secure_filename
@@ -36,8 +37,8 @@ def health():
         dict: Detailed health information
     """
     try:
-        # Test database connection
-        db.session.execute("SELECT 1")
+        # Test database connection (SQLAlchemy 2.x requires text())
+        db.session.execute(text("SELECT 1"))
         db_status = "healthy"
     except Exception:
         db_status = "unhealthy"

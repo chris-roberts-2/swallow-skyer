@@ -8,7 +8,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - REACT_APP_API_URL=http://localhost:5000/api
+      - REACT_APP_API_URL=http://localhost:5001/api
       - REACT_APP_SUPABASE_URL=${REACT_APP_SUPABASE_URL}
       - REACT_APP_SUPABASE_ANON_KEY=${REACT_APP_SUPABASE_ANON_KEY}
     depends_on:
@@ -22,7 +22,7 @@ services:
       context: ./server
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"
+      - "5001:5001"
     environment:
       - FLASK_ENV=development
       - DATABASE_URL=sqlite:///instance/database.db

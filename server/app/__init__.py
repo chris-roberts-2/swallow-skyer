@@ -78,6 +78,49 @@ def create_app(config_name=None):
     # Create database tables
     with app.app_context():
         db.create_all()
+        # Best-effort migration for older local SQLite files: add missing columns
+        try:
+            from sqlalchemy import text
+            # Inspect existing columns on SQLite
+            result = db.session.execute(text("PRAGMA table_info(photos)")).fetchall()
+            existing_cols = {row[1] for row in result}  # second field is column name
+            alter_statements = []
+            # Columns introduced after initial prototypes that some dev DBs may miss
+            if "url" not in existing_cols:
+                alter_statements.append("ALTER TABLE photos ADD COLUMN url TEXT")
+            if "r2_key" not in existing_cols:
+                alter_statements.append("ALTER TABLE photos ADD COLUMN r2_key TEXT")
+            if "thumbnail_path" not in existing_cols:
+                alter_statements.append(
+                    "ALTER TABLE photos ADD COLUMN thumbnail_path TEXT"
+                )
+            if "original_filename" not in existing_cols:
+                alter_statements.append(
+                    "ALTER TABLE photos ADD COLUMN original_filename TEXT"
+                )
+            if "altitude" not in existing_cols:
+                alter_statements.append(
+                    "ALTER TABLE photos ADD COLUMN altitude REAL"
+                )
+            if "taken_at" not in existing_cols:
+                alter_statements.append(
+                    "ALTER TABLE photos ADD COLUMN taken_at DATETIME"
+                )
+            if "updated_at" not in existing_cols:
+                alter_statements.append(
+                    "ALTER TABLE photos ADD COLUMN updated_at DATETIME"
+                )
+            for stmt in alter_statements:
+                try:
+                    db.session.execute(text(stmt))
+                except Exception:
+                    # Ignore if the migration concurrently ran or SQLite limitation
+                    pass
+            if alter_statements:
+                db.session.commit()
+        except Exception:
+            # Non-fatal: if inspection fails, we leave DB as-is; uploads may error until DB is reset
+            pass
 
     # Register blueprints
     from app.routes import main_bp
