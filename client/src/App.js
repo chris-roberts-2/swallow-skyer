@@ -7,10 +7,12 @@ import {
 } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import PhotoStack from './components/map/PhotoStack';
-import UploadForm from './components/UploadForm';
 import './App.css';
 import PhotoMapLive from './PhotoMapLive';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import AuthGuard from './components/auth/AuthGuard';
 
 // Sample data for testing
 const samplePhotos = [
@@ -128,26 +130,70 @@ const HomePage = () => {
 
 // (Old welcome removed; replaced with dashboard above)
 
+const Header = () => {
+  const { isAuthenticated, user, logout } = useAuth();
+
+  return (
+    <header className="App-header">
+      <h1>Swallow Skyer</h1>
+      <nav>
+        <a href="/">Home</a> | <a href="/map">Map</a>
+        {isAuthenticated ? (
+          <>
+            {' '}|{' '}
+            <button type="button" onClick={logout} className="link-button">
+              Logout
+            </button>
+            <span className="auth-user">{user?.email}</span>
+          </>
+        ) : (
+          <>
+            {' '}| <a href="/login">Login</a> | <a href="/signup">Sign up</a>
+          </>
+        )}
+      </nav>
+    </header>
+  );
+};
+
+function AppRoutes() {
+  return (
+    <div className="App">
+      <Header />
+      <main className="App-main">
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route
+            path="/"
+            element={
+              <AuthGuard>
+                <HomePage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/map"
+            element={
+              <AuthGuard>
+                <PhotoMapLive />
+              </AuthGuard>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+    </div>
+  );
+}
+
 function App() {
   return (
-    <Router>
-      <div className="App">
-        <header className="App-header">
-          <h1>Swallow Skyer</h1>
-          <nav>
-            <a href="/">Home</a> | <a href="/map">Map</a>
-          </nav>
-        </header>
-
-        <main className="App-main">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/map" element={<PhotoMapLive />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <AppRoutes />
+      </Router>
+    </AuthProvider>
   );
 }
 

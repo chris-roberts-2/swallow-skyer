@@ -1,64 +1,154 @@
+import os
+from datetime import datetime, timedelta, timezone
+from typing import Dict, Optional
+
+import bcrypt
+import jwt
+
 from app import db
 from app.models import User
-import hashlib
-import secrets
+
+
+class AuthError(Exception):
+    """Domain-specific authentication error."""
 
 
 class AuthService:
-    def authenticate_user(self, username, password):
-        """Authenticate user with username and password"""
+    def __init__(self):
+        self.algorithm = os.getenv("AUTH_JWT_ALGORITHM", "HS256")
+        self.access_secret = (
+            os.getenv("AUTH_ACCESS_SECRET")
+            or os.getenv("AUTH_JWT_SECRET")
+            or os.getenv("JWT_SECRET")
+            or os.getenv("SECRET_KEY")
+            or "dev-access-secret"
+        )
+        self.refresh_secret = (
+            os.getenv("AUTH_REFRESH_SECRET")
+            or os.getenv("AUTH_REFRESH_JWT_SECRET")
+            or self.access_secret
+        )
+        self.access_ttl = int(os.getenv("AUTH_ACCESS_TTL_SECONDS", "900"))
+        self.refresh_ttl = int(os.getenv("AUTH_REFRESH_TTL_SECONDS", "1209600"))
+
+    # -------------------------------------------------------------------------
+    # Public API
+    # -------------------------------------------------------------------------
+    def signup(self, email: str, password: str, name: Optional[str] = None) -> Dict:
+        email_normalized = self._normalize_email(email)
+        if not email_normalized or not password:
+            raise AuthError("Email and password are required")
+
+        if User.query.filter_by(email=email_normalized).first():
+            raise AuthError("Email already exists")
+
+        user = User(
+            email=email_normalized,
+            name=name or email_normalized.split("@")[0],
+            password_hash=self._hash_password(password),
+        )
+        db.session.add(user)
+        db.session.commit()
+
+        tokens = self._issue_tokens(user, rotate_refresh=True)
+        return {"user": user.to_dict(), **tokens}
+
+    def login(self, email: str, password: str) -> Dict:
+        email_normalized = self._normalize_email(email)
+        if not email_normalized or not password:
+            raise AuthError("Email and password are required")
+
+        user = User.query.filter_by(email=email_normalized).first()
+        if not user or not user.password_hash:
+            raise AuthError("Invalid credentials")
+
+        if not self._verify_password(password, user.password_hash):
+            raise AuthError("Invalid credentials")
+
+        tokens = self._issue_tokens(user, rotate_refresh=True)
+        return {"user": user.to_dict(), **tokens}
+
+    def refresh_tokens(self, refresh_token: str) -> Dict:
+        user = self._verify_token(refresh_token, expected_type="refresh")
+        tokens = self._issue_tokens(user, rotate_refresh=True)
+        return {"user": user.to_dict(), **tokens}
+
+    def verify_access_token(self, token: str) -> User:
+        return self._verify_token(token, expected_type="access")
+
+    # -------------------------------------------------------------------------
+    # Helpers
+    # -------------------------------------------------------------------------
+    def _normalize_email(self, email: Optional[str]) -> Optional[str]:
+        if not email:
+            return None
+        return email.strip().lower()
+
+    def _hash_password(self, password: str) -> str:
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+        return hashed.decode("utf-8")
+
+    def _verify_password(self, password: str, password_hash: str) -> bool:
         try:
-            user = User.query.filter_by(username=username).first()
+            return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+        except ValueError:
+            return False
 
-            if not user:
-                return {"success": False, "error": "User not found"}
-
-            if not user.is_active:
-                return {"success": False, "error": "Account is disabled"}
-
-            # In a real implementation, you would hash and compare passwords
-            # For now, we'll use a simple check
-            if self.verify_password(password, user.password_hash):
-                token = self.generate_token()
-                return {"success": True, "user": user.to_dict(), "token": token}
-            else:
-                return {"success": False, "error": "Invalid password"}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-
-    def register_user(self, username, email, password):
-        """Register a new user"""
-        try:
-            # Check if user already exists
-            if User.query.filter_by(username=username).first():
-                return {"success": False, "error": "Username already exists"}
-
-            if User.query.filter_by(email=email).first():
-                return {"success": False, "error": "Email already exists"}
-
-            # Create new user
-            user = User(
-                username=username,
-                email=email,
-                password_hash=self.hash_password(password),
-            )
-
-            db.session.add(user)
+    def _issue_tokens(self, user: User, rotate_refresh: bool = False) -> Dict[str, str]:
+        if rotate_refresh:
+            user.token_version = (user.token_version or 0) + 1
             db.session.commit()
 
-            return {"success": True, "user": user.to_dict()}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+        access_token = self._encode_token(
+            user, token_type="access", ttl_seconds=self.access_ttl, secret=self.access_secret
+        )
+        refresh_token = self._encode_token(
+            user, token_type="refresh", ttl_seconds=self.refresh_ttl, secret=self.refresh_secret
+        )
+        return {
+            "access_token": access_token,
+            "access_expires_in": self.access_ttl,
+            "refresh_token": refresh_token,
+            "refresh_expires_in": self.refresh_ttl,
+        }
 
-    def hash_password(self, password):
-        """Hash password for storage"""
-        # In a real implementation, use bcrypt or similar
-        return hashlib.sha256(password.encode()).hexdigest()
+    def _encode_token(
+        self, user: User, *, token_type: str, ttl_seconds: int, secret: str
+    ) -> str:
+        now = datetime.now(timezone.utc)
+        payload = {
+            "sub": user.id,
+            "email": user.email,
+            "type": token_type,
+            "token_version": user.token_version,
+            "iat": int(now.timestamp()),
+            "exp": int((now + timedelta(seconds=ttl_seconds)).timestamp()),
+        }
+        return jwt.encode(payload, secret, algorithm=self.algorithm)
 
-    def verify_password(self, password, password_hash):
-        """Verify password against hash"""
-        return self.hash_password(password) == password_hash
+    def _verify_token(self, token: str, *, expected_type: str) -> User:
+        if not token:
+            raise AuthError("Token is required")
 
-    def generate_token(self):
-        """Generate authentication token"""
-        return secrets.token_urlsafe(32)
+        secret = self.access_secret if expected_type == "access" else self.refresh_secret
+        try:
+            payload = jwt.decode(token, secret, algorithms=[self.algorithm])
+        except jwt.ExpiredSignatureError as exc:
+            raise AuthError("Token expired") from exc
+        except jwt.InvalidTokenError as exc:
+            raise AuthError("Invalid token") from exc
+
+        if payload.get("type") != expected_type:
+            raise AuthError("Invalid token type")
+
+        user_id = payload.get("sub")
+        user = db.session.get(User, user_id)
+        if not user:
+            raise AuthError("User not found")
+
+        token_version = payload.get("token_version")
+        if token_version != user.token_version:
+            raise AuthError("Token has been rotated")
+
+        return user

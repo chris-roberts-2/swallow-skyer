@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 
-const envApiBase =
+const envBase =
   process.env.REACT_APP_API_BASE_URL ||
   process.env.REACT_APP_API_URL ||
-  '';
+  'http://localhost:5001';
 
 const UploadForm = ({ onUploaded }) => {
   const [file, setFile] = useState(null);
@@ -38,11 +38,7 @@ const UploadForm = ({ onUploaded }) => {
       const candidates = Array.from(
         new Set(
           [
-            'http://127.0.0.1:5001',
-            envApiBase,
-            'http://localhost:5001',
-            'http://127.0.0.1:5000',
-            'http://localhost:5000',
+            envBase ? `${envBase.replace(/\/$/, '')}/api/v1/photos/upload` : null,
           ].filter(Boolean)
         )
       );
@@ -50,9 +46,12 @@ const UploadForm = ({ onUploaded }) => {
       let lastError = new Error('Upload failed');
       for (const base of candidates) {
         try {
-          const res = await fetch(`${base}/api/v1/photos/upload`, {
+          const res = await fetch(base, {
             method: 'POST',
             body: formData,
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('access_token') || ''}`,
+            },
           });
           // Try to parse JSON, fallback to text for better diagnostics
           let payload = null;

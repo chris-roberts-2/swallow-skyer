@@ -12,7 +12,11 @@ import PhotoStack from './components/map/PhotoStack';
 
 const envApiBase =
   process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL || '';
-const r2PublicBase = process.env.REACT_APP_R2_PUBLIC_URL || '';
+const r2PublicBase =
+  process.env.REACT_APP_R2_PUBLIC_BASE_URL ||
+  process.env.REACT_APP_R2_PUBLIC_URL ||
+  process.env.R2_PUBLIC_BASE_URL ||
+  '';
 const CACHE_TTL_MS = 60 * 1000; // 1 minute cache window
 const EARTH_RADIUS_METERS = 6_371_000;
 

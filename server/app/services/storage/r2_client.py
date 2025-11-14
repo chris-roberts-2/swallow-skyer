@@ -15,15 +15,21 @@ class R2Client:
         """Initialize R2 client with credentials from environment."""
         self.access_key = os.getenv("R2_ACCESS_KEY_ID")
         self.secret_key = os.getenv("R2_SECRET_ACCESS_KEY")
-        self.bucket_name = os.getenv("R2_BUCKET_NAME")
+        self.bucket_name = os.getenv("R2_BUCKET") or os.getenv("R2_BUCKET_NAME")
+        # Prefer explicit endpoint overrides before deriving from account ID
+        self.account_id = os.getenv("R2_ACCOUNT_ID")
         self.endpoint_url = os.getenv("R2_ENDPOINT_URL")
-        self.public_url = os.getenv("R2_PUBLIC_URL")
+        if not self.endpoint_url and self.account_id:
+            self.endpoint_url = f"https://{self.account_id}.r2.cloudflarestorage.com"
+        raw_public_url = os.getenv("R2_PUBLIC_BASE_URL") or os.getenv("R2_PUBLIC_URL")
+        self.public_url = raw_public_url.rstrip("/") if raw_public_url else None
 
         self.client = None
         if all([self.access_key, self.secret_key, self.bucket_name, self.endpoint_url]):
             self.client = boto3.client(
                 "s3",
                 endpoint_url=self.endpoint_url,
+                region_name="auto",
                 aws_access_key_id=self.access_key,
                 aws_secret_access_key=self.secret_key,
             )
