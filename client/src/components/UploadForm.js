@@ -38,7 +38,9 @@ const UploadForm = ({ onUploaded }) => {
       const candidates = Array.from(
         new Set(
           [
-            envBase ? `${envBase.replace(/\/$/, '')}/api/v1/photos/upload` : null,
+            envBase
+              ? `${envBase.replace(/\/$/, '')}/api/v1/photos/upload`
+              : null,
           ].filter(Boolean)
         )
       );
@@ -75,7 +77,9 @@ const UploadForm = ({ onUploaded }) => {
             continue;
           }
           if (typeof onUploaded === 'function') {
-            try { onUploaded(); } catch (_) {}
+            try {
+              onUploaded();
+            } catch (_) {}
           }
           alert('Uploaded!');
           // reset

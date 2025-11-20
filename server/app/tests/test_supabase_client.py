@@ -67,4 +67,3 @@ def test_verify_supabase_jwt_returns_user(monkeypatch):
 def test_verify_supabase_jwt_requires_token():
     with pytest.raises(ValueError):
         supabase_client.verify_supabase_jwt("")
-

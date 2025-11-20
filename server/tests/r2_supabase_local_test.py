@@ -50,12 +50,16 @@ def build_r2_client():
         os.getenv("R2_PUBLIC_BASE_URL") or os.getenv("R2_PUBLIC_URL") or ""
     ).rstrip("/")
 
-    missing = [k for k, v in {
-        "R2_ACCESS_KEY_ID": access_key,
-        "R2_SECRET_ACCESS_KEY": secret_key,
-        "R2_BUCKET": bucket_name,
-        "R2_ACCOUNT_ID": account_id,
-    }.items() if not v]
+    missing = [
+        k
+        for k, v in {
+            "R2_ACCESS_KEY_ID": access_key,
+            "R2_SECRET_ACCESS_KEY": secret_key,
+            "R2_BUCKET": bucket_name,
+            "R2_ACCOUNT_ID": account_id,
+        }.items()
+        if not v
+    ]
     if missing:
         raise RuntimeError(f"Missing R2 env vars: {', '.join(missing)}")
 
@@ -100,8 +104,12 @@ def main() -> int:
         key = f"test-photos/{uuid4().hex}_sample.jpg"
         body = make_test_image_bytes()
         r2.upload_fileobj(io.BytesIO(body), bucket, key)
-        file_url = f"{public_base}/{key}" if public_base else f"{endpoint_url}/{bucket}/{key}"
-        results["upload"].update(ok=True, url=file_url, key=key, message="Upload succeeded")
+        file_url = (
+            f"{public_base}/{key}" if public_base else f"{endpoint_url}/{bucket}/{key}"
+        )
+        results["upload"].update(
+            ok=True, url=file_url, key=key, message="Upload succeeded"
+        )
     except Exception as e:
         results["upload"]["message"] = f"{type(e).__name__}: {e}"
         # fall through to report
@@ -124,7 +132,9 @@ def main() -> int:
         resp = sb.table("photos").insert(payload).execute()
         if getattr(resp, "data", None):
             photo_id = resp.data[0].get("id")
-            results["insert"].update(ok=True, id=str(photo_id), message="Insert succeeded")
+            results["insert"].update(
+                ok=True, id=str(photo_id), message="Insert succeeded"
+            )
         else:
             # Supabase python lib error shape varies; include best-effort detail
             results["insert"]["message"] = f"Insert returned no data; resp={resp}"
@@ -136,12 +146,24 @@ def main() -> int:
         if not results["insert"]["ok"]:
             raise RuntimeError("Insert step failed; skipping retrieval")
         sb = build_supabase_client()
-        resp = sb.table("photos").select("*").eq("id", results["insert"]["id"]).maybe_single().execute()
+        resp = (
+            sb.table("photos")
+            .select("*")
+            .eq("id", results["insert"]["id"])
+            .maybe_single()
+            .execute()
+        )
         row = getattr(resp, "data", None)
-        if row and str(row.get("id")) == results["insert"]["id"] and (row.get("r2_url") or "").strip() == results["upload"]["url"]:
+        if (
+            row
+            and str(row.get("id")) == results["insert"]["id"]
+            and (row.get("r2_url") or "").strip() == results["upload"]["url"]
+        ):
             results["retrieve"].update(ok=True, message="URL matched")
         else:
-            results["retrieve"]["message"] = f"Retrieved row did not match expected URL. row={row}"
+            results["retrieve"][
+                "message"
+            ] = f"Retrieved row did not match expected URL. row={row}"
     except Exception as e:
         results["retrieve"]["message"] = f"{type(e).__name__}: {e}"
 
@@ -154,14 +176,22 @@ def main() -> int:
     if results["upload"]["ok"]:
         print(f"    URL: {results['upload']['url']}")
         print(f"    KEY: {results['upload']['key']}")
-    print(f"{mark(results['insert']['ok'])} Supabase insert: {results['insert']['message']}")
+    print(
+        f"{mark(results['insert']['ok'])} Supabase insert: {results['insert']['message']}"
+    )
     if results["insert"]["ok"]:
         print(f"    ID: {results['insert']['id']}")
-    print(f"{mark(results['retrieve']['ok'])} Retrieval: {results['retrieve']['message']}")
+    print(
+        f"{mark(results['retrieve']['ok'])} Retrieval: {results['retrieve']['message']}"
+    )
     print("--------------------------------------------------------")
 
     # Exit non-zero if any step failed
-    ok_all = results["upload"]["ok"] and results["insert"]["ok"] and results["retrieve"]["ok"]
+    ok_all = (
+        results["upload"]["ok"]
+        and results["insert"]["ok"]
+        and results["retrieve"]["ok"]
+    )
     return 0 if ok_all else 1
 
 
@@ -172,5 +202,3 @@ if __name__ == "__main__":
         print("Unexpected error in test runner:")
         traceback.print_exc()
         sys.exit(2)
-
-

@@ -92,6 +92,7 @@ def list_uploaded_files():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @main_bp.route("/api/users", methods=["GET"])
 def get_users():
     """
@@ -179,7 +180,11 @@ def get_photos():
 
         # Query Supabase
         result = supabase_client.get_photos(
-            limit=limit, offset=offset, since=since, bbox=bbox, user_id=user_id,
+            limit=limit,
+            offset=offset,
+            since=since,
+            bbox=bbox,
+            user_id=user_id,
         )
 
         photos = result.get("data", [])
@@ -229,7 +234,11 @@ def create_photo():
     if taken_at_value:
         try:
             # Support both ISO strings with Z suffix and without timezone
-            cleaned = taken_at_value.replace("Z", "+00:00") if taken_at_value.endswith("Z") else taken_at_value
+            cleaned = (
+                taken_at_value.replace("Z", "+00:00")
+                if taken_at_value.endswith("Z")
+                else taken_at_value
+            )
             taken_at = datetime.fromisoformat(cleaned)
         except (ValueError, TypeError):
             taken_at = None
@@ -294,7 +303,7 @@ def create_location():
 def test_supabase_r2_integration():
     """
     Test endpoint to verify Supabase and R2 integration.
-    
+
     Returns:
         dict: Integration test results
     """
@@ -426,7 +435,10 @@ def upload_photo():
     if latitude is None or longitude is None:
         return (
             jsonify(
-                {"status": "error", "message": "latitude and longitude are required",}
+                {
+                    "status": "error",
+                    "message": "latitude and longitude are required",
+                }
             ),
             400,
         )
@@ -507,7 +519,10 @@ def upload_photo():
     except Exception as e:
         return (
             jsonify(
-                {"status": "error", "message": f"Failed to store metadata: {str(e)}",}
+                {
+                    "status": "error",
+                    "message": f"Failed to store metadata: {str(e)}",
+                }
             ),
             500,
         )
@@ -515,7 +530,10 @@ def upload_photo():
     if not stored:
         return (
             jsonify(
-                {"status": "error", "message": "Could not store metadata in Supabase",}
+                {
+                    "status": "error",
+                    "message": "Could not store metadata in Supabase",
+                }
             ),
             502,
         )

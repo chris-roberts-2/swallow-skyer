@@ -1,165 +1,177 @@
-import React, {
+import {
   createContext,
   useCallback,
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
-import authService from '../services/authService';
-import apiClient from '../services/api';
+import supabase from '../lib/supabaseClient';
 
-export const AuthContext = createContext({
+const SESSION_STORAGE_KEY = 'supabaseSession';
+
+const readStoredSession = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    return null;
+  }
+};
+
+const persistSession = session => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  if (session) {
+    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+    if (session.access_token) {
+      window.localStorage.setItem('access_token', session.access_token);
+    }
+    if (session.refresh_token) {
+      window.localStorage.setItem('refresh_token', session.refresh_token);
+    }
+  } else {
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    window.localStorage.removeItem('access_token');
+    window.localStorage.removeItem('refresh_token');
+  }
+};
+
+const defaultContextValue = {
   user: null,
-  isAuthenticated: false,
+  session: null,
   isLoading: true,
-  signup: async () => {},
   login: async () => {},
-  logout: () => {},
-  refreshTokens: async () => {},
-  loadUserFromTokens: async () => {},
-});
+  signup: async () => {},
+  logout: async () => {},
+};
+
+export const AuthContext = createContext(defaultContextValue);
+
+const getInitialAuthState = () => {
+  const storedSession = readStoredSession();
+  return {
+    session: storedSession,
+    user: storedSession?.user ?? null,
+  };
+};
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [authState, setAuthState] = useState(getInitialAuthState);
   const [isLoading, setIsLoading] = useState(true);
-  const refreshInFlight = useRef(null);
 
-  const setTokens = useCallback((tokens) => {
-    if (tokens?.access_token) {
-      localStorage.setItem('access_token', tokens.access_token);
-    }
-    if (tokens?.refresh_token) {
-      localStorage.setItem('refresh_token', tokens.refresh_token);
-    }
+  const syncSession = useCallback(nextSession => {
+    persistSession(nextSession);
+    setAuthState({
+      session: nextSession,
+      user: nextSession?.user ?? null,
+    });
   }, []);
 
-  const clearTokens = useCallback(() => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-  }, []);
+  useEffect(() => {
+    let isMounted = true;
 
-  const loadUserFromTokens = useCallback(async () => {
-    const accessToken = localStorage.getItem('access_token');
-    const refreshToken = localStorage.getItem('refresh_token');
-    if (!accessToken && !refreshToken) {
-      setIsLoading(false);
-      return null;
-    }
-    try {
-      const me = await authService.me(accessToken);
-      setUser(me.user);
-      setIsLoading(false);
-      return me.user;
-    } catch (err) {
-      if (refreshToken) {
-        try {
-          const refreshed = await authService.refresh(refreshToken);
-          setTokens(refreshed);
-          const nextAccessToken =
-            refreshed?.access_token || localStorage.getItem('access_token');
-          if (refreshed?.user) {
-            setUser(refreshed.user);
-            setIsLoading(false);
-            return refreshed.user;
-          }
-          if (nextAccessToken) {
-            const me = await authService.me(nextAccessToken);
-            setUser(me.user);
-            setIsLoading(false);
-            return me.user;
-          }
-        } catch (refreshErr) {
-          clearTokens();
-          setUser(null);
+    const restoreSession = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (!isMounted) {
+          return;
+        }
+        if (error) {
+          console.error('Failed to restore Supabase session', error);
+          syncSession(null);
+        } else {
+          syncSession(data?.session ?? null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Unexpected Supabase auth error', err);
+          syncSession(null);
+        }
+      } finally {
+        if (isMounted) {
           setIsLoading(false);
-          throw refreshErr;
         }
       }
-      clearTokens();
-      setUser(null);
-      setIsLoading(false);
-      throw err;
-    }
-  }, [clearTokens]);
+    };
 
-  const signup = useCallback(
-    async (email, password, name) => {
-      const result = await authService.signup({ email, password, name });
-      setTokens(result);
-      setUser(result.user);
-      return result.user;
-    },
-    [setTokens]
-  );
+    restoreSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!isMounted) {
+        return;
+      }
+      syncSession(nextSession || null);
+      setIsLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [syncSession]);
 
   const login = useCallback(
     async (email, password) => {
-      const result = await authService.login({ email, password });
-      setTokens(result);
-      setUser(result.user);
-      return result.user;
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) {
+        throw error;
+      }
+      syncSession(data?.session ?? null);
+      return data?.user ?? data?.session?.user ?? null;
     },
-    [setTokens]
+    [syncSession]
   );
 
-  const logout = useCallback(() => {
-    clearTokens();
-    setUser(null);
-  }, [clearTokens]);
-
-  const refreshTokens = useCallback(async () => {
-    if (refreshInFlight.current) return refreshInFlight.current;
-    const refreshToken = localStorage.getItem('refresh_token');
-    if (!refreshToken) {
-      logout();
-      return null;
-    }
-    const promise = authService.refresh(refreshToken)
-      .then(result => {
-        setTokens(result);
-        if (result.user) {
-          setUser(result.user);
-        }
-        return result;
-      })
-      .catch(err => {
-        logout();
-        throw err;
-      })
-      .finally(() => {
-        refreshInFlight.current = null;
+  const signup = useCallback(
+    async (email, password) => {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
       });
-    refreshInFlight.current = promise;
-    return promise;
-  }, [logout, setTokens]);
+      if (error) {
+        throw error;
+      }
+      syncSession(data?.session ?? null);
+      return data?.user ?? null;
+    },
+    [syncSession]
+  );
 
-  useEffect(() => {
-    apiClient.setAuthHandlers({
-      refreshTokens,
-      logout,
-    });
-    loadUserFromTokens();
-  }, [loadUserFromTokens, refreshTokens, logout]);
+  const logout = useCallback(async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw error;
+    }
+    syncSession(null);
+  }, [syncSession]);
 
   const value = useMemo(
     () => ({
-      user,
-      isAuthenticated: !!user,
+      user: authState.user,
+      session: authState.session,
       isLoading,
-      signup,
       login,
+      signup,
       logout,
-      refreshTokens,
-      loadUserFromTokens,
     }),
-    [user, isLoading, signup, login, logout, refreshTokens, loadUserFromTokens]
+    [authState, isLoading, login, signup, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => useContext(AuthContext);
-
-

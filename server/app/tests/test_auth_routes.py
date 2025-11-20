@@ -85,4 +85,3 @@ def test_refresh_token_rotation(client):
     reused = client.post("/api/auth/refresh", json={"refresh_token": refresh_token})
     assert reused.status_code == 401
     assert "rotated" in reused.get_json()["error"]
-

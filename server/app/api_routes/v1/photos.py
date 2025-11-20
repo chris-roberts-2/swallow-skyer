@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 import os
 from datetime import datetime, timezone
+from app.middleware.auth_middleware import jwt_required
 from app.services.storage.supabase_client import supabase_client
 from app.services.storage.r2_client import r2_client
 from app.models import Photo
@@ -14,6 +15,7 @@ photo_service = PhotoService()
 
 
 @bp.route("/", methods=["GET"])
+@jwt_required
 def get_photos():
     """Get all photos with optional filtering - API v1.
 
@@ -68,18 +70,24 @@ def get_photos():
 
         # Include any raw files in uploads/ not present in the DB, with sensible defaults
         try:
-            uploads_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "uploads")
+            uploads_root = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "..", "..", "uploads"
+            )
             uploads_root = os.path.normpath(uploads_root)
             existing_paths = set()
             # Track paths from local DB entries to avoid duplicates
             for item in processed_photos:
-                path = (item.get("url") or "").replace(request.host_url.rstrip("/") + "/", "")
+                path = (item.get("url") or "").replace(
+                    request.host_url.rstrip("/") + "/", ""
+                )
                 if path:
                     existing_paths.add(path)
 
             default_lat = 40.4676
             default_lng = -79.9606
-            default_iso = datetime(2025, 10, 11, 18, 30, 0, tzinfo=timezone.utc).isoformat()
+            default_iso = datetime(
+                2025, 10, 11, 18, 30, 0, tzinfo=timezone.utc
+            ).isoformat()
             image_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
             if os.path.isdir(uploads_root):
@@ -93,7 +101,9 @@ def get_photos():
                             continue
 
                         full_path = os.path.join(root_dir, name)
-                        rel_path = os.path.relpath(full_path, uploads_root).replace(os.sep, "/")
+                        rel_path = os.path.relpath(full_path, uploads_root).replace(
+                            os.sep, "/"
+                        )
                         rel_with_prefix = f"uploads/{rel_path}"
 
                         if rel_with_prefix in existing_paths:
@@ -133,10 +143,10 @@ def _process_photo_urls(photo: Dict[str, Any]) -> Dict[str, Any]:
     """
     Process photo to ensure it has a valid URL.
     Prefer explicit 'url' field; fallback to generating presigned URL from 'r2_key'.
-    
+
     Args:
         photo (Dict[str, Any]): Photo data from Supabase
-        
+
     Returns:
         Dict[str, Any]: Photo with valid URL
     """
@@ -161,6 +171,7 @@ def _process_photo_urls(photo: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @bp.route("/<photo_id>", methods=["GET"])
+@jwt_required
 def get_photo(photo_id):
     """Get a specific photo by ID - API v1"""
     try:
@@ -171,6 +182,7 @@ def get_photo(photo_id):
 
 
 @bp.route("/location", methods=["GET"])
+@jwt_required
 def get_photos_by_location():
     """Get photos by location coordinates - API v1"""
     try:
@@ -195,6 +207,7 @@ def get_photos_by_location():
 
 
 @bp.route("/upload", methods=["POST"])
+@jwt_required
 def upload_photo():
     """Upload a new photo - API v1"""
     try:
@@ -230,6 +243,7 @@ def upload_photo():
 
 
 @bp.route("/<photo_id>", methods=["PUT"])
+@jwt_required
 def update_photo(photo_id):
     """Update a photo - API v1"""
     try:
@@ -246,6 +260,7 @@ def update_photo(photo_id):
 
 
 @bp.route("/<photo_id>", methods=["DELETE"])
+@jwt_required
 def delete_photo(photo_id):
     """Delete a photo - API v1"""
     try:
@@ -266,6 +281,7 @@ def delete_photo(photo_id):
 
 
 @bp.route("/stats", methods=["GET"])
+@jwt_required
 def get_photo_stats():
     """Get photo statistics - API v1"""
     try:

@@ -1,26 +1,32 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import AuthGuard from '../../components/auth/AuthGuard';
 import { AuthContext } from '../../context/AuthContext';
 
-jest.mock('react-router-dom', () => ({
-  useLocation: () => ({ pathname: '/protected' }),
-  Navigate: ({ to }) => <div>redirect:{to}</div>,
-}));
+jest.mock('react-router-dom', () => {
+  const actual = jest.requireActual('react-router-dom');
+  return {
+    ...actual,
+    useLocation: () => ({ pathname: '/protected' }),
+    Navigate: ({ to }) => <div>redirect:{to}</div>,
+  };
+});
 
 const renderWithAuth = value =>
   render(
     <AuthContext.Provider value={value}>
-      <AuthGuard>
-        <div>Protected Content</div>
-      </AuthGuard>
+      <MemoryRouter>
+        <AuthGuard>
+          <div>Protected Content</div>
+        </AuthGuard>
+      </MemoryRouter>
     </AuthContext.Provider>
   );
 
 test('redirects to login when unauthenticated', () => {
   renderWithAuth({
     user: null,
-    isAuthenticated: false,
     isLoading: false,
   });
 
@@ -30,10 +36,8 @@ test('redirects to login when unauthenticated', () => {
 test('renders children when authenticated', () => {
   renderWithAuth({
     user: { email: 'test@example.com' },
-    isAuthenticated: true,
     isLoading: false,
   });
 
   expect(screen.getByText('Protected Content')).toBeInTheDocument();
 });
-

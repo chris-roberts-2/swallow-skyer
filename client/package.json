@@ -48,5 +48,41 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
     "prettier": "^3.6.2"
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/context/AuthContext.js",
+      "src/components/auth/AuthGuard.js",
+      "src/pages/LoginPage.jsx",
+      "src/pages/RegisterPage.jsx",
+      "src/pages/ProfilePage.jsx"
+    ],
+    "coverageThreshold": {
+      "src/context/AuthContext.js": {
+        "statements": 80,
+        "functions": 80,
+        "lines": 80
+      },
+      "src/components/auth/AuthGuard.js": {
+        "statements": 80,
+        "functions": 80,
+        "lines": 80
+      },
+      "src/pages/LoginPage.jsx": {
+        "statements": 80,
+        "functions": 80,
+        "lines": 80
+      },
+      "src/pages/RegisterPage.jsx": {
+        "statements": 80,
+        "functions": 80,
+        "lines": 80
+      },
+      "src/pages/ProfilePage.jsx": {
+        "statements": 80,
+        "functions": 80,
+        "lines": 80
+      }
+    }
   }
 }

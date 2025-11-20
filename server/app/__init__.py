@@ -88,7 +88,9 @@ def create_app(config_name=None):
                 ).fetchall()
                 existing_cols = {row[1] for row in result}
                 statements = [
-                    ddl for column, ddl in column_statements.items() if column not in existing_cols
+                    ddl
+                    for column, ddl in column_statements.items()
+                    if column not in existing_cols
                 ]
                 for stmt in statements:
                     try:

@@ -12,23 +12,138 @@
   flex-shrink: 0;
 }
 
+.App-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.App-header__brand {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .App-header h1 {
-  margin: 0 0 10px 0;
+  margin: 0;
   font-size: 2rem;
 }
 
-.App-header nav {
-  margin-top: 10px;
+.App-nav {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-.App-header nav a {
+.App-nav a {
   color: #61dafb;
   text-decoration: none;
-  margin: 0 10px;
+  font-weight: 600;
 }
 
-.App-header nav a:hover {
+.App-nav a:hover {
   text-decoration: underline;
+}
+
+.profile-menu {
+  position: relative;
+}
+
+.profile-menu__trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  color: white;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.profile-menu__trigger:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.profile-menu__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #61dafb;
+  color: #282c34;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.profile-menu__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: white;
+  color: #333;
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+  min-width: 220px;
+  padding: 12px;
+  z-index: 20;
+}
+
+.profile-menu__info {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.profile-menu__avatar--inline {
+  background: #1976d2;
+  color: white;
+}
+
+.profile-menu__label {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.profile-menu__logout {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #1976d2;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.profile-menu__logout:hover {
+  background: #125ea1;
+}
+
+@media (max-width: 640px) {
+  .App-header__inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .App-nav {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .profile-menu__panel {
+    right: 0;
+    left: 0;
+    min-width: 100%;
+  }
 }
 
 .App-main {
@@ -128,6 +243,58 @@
   margin-top: 16px;
   text-align: center;
   font-size: 14px;
+}
+
+.profile-page {
+  max-width: 720px;
+  margin: 2rem auto;
+  padding: 24px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 3px 16px rgba(0, 0, 0, 0.08);
+}
+
+.profile-page h2 {
+  margin-top: 0;
+}
+
+.profile-card {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+
+.profile-card__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+}
+
+.profile-card__row strong {
+  font-weight: 600;
+  color: #333;
+}
+
+.profile-card__logout {
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #1976d2;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.profile-card__logout:hover {
+  background: #125ea1;
 }
 
 .link-button {

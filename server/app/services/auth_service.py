@@ -91,7 +91,9 @@ class AuthService:
 
     def _verify_password(self, password: str, password_hash: str) -> bool:
         try:
-            return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+            return bcrypt.checkpw(
+                password.encode("utf-8"), password_hash.encode("utf-8")
+            )
         except ValueError:
             return False
 
@@ -101,10 +103,16 @@ class AuthService:
             db.session.commit()
 
         access_token = self._encode_token(
-            user, token_type="access", ttl_seconds=self.access_ttl, secret=self.access_secret
+            user,
+            token_type="access",
+            ttl_seconds=self.access_ttl,
+            secret=self.access_secret,
         )
         refresh_token = self._encode_token(
-            user, token_type="refresh", ttl_seconds=self.refresh_ttl, secret=self.refresh_secret
+            user,
+            token_type="refresh",
+            ttl_seconds=self.refresh_ttl,
+            secret=self.refresh_secret,
         )
         return {
             "access_token": access_token,
@@ -131,7 +139,9 @@ class AuthService:
         if not token:
             raise AuthError("Token is required")
 
-        secret = self.access_secret if expected_type == "access" else self.refresh_secret
+        secret = (
+            self.access_secret if expected_type == "access" else self.refresh_secret
+        )
         try:
             payload = jwt.decode(token, secret, algorithms=[self.algorithm])
         except jwt.ExpiredSignatureError as exc:

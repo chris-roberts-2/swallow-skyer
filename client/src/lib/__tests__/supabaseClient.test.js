@@ -2,6 +2,8 @@ jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({ auth: {} })),
 }));
 
+jest.unmock('../supabaseClient');
+
 describe('supabaseClient', () => {
   const originalEnv = process.env;
   const getCreateClientMock = () =>
@@ -56,7 +58,8 @@ describe('supabaseClient', () => {
     delete process.env.SUPABASE_URL;
     delete process.env.SUPABASE_ANON_KEY;
 
-    expect(() => loadClient()).toThrow('Missing Supabase environment variables');
+    expect(() => loadClient()).toThrow(
+      'Missing Supabase environment variables'
+    );
   });
 });
-

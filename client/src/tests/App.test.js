@@ -1,41 +1,45 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-jest.mock(
-  'react-router-dom',
-  () => ({
-    BrowserRouter: ({ children }) => <div>{children}</div>,
-    Routes: ({ children }) => <div>{children}</div>,
-    Route: ({ element }) => element,
-    Navigate: () => null,
-  }),
-  { virtual: true }
-);
-import App from '../App';
+import { MemoryRouter } from 'react-router-dom';
+import { AppRoutes } from '../App';
+import { AuthContext } from '../context/AuthContext';
 
-// Wrapper component to provide router context for tests
-const AppWithRouter = () => (
-  <BrowserRouter>
-    <App />
-  </BrowserRouter>
-);
+const renderWithAuth = (value = {}, initialEntries = ['/login']) => {
+  const defaults = {
+    user: null,
+    session: null,
+    isLoading: false,
+    login: jest.fn(),
+    signup: jest.fn(),
+    logout: jest.fn(),
+  };
+
+  return render(
+    <AuthContext.Provider value={{ ...defaults, ...value }}>
+      <MemoryRouter initialEntries={initialEntries}>
+        <AppRoutes />
+      </MemoryRouter>
+    </AuthContext.Provider>
+  );
+};
 
 test('renders Swallow Skyer title', () => {
-  render(<App />);
-  const titleElement = screen.getByRole('heading', { name: /^Swallow Skyer$/i });
-  expect(titleElement).toBeInTheDocument();
+  renderWithAuth();
+  expect(
+    screen.getByRole('heading', {
+      name: /^Swallow Skyer$/i,
+    })
+  ).toBeInTheDocument();
 });
 
-test('renders navigation links', () => {
-  render(<App />);
-  const homeLink = screen.getByRole('link', { name: /^Home$/i });
-  const mapLink = screen.getByRole('link', { name: /^Map$/i });
-
-  expect(homeLink).toBeInTheDocument();
-  expect(mapLink).toBeInTheDocument();
+test('shows login/register links when signed out', () => {
+  renderWithAuth({ user: null }, ['/login']);
+  expect(screen.getAllByRole('link', { name: /login/i }).length).toBeGreaterThan(0);
+  expect(screen.getAllByRole('link', { name: /register/i }).length).toBeGreaterThan(0);
 });
 
-test('renders welcome message on home page', () => {
-  render(<App />);
-  const uploadsHeading = screen.getByText(/Raw Images \(uploads\/\)/i);
-  expect(uploadsHeading).toBeInTheDocument();
+test('shows profile navigation when signed in', () => {
+  renderWithAuth({ user: { email: 'pilot@example.com' } }, ['/profile']);
+  expect(screen.getAllByText(/pilot@example.com/i).length).toBeGreaterThan(0);
+  expect(screen.getByRole('link', { name: /map/i })).toBeInTheDocument();
 });

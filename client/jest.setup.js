@@ -43,4 +43,6 @@ jest.mock('maplibre-gl', () => {
   };
 });
 
+jest.mock('./src/lib/supabaseClient', () => require('./src/__mocks__/supabase'));
+
 

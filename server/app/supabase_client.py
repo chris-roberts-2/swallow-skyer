@@ -95,7 +95,9 @@ def verify_supabase_jwt(access_token: str) -> Dict[str, Any]:
 
     try:
         response = client.auth.get_user(token)
-    except Exception as exc:  # pragma: no cover - supabase raises runtime-specific errors
+    except (
+        Exception
+    ) as exc:  # pragma: no cover - supabase raises runtime-specific errors
         raise PermissionError("Supabase JWT validation failed") from exc
 
     user = getattr(response, "user", None) if response else None
@@ -110,4 +112,3 @@ def verify_supabase_jwt(access_token: str) -> Dict[str, Any]:
         return user
 
     return {"user": user}
-

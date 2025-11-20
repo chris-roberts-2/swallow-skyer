@@ -47,4 +47,3 @@ def test_client_and_server_env_examples_list_required_keys():
 
     for key in CLIENT_REQUIRED_KEYS:
         assert key in client_keys, f"{key} missing from client/.env.example"
-

@@ -63,4 +63,11 @@ def refresh():
 @jwt_required
 def me():
     """Return the authenticated user profile."""
-    return jsonify({"user": g.current_user.to_dict()})
+    user = g.current_user
+    if hasattr(user, "to_dict"):
+        payload = user.to_dict()
+    elif isinstance(user, dict):
+        payload = user
+    else:
+        payload = {"user": user}
+    return jsonify({"user": payload})

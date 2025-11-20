@@ -1,27 +1,31 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context';
 
 const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formValues, setFormValues] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const from = location.state?.from?.pathname || '/';
+  const from = location.state?.from?.pathname || '/map';
+
+  const handleChange = event => {
+    const { name, value } = event.target;
+    setFormValues(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async event => {
     event.preventDefault();
     setError('');
     setIsSubmitting(true);
     try {
-      await login(email, password);
+      await login(formValues.email, formValues.password);
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.message || 'Unable to login');
+      setError(err?.message || 'Unable to login');
     } finally {
       setIsSubmitting(false);
     }
@@ -31,35 +35,38 @@ const LoginPage = () => {
     <div className="auth-page">
       <h2>Login</h2>
       <form onSubmit={handleSubmit} className="auth-form">
-        <label>
+        <label htmlFor="email">
           Email
           <input
+            id="email"
+            name="email"
             type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
+            value={formValues.email}
+            onChange={handleChange}
             required
           />
         </label>
-        <label>
+        <label htmlFor="password">
           Password
           <input
+            id="password"
+            name="password"
             type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
+            value={formValues.password}
+            onChange={handleChange}
             required
           />
         </label>
         {error ? <div className="auth-error">{error}</div> : null}
         <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Logging in…' : 'Login'}
+          {isSubmitting ? 'Logging in...' : 'Login'}
         </button>
       </form>
       <div className="auth-footer">
-        Need an account? <Link to="/signup">Sign up</Link>
+        Need an account? <Link to="/register">Register</Link>
       </div>
     </div>
   );
 };
 
 export default LoginPage;
-
