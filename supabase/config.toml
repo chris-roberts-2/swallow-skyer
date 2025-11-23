@@ -1,0 +1,38 @@
+# Supabase configuration for Stage 4.1 authentication setup
+# Reference: https://supabase.com/docs/guides/local-development/cli/config
+
+[project]
+ref = "swallow-skyer-local"
+name = "Swallow Skyer Local"
+api_url = "http://127.0.0.1:54321"
+studio_url = "http://127.0.0.1:54323"
+
+[db]
+port = 54322
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = [
+  "http://localhost:3001",
+  "http://127.0.0.1:3000"
+]
+jwt_expiry = 3600
+enable_email_confirm = false
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = false
+enable_confirmations = false
+
+# OAuth providers are pre-configured but disabled until credentials are supplied.
+[auth.external.google]
+enabled = false
+client_id = ""
+secret = ""
+
+[auth.external.github]
+enabled = false
+client_id = ""
+secret = ""
+
+

@@ -78,12 +78,59 @@ def create_app(config_name=None):
     # Create database tables
     with app.app_context():
         db.create_all()
+        # Best-effort migration for older local SQLite files: add missing columns
+        try:
+            from sqlalchemy import text
+
+            def ensure_columns(table_name: str, column_statements: dict[str, str]):
+                result = db.session.execute(
+                    text(f"PRAGMA table_info({table_name})")
+                ).fetchall()
+                existing_cols = {row[1] for row in result}
+                statements = [
+                    ddl
+                    for column, ddl in column_statements.items()
+                    if column not in existing_cols
+                ]
+                for stmt in statements:
+                    try:
+                        db.session.execute(text(stmt))
+                    except Exception:
+                        pass
+                if statements:
+                    db.session.commit()
+
+            ensure_columns(
+                "photos",
+                {
+                    "url": "ALTER TABLE photos ADD COLUMN url TEXT",
+                    "r2_key": "ALTER TABLE photos ADD COLUMN r2_key TEXT",
+                    "thumbnail_path": "ALTER TABLE photos ADD COLUMN thumbnail_path TEXT",
+                    "original_filename": "ALTER TABLE photos ADD COLUMN original_filename TEXT",
+                    "altitude": "ALTER TABLE photos ADD COLUMN altitude REAL",
+                    "taken_at": "ALTER TABLE photos ADD COLUMN taken_at DATETIME",
+                    "updated_at": "ALTER TABLE photos ADD COLUMN updated_at DATETIME",
+                },
+            )
+
+            ensure_columns(
+                "users",
+                {
+                    "password_hash": "ALTER TABLE users ADD COLUMN password_hash TEXT",
+                    "token_version": "ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0",
+                },
+            )
+        except Exception:
+            # Non-fatal: if inspection fails, we leave DB as-is; uploads may error until DB is reset
+            pass
 
     # Register blueprints
     from app.routes import main_bp
+    from app.api_routes.auth import bp as auth_bp
     from app.api_routes.v1.photos import bp as photos_v1_bp
 
     app.register_blueprint(main_bp)
+    app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(photos_v1_bp, url_prefix="/api/v1/photos")
 
     @app.route("/api/test/connection", methods=["GET"])

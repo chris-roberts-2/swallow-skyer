@@ -12,7 +12,11 @@ import PhotoStack from './components/map/PhotoStack';
 
 const envApiBase =
   process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL || '';
-const r2PublicBase = process.env.REACT_APP_R2_PUBLIC_URL || '';
+const r2PublicBase =
+  process.env.REACT_APP_R2_PUBLIC_BASE_URL ||
+  process.env.REACT_APP_R2_PUBLIC_URL ||
+  process.env.R2_PUBLIC_BASE_URL ||
+  '';
 const CACHE_TTL_MS = 60 * 1000; // 1 minute cache window
 const EARTH_RADIUS_METERS = 6_371_000;
 
@@ -42,9 +46,7 @@ const resolvePhotoUrl = photo => {
   const primaryUrl = (photo.url || '').trim();
   const r2Key = photo.r2_key || photo.r2Key;
   const fallbackUrl =
-    r2PublicBase && r2Key
-      ? `${r2PublicBase.replace(/\/$/, '')}/${r2Key}`
-      : '';
+    r2PublicBase && r2Key ? `${r2PublicBase.replace(/\/$/, '')}/${r2Key}` : '';
   const resolvedUrl = primaryUrl || fallbackUrl;
 
   return { primaryUrl, fallbackUrl, resolvedUrl };
@@ -199,10 +201,22 @@ const PhotoMapLive = () => {
       if (supportsEvents && typeof mapInstance.current?.off === 'function') {
         mapInstance.current.off('zoomend', handleZoom);
         if (mapInstance.current.__setInteracted) {
-          mapInstance.current.off('dragstart', mapInstance.current.__setInteracted);
-          mapInstance.current.off('zoomstart', mapInstance.current.__setInteracted);
-          mapInstance.current.off('rotatestart', mapInstance.current.__setInteracted);
-          mapInstance.current.off('pitchstart', mapInstance.current.__setInteracted);
+          mapInstance.current.off(
+            'dragstart',
+            mapInstance.current.__setInteracted
+          );
+          mapInstance.current.off(
+            'zoomstart',
+            mapInstance.current.__setInteracted
+          );
+          mapInstance.current.off(
+            'rotatestart',
+            mapInstance.current.__setInteracted
+          );
+          mapInstance.current.off(
+            'pitchstart',
+            mapInstance.current.__setInteracted
+          );
           delete mapInstance.current.__setInteracted;
         }
       }
@@ -229,18 +243,30 @@ const PhotoMapLive = () => {
       }
 
       const candidates = Array.from(
-        new Set([
-          'http://127.0.0.1:5001',
-          envApiBase,
-          'http://localhost:5001',
-          'http://127.0.0.1:5000',
-          'http://localhost:5000',
-        ].filter(Boolean))
+        new Set(
+          [
+            'http://127.0.0.1:5001',
+            envApiBase,
+            'http://localhost:5001',
+            'http://127.0.0.1:5000',
+            'http://localhost:5000',
+          ].filter(Boolean)
+        )
       );
+
+      const accessToken = localStorage.getItem('access_token') || '';
 
       for (const base of candidates) {
         try {
-          const res = await fetch(`${base}/api/v1/photos/`);
+          const res = await fetch(`${base}/api/v1/photos/`, {
+            headers: {
+              ...(accessToken
+                ? {
+                    Authorization: `Bearer ${accessToken}`,
+                  }
+                : {}),
+            },
+          });
           const data = await res.json();
           if (!res.ok) {
             // try next candidate
@@ -454,7 +480,11 @@ const PhotoMapLive = () => {
       }
     });
 
-    if (!bounds.isEmpty() && !hasAutoFitRef.current && !userInteractedRef.current) {
+    if (
+      !bounds.isEmpty() &&
+      !hasAutoFitRef.current &&
+      !userInteractedRef.current
+    ) {
       mapInstance.current.fitBounds(bounds, {
         padding: 40,
         maxZoom: 14,

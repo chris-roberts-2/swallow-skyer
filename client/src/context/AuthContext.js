@@ -1,0 +1,177 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import supabase from '../lib/supabaseClient';
+
+const SESSION_STORAGE_KEY = 'supabaseSession';
+
+const readStoredSession = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    return null;
+  }
+};
+
+const persistSession = session => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  if (session) {
+    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+    if (session.access_token) {
+      window.localStorage.setItem('access_token', session.access_token);
+    }
+    if (session.refresh_token) {
+      window.localStorage.setItem('refresh_token', session.refresh_token);
+    }
+  } else {
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    window.localStorage.removeItem('access_token');
+    window.localStorage.removeItem('refresh_token');
+  }
+};
+
+const defaultContextValue = {
+  user: null,
+  session: null,
+  isLoading: true,
+  login: async () => {},
+  signup: async () => {},
+  logout: async () => {},
+};
+
+export const AuthContext = createContext(defaultContextValue);
+
+const getInitialAuthState = () => {
+  const storedSession = readStoredSession();
+  return {
+    session: storedSession,
+    user: storedSession?.user ?? null,
+  };
+};
+
+export const AuthProvider = ({ children }) => {
+  const [authState, setAuthState] = useState(getInitialAuthState);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const syncSession = useCallback(nextSession => {
+    persistSession(nextSession);
+    setAuthState({
+      session: nextSession,
+      user: nextSession?.user ?? null,
+    });
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const restoreSession = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (!isMounted) {
+          return;
+        }
+        if (error) {
+          console.error('Failed to restore Supabase session', error);
+          syncSession(null);
+        } else {
+          syncSession(data?.session ?? null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Unexpected Supabase auth error', err);
+          syncSession(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    restoreSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!isMounted) {
+        return;
+      }
+      syncSession(nextSession || null);
+      setIsLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [syncSession]);
+
+  const login = useCallback(
+    async (email, password) => {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) {
+        throw error;
+      }
+      syncSession(data?.session ?? null);
+      return data?.user ?? data?.session?.user ?? null;
+    },
+    [syncSession]
+  );
+
+  const signup = useCallback(
+    async (email, password) => {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      if (error) {
+        throw error;
+      }
+      syncSession(data?.session ?? null);
+      return data?.user ?? null;
+    },
+    [syncSession]
+  );
+
+  const logout = useCallback(async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw error;
+    }
+    syncSession(null);
+  }, [syncSession]);
+
+  const value = useMemo(
+    () => ({
+      user: authState.user,
+      session: authState.session,
+      isLoading,
+      login,
+      signup,
+      logout,
+    }),
+    [authState, isLoading, login, signup, logout]
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export const useAuth = () => useContext(AuthContext);

@@ -13,7 +13,9 @@ class SupabaseClient:
     def __init__(self):
         """Initialize Supabase client with credentials from environment."""
         self.url = os.getenv("SUPABASE_URL")
-        self.key = os.getenv("SUPABASE_SERVICE_KEY")
+        self.key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv(
+            "SUPABASE_SERVICE_KEY"
+        )
         self.client: Optional[Client] = None
 
         if self.url and self.key:
@@ -145,9 +147,9 @@ class SupabaseClient:
             if user_id:
                 query = query.eq("user_id", user_id)
 
-            # Apply timestamp filter
+            # Apply timestamp filter (use uploaded_at from current schema)
             if since:
-                query = query.gte("taken_at", since)
+                query = query.gte("uploaded_at", since)
 
             # Apply bounding box filter
             if bbox:
@@ -161,8 +163,8 @@ class SupabaseClient:
                         .lte("longitude", lng_max)
                     )
 
-            # Apply ordering (newest first)
-            query = query.order("taken_at", desc=True)
+            # Apply ordering (newest first) using uploaded_at
+            query = query.order("uploaded_at", desc=True)
 
             # Apply pagination
             if limit:

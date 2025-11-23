@@ -7,10 +7,12 @@ class User(db.Model):
     __tablename__ = "users"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    name = db.Column(db.String(120), nullable=False)
+    name = db.Column(db.String(120), nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     username = db.Column(db.String(80), unique=True, nullable=True)
     profile_picture_url = db.Column(db.String(512), nullable=True)
+    password_hash = db.Column(db.String(255), nullable=True)
+    token_version = db.Column(db.Integer, nullable=False, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow

@@ -1,42 +1,83 @@
-// Prefer REACT_APP_API_BASE_URL; fall back to legacy REACT_APP_API_URL
 const API_BASE_URL =
   process.env.REACT_APP_API_BASE_URL ||
   process.env.REACT_APP_API_URL ||
-  'http://localhost:5000/api';
+  'http://localhost:5001';
 
 class ApiClient {
   constructor() {
-    this.baseURL = API_BASE_URL;
+    this.baseURL = `${API_BASE_URL}/api`;
+    this.getAccessToken = () => localStorage.getItem('access_token');
+    this.getRefreshToken = () => localStorage.getItem('refresh_token');
+    this.refreshPromise = null;
   }
 
-  async request(endpoint, options = {}) {
+  setAuthHandlers({ refreshTokens, logout }) {
+    this.refreshTokens = refreshTokens;
+    this.logout = logout;
+  }
+
+  async request(endpoint, options = {}, attempt = 0) {
     const url = `${this.baseURL}${endpoint}`;
     const isFormData = options && options.body instanceof FormData;
+    const headers = isFormData
+      ? { ...(options.headers || {}) }
+      : {
+          'Content-Type': 'application/json',
+          ...(options.headers || {}),
+        };
+
+    const accessToken = this.getAccessToken();
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
+
     const config = {
-      // Do NOT set Content-Type for FormData; let the browser add the boundary.
-      // Default to JSON for non-FormData requests.
-      headers: isFormData
-        ? {
-            ...(options.headers || {}),
-          }
-        : {
-            'Content-Type': 'application/json',
-            ...(options.headers || {}),
-          },
       ...options,
+      headers,
     };
 
     try {
       const response = await fetch(url, config);
+      if (response.status === 401 && attempt === 0 && this.refreshTokens) {
+        await this._refreshTokens();
+        return this.request(endpoint, options, attempt + 1);
+      }
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorBody = await response.json().catch(() => ({}));
+        const error = new Error(
+          errorBody?.error || `HTTP error ${response.status}`
+        );
+        error.status = response.status;
+        error.payload = errorBody;
+        throw error;
+      }
+
+      if (response.status === 204) {
+        return null;
       }
 
       return await response.json();
     } catch (error) {
+      if (error.status === 401 && this.logout) {
+        this.logout();
+      }
       console.error('API request failed:', error);
       throw error;
+    }
+  }
+
+  async _refreshTokens() {
+    if (!this.refreshTokens) {
+      throw new Error('No refresh handler registered');
+    }
+    if (!this.refreshPromise) {
+      this.refreshPromise = this.refreshTokens();
+    }
+    try {
+      await this.refreshPromise;
+    } finally {
+      this.refreshPromise = null;
     }
   }
 
@@ -64,4 +105,6 @@ class ApiClient {
   }
 }
 
-export default new ApiClient();
+const apiClient = new ApiClient();
+
+export default apiClient;

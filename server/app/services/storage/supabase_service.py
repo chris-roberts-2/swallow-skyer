@@ -12,7 +12,9 @@ class SupabaseStorageService:
 
     def __init__(self):
         self.url = os.getenv("SUPABASE_URL")
-        self.key = os.getenv("SUPABASE_SERVICE_KEY")
+        self.key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv(
+            "SUPABASE_SERVICE_KEY"
+        )
         self.client: Optional[Client] = None
 
         if self.url and self.key:

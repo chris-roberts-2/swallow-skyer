@@ -3,6 +3,7 @@ API routes for Swallow Skyer backend.
 """
 
 from flask import Blueprint, jsonify, request, send_from_directory
+from sqlalchemy import text
 import os
 from uuid import uuid4
 from werkzeug.utils import secure_filename
@@ -36,8 +37,8 @@ def health():
         dict: Detailed health information
     """
     try:
-        # Test database connection
-        db.session.execute("SELECT 1")
+        # Test database connection (SQLAlchemy 2.x requires text())
+        db.session.execute(text("SELECT 1"))
         db_status = "healthy"
     except Exception:
         db_status = "unhealthy"
@@ -90,6 +91,7 @@ def list_uploaded_files():
         return jsonify({"files": files})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @main_bp.route("/api/users", methods=["GET"])
 def get_users():
@@ -178,7 +180,11 @@ def get_photos():
 
         # Query Supabase
         result = supabase_client.get_photos(
-            limit=limit, offset=offset, since=since, bbox=bbox, user_id=user_id,
+            limit=limit,
+            offset=offset,
+            since=since,
+            bbox=bbox,
+            user_id=user_id,
         )
 
         photos = result.get("data", [])
@@ -228,7 +234,11 @@ def create_photo():
     if taken_at_value:
         try:
             # Support both ISO strings with Z suffix and without timezone
-            cleaned = taken_at_value.replace("Z", "+00:00") if taken_at_value.endswith("Z") else taken_at_value
+            cleaned = (
+                taken_at_value.replace("Z", "+00:00")
+                if taken_at_value.endswith("Z")
+                else taken_at_value
+            )
             taken_at = datetime.fromisoformat(cleaned)
         except (ValueError, TypeError):
             taken_at = None
@@ -293,7 +303,7 @@ def create_location():
 def test_supabase_r2_integration():
     """
     Test endpoint to verify Supabase and R2 integration.
-    
+
     Returns:
         dict: Integration test results
     """
@@ -418,6 +428,7 @@ def upload_photo():
 
     # Extract and validate metadata
     user_id = request.form.get("user_id")
+    caption = request.form.get("caption")  # optional
     latitude = request.form.get("latitude")
     longitude = request.form.get("longitude")
     timestamp = request.form.get("timestamp")
@@ -425,7 +436,10 @@ def upload_photo():
     if latitude is None or longitude is None:
         return (
             jsonify(
-                {"status": "error", "message": "latitude and longitude are required",}
+                {
+                    "status": "error",
+                    "message": "latitude and longitude are required",
+                }
             ),
             400,
         )
@@ -476,19 +490,30 @@ def upload_photo():
             500,
         )
 
-    # Store metadata in Supabase
-    # Build Supabase metadata payload. Do not include 'id' so the default
-    # database value (gen_random_uuid()) is used.
+    # Store metadata in Supabase, aligned with current public.photos schema.
+    # Do not include 'id' so the default value is used.
     photo_data = {
+        # Foreign keys – optional, can be null
+        "project_id": None,
+        "location_id": None,
         "user_id": user_id,
-        "r2_key": key,
-        "url": file_url,
+        # File attributes
+        "file_name": safe_name,
+        "file_type": mimetype or None,
+        "file_size": content_length or None,
+        "resolution": None,
+        # R2 integration
+        "r2_path": key,
+        "r2_url": file_url,
+        # Geo metadata
         "latitude": lat_val,
         "longitude": lon_val,
+        # Optional caption
+        "caption": caption or None,
     }
     if timestamp:
-        # Save to taken_at column if provided
-        photo_data["taken_at"] = timestamp
+        # Save to captured_at column if provided
+        photo_data["captured_at"] = timestamp
 
     if not supabase_client.client:
         return (
@@ -506,7 +531,10 @@ def upload_photo():
     except Exception as e:
         return (
             jsonify(
-                {"status": "error", "message": f"Failed to store metadata: {str(e)}",}
+                {
+                    "status": "error",
+                    "message": f"Failed to store metadata: {str(e)}",
+                }
             ),
             500,
         )
@@ -514,7 +542,10 @@ def upload_photo():
     if not stored:
         return (
             jsonify(
-                {"status": "error", "message": "Could not store metadata in Supabase",}
+                {
+                    "status": "error",
+                    "message": "Could not store metadata in Supabase",
+                }
             ),
             502,
         )

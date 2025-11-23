@@ -11,7 +11,9 @@ def create_test_app():
 
     app = create_app("testing")
     app.config.update(
-        {"TESTING": True,}
+        {
+            "TESTING": True,
+        }
     )
     return app
 
@@ -134,7 +136,9 @@ def test_upload_save_retrieve_flow(client, monkeypatch):
     }
 
     upload_resp = client.post(
-        "/api/photos/upload", data=data, content_type="multipart/form-data",
+        "/api/photos/upload",
+        data=data,
+        content_type="multipart/form-data",
     )
 
     # Assert: upload result
