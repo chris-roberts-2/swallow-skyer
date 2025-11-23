@@ -147,9 +147,9 @@ class SupabaseClient:
             if user_id:
                 query = query.eq("user_id", user_id)
 
-            # Apply timestamp filter
+            # Apply timestamp filter (use uploaded_at from current schema)
             if since:
-                query = query.gte("taken_at", since)
+                query = query.gte("uploaded_at", since)
 
             # Apply bounding box filter
             if bbox:
@@ -163,8 +163,8 @@ class SupabaseClient:
                         .lte("longitude", lng_max)
                     )
 
-            # Apply ordering (newest first)
-            query = query.order("taken_at", desc=True)
+            # Apply ordering (newest first) using uploaded_at
+            query = query.order("uploaded_at", desc=True)
 
             # Apply pagination
             if limit:

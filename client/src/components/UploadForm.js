@@ -38,6 +38,7 @@ const UploadForm = ({ onUploaded }) => {
       const candidates = Array.from(
         new Set(
           [
+            envBase ? `${envBase.replace(/\/$/, '')}/api/photos/upload` : null,
             envBase
               ? `${envBase.replace(/\/$/, '')}/api/v1/photos/upload`
               : null,
@@ -48,11 +49,16 @@ const UploadForm = ({ onUploaded }) => {
       let lastError = new Error('Upload failed');
       for (const base of candidates) {
         try {
+          const accessToken = localStorage.getItem('access_token') || '';
           const res = await fetch(base, {
             method: 'POST',
             body: formData,
             headers: {
-              Authorization: `Bearer ${localStorage.getItem('access_token') || ''}`,
+              ...(accessToken
+                ? {
+                    Authorization: `Bearer ${accessToken}`,
+                  }
+                : {}),
             },
           });
           // Try to parse JSON, fallback to text for better diagnostics

@@ -254,9 +254,19 @@ const PhotoMapLive = () => {
         )
       );
 
+      const accessToken = localStorage.getItem('access_token') || '';
+
       for (const base of candidates) {
         try {
-          const res = await fetch(`${base}/api/v1/photos/`);
+          const res = await fetch(`${base}/api/v1/photos/`, {
+            headers: {
+              ...(accessToken
+                ? {
+                    Authorization: `Bearer ${accessToken}`,
+                  }
+                : {}),
+            },
+          });
           const data = await res.json();
           if (!res.ok) {
             // try next candidate

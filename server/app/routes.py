@@ -428,6 +428,7 @@ def upload_photo():
 
     # Extract and validate metadata
     user_id = request.form.get("user_id")
+    caption = request.form.get("caption")  # optional
     latitude = request.form.get("latitude")
     longitude = request.form.get("longitude")
     timestamp = request.form.get("timestamp")
@@ -489,19 +490,30 @@ def upload_photo():
             500,
         )
 
-    # Store metadata in Supabase
-    # Build Supabase metadata payload. Do not include 'id' so the default
-    # database value (gen_random_uuid()) is used.
+    # Store metadata in Supabase, aligned with current public.photos schema.
+    # Do not include 'id' so the default value is used.
     photo_data = {
+        # Foreign keys – optional, can be null
+        "project_id": None,
+        "location_id": None,
         "user_id": user_id,
-        "r2_key": key,
-        "url": file_url,
+        # File attributes
+        "file_name": safe_name,
+        "file_type": mimetype or None,
+        "file_size": content_length or None,
+        "resolution": None,
+        # R2 integration
+        "r2_path": key,
+        "r2_url": file_url,
+        # Geo metadata
         "latitude": lat_val,
         "longitude": lon_val,
+        # Optional caption
+        "caption": caption or None,
     }
     if timestamp:
-        # Save to taken_at column if provided
-        photo_data["taken_at"] = timestamp
+        # Save to captured_at column if provided
+        photo_data["captured_at"] = timestamp
 
     if not supabase_client.client:
         return (
