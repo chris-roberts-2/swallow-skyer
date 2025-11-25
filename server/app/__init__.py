@@ -126,10 +126,14 @@ def create_app(config_name=None):
 
     # Register blueprints
     from app.routes import main_bp
+    from app.routes.projects import projects_bp
+    from app.routes.project_members import project_members_bp
     from app.api_routes.auth import bp as auth_bp
     from app.api_routes.v1.photos import bp as photos_v1_bp
 
     app.register_blueprint(main_bp)
+    app.register_blueprint(projects_bp)
+    app.register_blueprint(project_members_bp)
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(photos_v1_bp, url_prefix="/api/v1/photos")
 

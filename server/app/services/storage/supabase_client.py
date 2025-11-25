@@ -3,7 +3,7 @@ Supabase client for metadata operations.
 """
 
 import os
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 from supabase import create_client, Client
 
 
@@ -214,6 +214,159 @@ class SupabaseClient:
         except Exception as e:
             print(f"Error getting photos by location: {e}")
             return []
+
+    # ------------------------------------------------------------------
+    # Project helpers
+    # ------------------------------------------------------------------
+
+    def create_project(
+        self, name: str, owner_id: str, description: Optional[str] = None
+    ):
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        payload = {
+            "name": name,
+            "owner_id": owner_id,
+        }
+        if description is not None:
+            payload["description"] = description
+        response = self.client.table("projects").insert(payload).execute()
+        if not response.data:
+            raise RuntimeError("Failed to create project")
+        project = response.data[0]
+        if description is not None:
+            project["description"] = description
+        return project
+
+    def add_project_member(self, project_id: str, user_id: str, role: str):
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        payload = {
+            "project_id": project_id,
+            "user_id": user_id,
+            "role": role,
+        }
+        response = self.client.table("project_members").insert(payload).execute()
+        return response.data[0] if response.data else None
+
+    def list_projects_for_user(self, user_id: str) -> List[Dict[str, Any]]:
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        membership_response = (
+            self.client.table("project_members")
+            .select("project_id, role")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        membership = membership_response.data or []
+        project_ids = [row["project_id"] for row in membership]
+        if not project_ids:
+            return []
+        response = (
+            self.client.table("projects").select("*").in_("id", project_ids).execute()
+        )
+        projects = response.data or []
+        role_map = {row["project_id"]: row["role"] for row in membership}
+        for project in projects:
+            project["role"] = role_map.get(project["id"])
+        return projects
+
+    def get_project(self, project_id: str) -> Optional[Dict[str, Any]]:
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        response = (
+            self.client.table("projects").select("*").eq("id", project_id).execute()
+        )
+        return response.data[0] if response.data else None
+
+    def update_project(
+        self,
+        project_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        fields = {}
+        if name is not None:
+            fields["name"] = name
+        if description is not None:
+            fields["description"] = description
+        if not fields:
+            return self.get_project(project_id)
+        response = (
+            self.client.table("projects").update(fields).eq("id", project_id).execute()
+        )
+        return response.data[0] if response.data else None
+
+    def delete_project(self, project_id: str) -> bool:
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        response = self.client.table("projects").delete().eq("id", project_id).execute()
+        return bool(response.data)
+
+    def get_project_role(self, project_id: str, user_id: str) -> Optional[str]:
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        response = (
+            self.client.table("project_members")
+            .select("role")
+            .eq("project_id", project_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        if response.data:
+            return response.data[0].get("role")
+        return None
+
+    def list_project_members(self, project_id: str) -> List[Dict[str, Any]]:
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        response = (
+            self.client.table("project_members")
+            .select("*")
+            .eq("project_id", project_id)
+            .execute()
+        )
+        return response.data or []
+
+    def update_project_member_role(
+        self, project_id: str, user_id: str, role: str
+    ) -> Optional[Dict[str, Any]]:
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        response = (
+            self.client.table("project_members")
+            .update({"role": role})
+            .eq("project_id", project_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        return response.data[0] if response.data else None
+
+    def remove_project_member(self, project_id: str, user_id: str) -> bool:
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        response = (
+            self.client.table("project_members")
+            .delete()
+            .eq("project_id", project_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        return bool(response.data)
+
+    def count_owners(self, project_id: str) -> int:
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        response = (
+            self.client.table("project_members")
+            .select("id", count="exact")
+            .eq("project_id", project_id)
+            .in_("role", ["owner", "co-owner"])
+            .execute()
+        )
+        return getattr(response, "count", 0) or 0
 
     def store_user_metadata(
         self, user_data: Dict[str, Any]
