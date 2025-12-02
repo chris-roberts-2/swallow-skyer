@@ -1,6 +1,8 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 import os
+import math
 from datetime import datetime, timezone
+from uuid import UUID
 from app.middleware.auth_middleware import jwt_required
 from app.services.storage.supabase_client import supabase_client
 from app.services.storage.r2_client import r2_client
@@ -8,135 +10,237 @@ from app.models import Photo
 from app.services.photo_service import PhotoService
 from app.utils.validators import validate_photo_data
 from app import db
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Tuple, List
 
 bp = Blueprint("photos_v1", __name__)
 photo_service = PhotoService()
+
+DEFAULT_PAGE_SIZE = 50
+MAX_PAGE_SIZE = 200
+
+
+def _parse_page_args() -> Tuple[int, int]:
+    """Return sanitized (page, page_size)."""
+    try:
+        page = int(request.args.get("page", 1))
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        page_size = int(request.args.get("page_size", DEFAULT_PAGE_SIZE))
+    except (TypeError, ValueError):
+        page_size = DEFAULT_PAGE_SIZE
+
+    page = max(1, page)
+    page_size = max(1, min(page_size, MAX_PAGE_SIZE))
+    return page, page_size
+
+
+def _parse_date_range(raw_range: Optional[str]) -> Optional[Tuple[Optional[str], Optional[str]]]:
+    if not raw_range:
+        return None
+    parts = [part.strip() for part in raw_range.split(",")]
+    if len(parts) != 2:
+        raise ValueError("date_range must be start,end")
+
+    def _normalize(value: str) -> Optional[str]:
+        if not value:
+            return None
+        cleaned = value.replace("Z", "+00:00") if value.endswith("Z") else value
+        # Validate ISO-ish format
+        try:
+            datetime.fromisoformat(cleaned)
+        except ValueError as exc:
+            raise ValueError("date_range values must be ISO timestamps") from exc
+        return value
+
+    start = _normalize(parts[0])
+    end = _normalize(parts[1])
+    return (start, end)
+
+
+def _normalize_uuid(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    try:
+        return str(UUID(value))
+    except ValueError as exc:
+        raise ValueError("project_id must be a valid UUID") from exc
+
+
+def _prefetch_project_scope(
+    user_id: str, requested_project_id: Optional[str]
+) -> Tuple[List[str], Dict[str, Dict[str, Any]], Optional[int]]:
+    """
+    Resolve the list of authorized project ids plus a memoized metadata cache.
+
+    Returns:
+        (authorized_ids, project_cache, status_code_if_error)
+    """
+    project_cache: Dict[str, Dict[str, Any]] = {}
+
+    if requested_project_id:
+        role = supabase_client.get_project_role(requested_project_id, user_id)
+        if not role:
+            return [], project_cache, 403
+        project_cache[requested_project_id] = {"role": role}
+        return [requested_project_id], project_cache, None
+
+    memberships = supabase_client.list_projects_for_user(user_id) or []
+    allowed_ids = []
+    for project in memberships:
+        pid = project.get("id")
+        if not pid:
+            continue
+        allowed_ids.append(pid)
+        project_cache[pid] = {"role": project.get("role")}
+
+    return allowed_ids, project_cache, None
+
+
+def _memoized_project_role(
+    cache: Dict[str, Dict[str, Any]], project_id: str, user_id: str
+) -> bool:
+    """Ensure cache contains membership details for project_id."""
+    if project_id in cache:
+        return True
+    role = supabase_client.get_project_role(project_id, user_id)
+    if role:
+        cache[project_id] = {"role": role}
+        return True
+    return False
+
+
+def _serialize_photo(
+    record: Dict[str, Any],
+    project_cache: Dict[str, Dict[str, Any]],
+    url_cache: Dict[str, Optional[str]],
+) -> Dict[str, Any]:
+    """Normalize Supabase record into API contract."""
+    key = record.get("r2_path") or record.get("r2_key")
+    cached_url = url_cache.get(key or "")
+
+    resolved_url = (
+        record.get("r2_url")
+        or record.get("url")
+        or cached_url
+        or (r2_client.resolve_url(key) if key else None)
+    )
+    if key and key not in url_cache:
+        url_cache[key] = resolved_url
+
+    thumb_path, thumb_url = supabase_client.extract_thumbnail_fields(record)
+    cached_thumb_url = url_cache.get(thumb_path or "")
+    resolved_thumb_url = thumb_url or cached_thumb_url
+    if thumb_path and not resolved_thumb_url:
+        resolved_thumb_url = r2_client.resolve_url(thumb_path)
+    if thumb_path and thumb_path not in url_cache:
+        url_cache[thumb_path] = resolved_thumb_url
+
+    project_id = record.get("project_id")
+    role = project_cache.get(project_id, {}).get("role")
+
+    return {
+        "id": record.get("id"),
+        "project_id": project_id,
+        "project_role": role,
+        "user_id": record.get("user_id"),
+        "file_name": record.get("file_name"),
+        "caption": record.get("caption"),
+        "latitude": record.get("latitude"),
+        "longitude": record.get("longitude"),
+        "created_at": record.get("created_at"),
+        "captured_at": record.get("captured_at"),
+        "r2_path": key,
+        "r2_url": record.get("r2_url") or resolved_url,
+        "url": resolved_url,
+        "thumbnail_r2_path": thumb_path,
+        "thumbnail_r2_url": thumb_url or resolved_thumb_url,
+        "thumbnail_url": resolved_thumb_url,
+    }
+
+
+def _build_photo_listing_payload() -> Tuple[Dict[str, Any], int]:
+    if not supabase_client.client:
+        return (
+            {
+                "error": "Supabase client not configured. Check environment variables.",
+            },
+            500,
+        )
+
+    current_user = getattr(g, "current_user", None) or {}
+    current_user_id = current_user.get("id")
+    if not current_user_id:
+        return ({"error": "Authenticated Supabase user context missing"}, 401)
+
+    try:
+        project_id = _normalize_uuid(request.args.get("project_id"))
+    except ValueError as exc:
+        return ({"error": str(exc)}, 400)
+
+    page, page_size = _parse_page_args()
+
+    try:
+        date_range = _parse_date_range(request.args.get("date_range"))
+    except ValueError as exc:
+        return ({"error": str(exc)}, 400)
+
+    authorized_ids, project_cache, error_status = _prefetch_project_scope(
+        current_user_id, project_id
+    )
+    if error_status:
+        return ({"error": "You do not have access to that project."}, error_status)
+
+    if not authorized_ids:
+        pagination = {
+            "page": page,
+            "page_size": page_size,
+            "total": 0,
+            "total_pages": 0,
+        }
+        return ({"photos": [], "pagination": pagination}, 200)
+
+    user_filter = request.args.get("user_id")
+
+    try:
+        query_result = supabase_client.fetch_project_photos(
+            project_ids=authorized_ids,
+            page=page,
+            page_size=page_size,
+            user_id=user_filter,
+            date_range=date_range,
+            include_signed_urls=True,
+        )
+    except Exception as exc:
+        return ({"error": f"Failed to query Supabase: {exc}"}, 500)
+
+    url_cache: Dict[str, Optional[str]] = {}
+    serialized = [
+        _serialize_photo(record, project_cache, url_cache)
+        for record in query_result.get("data", []) or []
+    ]
+
+    total = query_result.get("count", 0) or 0
+    pagination = {
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": math.ceil(total / page_size) if page_size else 0,
+    }
+
+    return ({"photos": serialized, "pagination": pagination}, 200)
+
+
+def handle_photo_listing_request():
+    payload, status = _build_photo_listing_payload()
+    return jsonify(payload), status
 
 
 @bp.route("/", methods=["GET"])
 @jwt_required
 def get_photos():
-    """Get all photos with optional filtering - API v1.
-
-    Returns a union of:
-    - Supabase-stored photos (if Supabase client is configured)
-    - Local SQLite photos saved by PhotoService (with absolute URLs to /uploads)
-    """
-    try:
-        # Parse query parameters
-        limit = request.args.get("limit", 50, type=int)
-        offset = request.args.get("offset", 0, type=int)
-        since = request.args.get("since", type=str)
-        bbox = request.args.get("bbox", type=str)
-        user_id = request.args.get("user_id", type=str)
-
-        # Enforce max limit
-        if limit > 200:
-            limit = 200
-
-        processed_photos = []
-        total = 0
-
-        # Query Supabase first if available
-        if supabase_client.client:
-            result = supabase_client.get_photos(
-                limit=limit, offset=offset, since=since, bbox=bbox, user_id=user_id
-            )
-            photos = result.get("data", []) or []
-            total += result.get("count", 0) or 0
-            for photo in photos:
-                processed_photos.append(_process_photo_urls(photo))
-
-        # Also append local DB photos for dev/local uploads
-        local_photos = Photo.query.all()
-        for p in local_photos:
-            # Build absolute URL pointing to /uploads route
-            file_path = (p.file_path or "").lstrip("/")
-            url = f"{request.host_url.rstrip('/')}/{file_path}"
-            processed_photos.append(
-                {
-                    "id": p.id,
-                    "user_id": p.user_id,
-                    "latitude": p.latitude,
-                    "longitude": p.longitude,
-                    "url": url,
-                    "taken_at": None,
-                    "created_at": p.created_at.isoformat() if p.created_at else None,
-                    "r2_key": None,
-                }
-            )
-        total += len(local_photos or [])
-
-        # Include any raw files in uploads/ not present in the DB, with sensible defaults
-        try:
-            uploads_root = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), "..", "..", "uploads"
-            )
-            uploads_root = os.path.normpath(uploads_root)
-            existing_paths = set()
-            # Track paths from local DB entries to avoid duplicates
-            for item in processed_photos:
-                path = (item.get("url") or "").replace(
-                    request.host_url.rstrip("/") + "/", ""
-                )
-                if path:
-                    existing_paths.add(path)
-
-            default_lat = 40.4676
-            default_lng = -79.9606
-            default_iso = datetime(
-                2025, 10, 11, 18, 30, 0, tzinfo=timezone.utc
-            ).isoformat()
-            image_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
-
-            if os.path.isdir(uploads_root):
-                for root_dir, _, files in os.walk(uploads_root):
-                    for name in files:
-                        lower = name.lower()
-                        # Skip non-images and readmes
-                        if not any(lower.endswith(ext) for ext in image_exts):
-                            continue
-                        if lower.endswith(".md") or lower.endswith(".txt"):
-                            continue
-
-                        full_path = os.path.join(root_dir, name)
-                        rel_path = os.path.relpath(full_path, uploads_root).replace(
-                            os.sep, "/"
-                        )
-                        rel_with_prefix = f"uploads/{rel_path}"
-
-                        if rel_with_prefix in existing_paths:
-                            continue
-
-                        url = f"{request.host_url.rstrip('/')}/{rel_with_prefix}"
-                        processed_photos.append(
-                            {
-                                "id": f"raw-{rel_with_prefix}",
-                                "user_id": None,
-                                "latitude": default_lat,
-                                "longitude": default_lng,
-                                "url": url,
-                                "taken_at": default_iso,
-                                "created_at": default_iso,
-                                "r2_key": None,
-                            }
-                        )
-                # total should count these additional raw files as well
-                # Note: total remains a hint; we set to length of processed for simplicity
-                total = len(processed_photos)
-        except Exception:
-            # Non-fatal: if directory listing fails, we still return DB/Supabase items
-            pass
-
-        return jsonify(
-            {
-                "photos": processed_photos,
-                "pagination": {"limit": limit, "offset": offset, "total": total},
-            }
-        )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    """Return paginated, authorized photos for the authenticated user."""
+    return handle_photo_listing_request()
 
 
 def _process_photo_urls(photo: Dict[str, Any]) -> Dict[str, Any]:
@@ -175,8 +279,40 @@ def _process_photo_urls(photo: Dict[str, Any]) -> Dict[str, Any]:
 def get_photo(photo_id):
     """Get a specific photo by ID - API v1"""
     try:
-        photo = Photo.query.get_or_404(photo_id)
-        return jsonify({"version": "v1", "photo": photo.to_dict()})
+        if not supabase_client.client:
+            return (
+                jsonify(
+                    {
+                        "error": "Supabase client not configured",
+                        "version": "v1",
+                    }
+                ),
+                500,
+            )
+
+        current_user = getattr(g, "current_user", None) or {}
+        current_user_id = current_user.get("id")
+        if not current_user_id:
+            return jsonify({"error": "Unauthorized", "version": "v1"}), 401
+
+        record = supabase_client.get_photo_metadata(photo_id)
+        if not record:
+            return jsonify({"error": "Photo not found", "version": "v1"}), 404
+
+        project_id = record.get("project_id")
+        project_cache: Dict[str, Dict[str, Any]] = {}
+        if not project_id or not _memoized_project_role(
+            project_cache, project_id, current_user_id
+        ):
+            return (
+                jsonify(
+                    {"error": "You do not have access to this photo", "version": "v1"}
+                ),
+                403,
+            )
+
+        serialized = _serialize_photo(record, project_cache, {})
+        return jsonify({"version": "v1", "photo": serialized})
     except Exception as e:
         return jsonify({"error": str(e), "version": "v1"}), 500
 

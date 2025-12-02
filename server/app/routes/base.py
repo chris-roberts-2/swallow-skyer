@@ -5,16 +5,18 @@ API routes for Swallow Skyer backend.
 from flask import Blueprint, jsonify, request, send_from_directory
 from sqlalchemy import text
 import os
-from uuid import uuid4
-from werkzeug.utils import secure_filename
 from datetime import datetime
 from app import db
 from app.models import User, Photo, Location
 from app.services.storage.supabase_client import supabase_client
 from app.services.storage.r2_client import r2_client
+from .upload import registerUploadRoutes
+from app.middleware.auth_middleware import jwt_required
+from app.api_routes.v1.photos import handle_photo_listing_request
 
 # Create blueprint
 main_bp = Blueprint("main", __name__)
+registerUploadRoutes(main_bp)
 
 
 @main_bp.route("/ping", methods=["GET"])
@@ -135,85 +137,10 @@ def create_user():
 
 
 @main_bp.route("/api/photos", methods=["GET"])
+@jwt_required
 def get_photos():
-    """
-    Get photos from Supabase with optional filtering.
-
-    Query params:
-      - limit (int, default 50, max 200)
-      - offset (int, default 0)
-      - since (ISO timestamptz)
-      - bbox (lat_min,lng_min,lat_max,lng_max)
-      - user_id (uuid)
-
-    Returns:
-        dict: photos + pagination metadata
-    """
-    try:
-        # Parse query parameters
-        limit = request.args.get("limit", 50, type=int)
-        offset = request.args.get("offset", 0, type=int)
-        since = request.args.get("since", type=str)
-        bbox = request.args.get("bbox", type=str)
-        user_id = request.args.get("user_id", type=str)
-
-        # Enforce max limit
-        if limit and limit > 200:
-            limit = 200
-
-        # Basic bbox validation (optional, tolerant)
-        if bbox:
-            parts = bbox.split(",")
-            if len(parts) != 4:
-                return (
-                    jsonify(
-                        {
-                            "error": "Invalid bbox format. Expected lat_min,lng_min,lat_max,lng_max"
-                        }
-                    ),
-                    400,
-                )
-            try:
-                _ = list(map(float, parts))
-            except ValueError:
-                return jsonify({"error": "Invalid bbox coordinates."}), 400
-
-        # Query Supabase
-        result = supabase_client.get_photos(
-            limit=limit,
-            offset=offset,
-            since=since,
-            bbox=bbox,
-            user_id=user_id,
-        )
-
-        photos = result.get("data", [])
-        total = result.get("count", 0)
-
-        # Ensure URL present (prefer explicit url; fallback to presigned from r2_key)
-        processed = []
-        for p in photos:
-            url_val = (p.get("url") or "").strip()
-            if not url_val:
-                r2_key = p.get("r2_key")
-                if r2_key:
-                    presigned = r2_client.generate_presigned_url(r2_key, expires_in=600)
-                    if presigned:
-                        p["url"] = presigned
-            processed.append(p)
-
-        return jsonify(
-            {
-                "photos": processed,
-                "pagination": {
-                    "limit": limit or 50,
-                    "offset": offset or 0,
-                    "total": total,
-                },
-            }
-        )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    """Delegate to the shared photo listing handler with auth enforced."""
+    return handle_photo_listing_request()
 
 
 @main_bp.route("/api/photos", methods=["POST"])
@@ -386,169 +313,3 @@ def test_supabase_r2_integration():
         }
     )
 
-
-@main_bp.route("/api/photos/upload", methods=["POST"])
-def upload_photo():
-    """
-    Upload a photo to Cloudflare R2 and store metadata in Supabase.
-
-    Expects multipart/form-data with fields:
-      - file: Image file
-      - user_id: User identifier
-      - latitude: Latitude (float)
-      - longitude: Longitude (float)
-      - timestamp: Optional ISO timestamp
-
-    Returns:
-        JSON response with status, photo_id, and public URL.
-    """
-    # Validate file presence
-    file = request.files.get("file")
-    if not file or not getattr(file, "filename", None):
-        return jsonify({"status": "error", "message": "Image file is required"}), 400
-
-    # Basic content-type validation
-    mimetype = getattr(file, "mimetype", "") or ""
-    if not mimetype.startswith("image/"):
-        return (
-            jsonify(
-                {"status": "error", "message": "Invalid file type. Image required"}
-            ),
-            400,
-        )
-
-    # Optional size guard using content length (defaults to 20 MB limit)
-    content_length = request.content_length or 0
-    max_bytes = 20 * 1024 * 1024
-    if content_length and content_length > max_bytes:
-        return (
-            jsonify({"status": "error", "message": "File too large (max 20MB)"}),
-            413,
-        )
-
-    # Extract and validate metadata
-    user_id = request.form.get("user_id")
-    caption = request.form.get("caption")  # optional
-    latitude = request.form.get("latitude")
-    longitude = request.form.get("longitude")
-    timestamp = request.form.get("timestamp")
-
-    if latitude is None or longitude is None:
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": "latitude and longitude are required",
-                }
-            ),
-            400,
-        )
-
-    try:
-        lat_val = float(latitude)
-        lon_val = float(longitude)
-    except (TypeError, ValueError):
-        return (
-            jsonify({"status": "error", "message": "Invalid latitude/longitude"}),
-            400,
-        )
-
-    # Ensure storage client is configured
-    if not r2_client.client:
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": "Storage not configured. Check R2 environment variables.",
-                }
-            ),
-            500,
-        )
-
-    # Build storage key and upload to R2
-    safe_name = secure_filename(file.filename) or f"upload_{uuid4().hex}.jpg"
-    key = f"uploads/{user_id or 'anonymous'}/{uuid4().hex}_{safe_name}"
-
-    try:
-        uploaded = r2_client.upload_file(file.stream, key)
-    except Exception as e:
-        return (
-            jsonify({"status": "error", "message": f"Upload failed: {str(e)}"}),
-            500,
-        )
-
-    if not uploaded:
-        return (
-            jsonify({"status": "error", "message": "Failed to upload to storage"}),
-            502,
-        )
-
-    file_url = r2_client.get_file_url(key)
-    if not file_url:
-        return (
-            jsonify({"status": "error", "message": "Failed to generate file URL"}),
-            500,
-        )
-
-    # Store metadata in Supabase, aligned with current public.photos schema.
-    # Do not include 'id' so the default value is used.
-    photo_data = {
-        # Foreign keys – optional, can be null
-        "project_id": None,
-        "location_id": None,
-        "user_id": user_id,
-        # File attributes
-        "file_name": safe_name,
-        "file_type": mimetype or None,
-        "file_size": content_length or None,
-        "resolution": None,
-        # R2 integration
-        "r2_path": key,
-        "r2_url": file_url,
-        # Geo metadata
-        "latitude": lat_val,
-        "longitude": lon_val,
-        # Optional caption
-        "caption": caption or None,
-    }
-    if timestamp:
-        # Save to captured_at column if provided
-        photo_data["captured_at"] = timestamp
-
-    if not supabase_client.client:
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": "Database not configured. Check Supabase environment variables.",
-                }
-            ),
-            500,
-        )
-
-    try:
-        stored = supabase_client.store_photo_metadata(photo_data)
-    except Exception as e:
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": f"Failed to store metadata: {str(e)}",
-                }
-            ),
-            500,
-        )
-
-    if not stored:
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": "Could not store metadata in Supabase",
-                }
-            ),
-            502,
-        )
-
-    photo_id = stored.get("id") if isinstance(stored, dict) else None
-    return jsonify({"status": "success", "photo_id": photo_id, "url": file_url}), 201

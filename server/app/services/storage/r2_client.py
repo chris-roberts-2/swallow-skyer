@@ -3,6 +3,7 @@ Cloudflare R2 storage client for file operations.
 """
 
 import os
+import io
 import boto3
 from typing import BinaryIO, Optional
 from botocore.exceptions import ClientError
@@ -34,13 +35,16 @@ class R2Client:
                 aws_secret_access_key=self.secret_key,
             )
 
-    def upload_file(self, file: BinaryIO, key: str) -> bool:
+    def upload_file(
+        self, file: BinaryIO, key: str, content_type: Optional[str] = None
+    ) -> bool:
         """
-        Upload file to R2 storage.
+        Upload file to R2 storage using the provided fully-qualified object key.
 
         Args:
             file (BinaryIO): File object to upload
             key (str): Object key/path in bucket
+            content_type (Optional[str]): MIME type for the object
 
         Returns:
             bool: True if successful, False otherwise
@@ -50,11 +54,23 @@ class R2Client:
             return False
 
         try:
-            self.client.upload_fileobj(file, self.bucket_name, key)
+            extra_args = {"ContentType": content_type} if content_type else None
+            upload_kwargs = {"ExtraArgs": extra_args} if extra_args else {}
+            self.client.upload_fileobj(file, self.bucket_name, key, **upload_kwargs)
             return True
         except ClientError as e:
             print(f"Error uploading file to R2: {e}")
             return False
+
+    def upload_bytes(
+        self, data: bytes, key: str, content_type: Optional[str] = None
+    ) -> bool:
+        """
+        Convenience helper to upload raw bytes without requiring callers to manage streams.
+        """
+        buffer = io.BytesIO(data)
+        buffer.seek(0)
+        return self.upload_file(buffer, key, content_type)
 
     def get_file_url(self, key: str) -> Optional[str]:
         """
@@ -78,6 +94,33 @@ class R2Client:
         except Exception as e:
             print(f"Error generating file URL: {e}")
             return None
+
+    def resolve_url(
+        self, key: str, require_signed: bool = False, expires_in: int = 600
+    ) -> Optional[str]:
+        """
+        Resolve a usable URL for the given key, optionally forcing a signed URL.
+
+        Args:
+            key (str): Object key/path.
+            require_signed (bool): Force presigned URLs even if public base exists.
+            expires_in (int): Lifespan for signed URLs.
+        """
+        if not key:
+            return None
+
+        if not self.client:
+            print("R2 client not initialized - check environment variables")
+            return None
+
+        if require_signed:
+            return self.generate_presigned_url(key, expires_in=expires_in)
+
+        # Prefer configured public base, fall back to signed URLs.
+        url = self.get_file_url(key)
+        if url:
+            return url
+        return self.generate_presigned_url(key, expires_in=expires_in)
 
     def generate_presigned_url(self, key: str, expires_in: int = 600) -> Optional[str]:
         """
