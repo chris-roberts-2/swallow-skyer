@@ -52,11 +52,10 @@ def test_upload_stores_project_prefixed_key_and_updates_supabase(client, monkeyp
         "deleted_keys": [],
     }
 
-    def mock_upload_file(fileobj, key, content_type=None):
-        captured["upload_key"] = key
+    def mock_upload_project_photo(project_id, photo_id, file_bytes, ext, content_type=None):
+        captured["upload_key"] = f"projects/{project_id}/photos/{photo_id}.{ext}"
         captured["content_type"] = content_type
-        fileobj.read()
-        return True
+        return captured["upload_key"]
 
     def mock_upload_bytes(data, key, content_type=None):
         captured["thumb_upload_key"] = key
@@ -83,7 +82,10 @@ def test_upload_stores_project_prefixed_key_and_updates_supabase(client, monkeyp
         return {"id": photo_id, **updates}
 
     monkeypatch.setattr(
-        r2_module.r2_client, "upload_file", mock_upload_file, raising=True
+        r2_module.r2_client,
+        "upload_project_photo",
+        mock_upload_project_photo,
+        raising=True,
     )
     monkeypatch.setattr(
         r2_module.r2_client, "upload_bytes", mock_upload_bytes, raising=True
@@ -129,8 +131,9 @@ def test_upload_stores_project_prefixed_key_and_updates_supabase(client, monkeyp
 
     assert response.status_code == 201, response.data
     payload = response.get_json()
+    uploaded = payload["uploaded"][0]
     expected_key = f"projects/{project_id}/photos/abc123.jpg"
-    assert payload["r2_path"] == expected_key
+    assert uploaded["r2_path"] == expected_key
     assert captured["upload_key"] == expected_key
     assert captured["content_type"] == "image/jpeg"
     assert captured["store"]["project_id"] == project_id
@@ -139,7 +142,7 @@ def test_upload_stores_project_prefixed_key_and_updates_supabase(client, monkeyp
     assert captured["update"]["updates"]["r2_key"] == expected_key
     assert captured["update"]["updates"]["r2_url"].endswith(expected_key)
     expected_thumb = f"projects/{project_id}/photos/abc123_thumb.jpg"
-    assert payload["thumbnail_r2_path"] == expected_thumb
+    assert uploaded["thumbnail_r2_path"] == expected_thumb
     assert captured["thumb_upload_key"] == expected_thumb
     assert captured["thumb_content_type"] == "image/jpeg"
     assert captured["update"]["updates"]["thumbnail_r2_path"] == expected_thumb
@@ -187,9 +190,11 @@ def test_thumbnail_upload_failure_triggers_cleanup(client, monkeypatch):
         raising=True,
     )
 
-    def mock_upload_file(fileobj, key, content_type=None):
-        fileobj.read()
-        return True
+    upload_keys = []
+
+    def mock_upload_project_photo(project_id, photo_id, file_bytes, ext, content_type=None):
+        upload_keys.append(f"projects/{project_id}/photos/{photo_id}.{ext}")
+        return upload_keys[-1]
 
     def mock_upload_bytes(data, key, content_type=None):
         raise RuntimeError("boom")
@@ -197,7 +202,10 @@ def test_thumbnail_upload_failure_triggers_cleanup(client, monkeypatch):
     deleted_keys = []
 
     monkeypatch.setattr(
-        r2_module.r2_client, "upload_file", mock_upload_file, raising=True
+        r2_module.r2_client,
+        "upload_project_photo",
+        mock_upload_project_photo,
+        raising=True,
     )
     monkeypatch.setattr(
         r2_module.r2_client, "upload_bytes", mock_upload_bytes, raising=True
@@ -229,7 +237,8 @@ def test_thumbnail_upload_failure_triggers_cleanup(client, monkeypatch):
 
     assert response.status_code == 500
     assert deleted == ["abc123"]
-    assert any(key.endswith(".jpg") and not key.endswith("_thumb.jpg") for key in deleted_keys)
+    if upload_keys:
+        assert set(deleted_keys) == set(upload_keys)
 
 
 def test_update_failure_cleans_original_and_thumbnail(client, monkeypatch):
@@ -277,8 +286,11 @@ def test_update_failure_cleans_original_and_thumbnail(client, monkeypatch):
 
     monkeypatch.setattr(
         r2_module.r2_client,
-        "upload_file",
-        lambda fileobj, key, content_type=None: upload_keys.append(key) or True,
+        "upload_project_photo",
+        lambda project_id, photo_id, file_bytes, ext, content_type=None: upload_keys.append(
+            f"projects/{project_id}/photos/{photo_id}.{ext}"
+        )
+        or upload_keys[-1],
         raising=True,
     )
     monkeypatch.setattr(

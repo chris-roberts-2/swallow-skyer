@@ -114,6 +114,7 @@ def _serialize_photo(
     record: Dict[str, Any],
     project_cache: Dict[str, Dict[str, Any]],
     url_cache: Dict[str, Optional[str]],
+    location_cache: Dict[str, Dict[str, Any]],
 ) -> Dict[str, Any]:
     """Normalize Supabase record into API contract."""
     key = record.get("r2_path") or record.get("r2_key")
@@ -139,6 +140,17 @@ def _serialize_photo(
     project_id = record.get("project_id")
     role = project_cache.get(project_id, {}).get("role")
 
+    location_id = record.get("location_id")
+    location = {}
+    if location_id and location_id not in location_cache:
+        try:
+            location = supabase_client.get_location(location_id) or {}
+        except Exception:
+            location = {}
+        location_cache[location_id] = location
+    elif location_id:
+        location = location_cache.get(location_id) or {}
+
     return {
         "id": record.get("id"),
         "project_id": project_id,
@@ -148,6 +160,11 @@ def _serialize_photo(
         "caption": record.get("caption"),
         "latitude": record.get("latitude"),
         "longitude": record.get("longitude"),
+        "location_id": location_id,
+        "location_city": location.get("city"),
+        "location_state": location.get("state"),
+        "location_country": location.get("country"),
+        "geocode_data": location.get("geocode_data"),
         "created_at": record.get("created_at"),
         "captured_at": record.get("captured_at"),
         "r2_path": key,
@@ -156,6 +173,7 @@ def _serialize_photo(
         "thumbnail_r2_path": thumb_path,
         "thumbnail_r2_url": thumb_url or resolved_thumb_url,
         "thumbnail_url": resolved_thumb_url,
+        "exif_data": record.get("exif_data"),
     }
 
 
@@ -180,10 +198,33 @@ def _build_photo_listing_payload() -> Tuple[Dict[str, Any], int]:
 
     page, page_size = _parse_page_args()
 
+    # Date range (start_date, end_date or legacy date_range)
     try:
-        date_range = _parse_date_range(request.args.get("date_range"))
+        raw_date_range = request.args.get("date_range")
+        start_date = request.args.get("start_date")
+        end_date = request.args.get("end_date")
+        if raw_date_range:
+            date_range = _parse_date_range(raw_date_range)
+        else:
+            date_range = (start_date, end_date) if (start_date or end_date) else None
     except ValueError as exc:
         return ({"error": str(exc)}, 400)
+
+    # Bounding box
+    bbox = None
+    try:
+        min_lat = request.args.get("min_lat", type=float)
+        max_lat = request.args.get("max_lat", type=float)
+        min_lon = request.args.get("min_lon", type=float)
+        max_lon = request.args.get("max_lon", type=float)
+        if None not in (min_lat, max_lat, min_lon, max_lon):
+            bbox = (min_lat, max_lat, min_lon, max_lon)
+    except ValueError:
+        return ({"error": "Invalid bounding box parameters"}, 400)
+
+    city = request.args.get("city")
+    state = request.args.get("state")
+    country = request.args.get("country")
 
     authorized_ids, project_cache, error_status = _prefetch_project_scope(
         current_user_id, project_id
@@ -209,14 +250,19 @@ def _build_photo_listing_payload() -> Tuple[Dict[str, Any], int]:
             page_size=page_size,
             user_id=user_filter,
             date_range=date_range,
+            bbox=bbox,
+            city=city,
+            state=state,
+            country=country,
             include_signed_urls=True,
         )
     except Exception as exc:
         return ({"error": f"Failed to query Supabase: {exc}"}, 500)
 
     url_cache: Dict[str, Optional[str]] = {}
+    location_cache: Dict[str, Dict[str, Any]] = {}
     serialized = [
-        _serialize_photo(record, project_cache, url_cache)
+        _serialize_photo(record, project_cache, url_cache, location_cache)
         for record in query_result.get("data", []) or []
     ]
 
@@ -311,7 +357,7 @@ def get_photo(photo_id):
                 403,
             )
 
-        serialized = _serialize_photo(record, project_cache, {})
+        serialized = _serialize_photo(record, project_cache, {}, {})
         return jsonify({"version": "v1", "photo": serialized})
     except Exception as e:
         return jsonify({"error": str(e), "version": "v1"}), 500

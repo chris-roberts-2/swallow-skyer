@@ -6,6 +6,7 @@ import os
 from copy import deepcopy
 from typing import Dict, Any, Optional, List, Tuple, Sequence
 from supabase import create_client, Client
+from app.services.geocoding.reverse_geocoder import reverse_geocode
 
 
 class SupabaseClient:
@@ -22,6 +23,7 @@ class SupabaseClient:
         if self.url and self.key:
             self.client = create_client(self.url, self.key)
         self._thumbnail_columns_supported: Optional[bool] = None
+        self._location_geocode_columns: Optional[bool] = None
 
     def update_thumbnail_column_hint(self, record: Optional[Dict[str, Any]]) -> None:
         """Infer thumbnail column support from a returned record."""
@@ -136,6 +138,75 @@ class SupabaseClient:
         except Exception as e:
             print(f"Error retrieving photo metadata: {e}")
             return None
+
+    def get_or_create_location(
+        self, latitude: float, longitude: float, elevation: Optional[float] = None
+    ) -> Optional[str]:
+        """
+        Fetch an existing location by lat/lon or create a new one.
+        Exact match is sufficient for current use.
+        """
+        if not self.client:
+            print("Supabase client not initialized - check environment variables")
+            return None
+        try:
+            query = (
+                self.client.table("locations")
+                .select("id")
+                .eq("latitude", latitude)
+                .eq("longitude", longitude)
+                .limit(1)
+            )
+            existing = query.execute()
+            if existing.data:
+                return existing.data[0].get("id")
+        except Exception as e:
+            print(f"Error querying location: {e}")
+
+        try:
+            payload = {"latitude": latitude, "longitude": longitude}
+            if elevation is not None:
+                payload["elevation"] = elevation
+            inserted = self.client.table("locations").insert(payload).execute()
+            if inserted.data:
+                loc_id = inserted.data[0].get("id")
+                # Enrich with reverse geocode; failures are non-fatal
+                geocode = reverse_geocode(latitude, longitude) or {}
+                if geocode:
+                    update_fields = self._build_location_geocode_fields(geocode)
+                    if update_fields:
+                        try:
+                            self.client.table("locations").update(update_fields).eq(
+                                "id", loc_id
+                            ).execute()
+                        except Exception as e:
+                            print(f"Error updating location geocode: {e}")
+                return loc_id
+        except Exception as e:
+            print(f"Error creating location: {e}")
+        return None
+
+    def _build_location_geocode_fields(self, geocode: Dict[str, Any]) -> Dict[str, Any]:
+        if self._location_geocode_columns is None:
+            self._location_geocode_columns = self._detect_location_geocode_columns()
+        if self._location_geocode_columns:
+            return {
+                "city": geocode.get("city"),
+                "state": geocode.get("state"),
+                "country": geocode.get("country"),
+            }
+
+        # Fallback to JSON column
+        return {"geocode_data": geocode}
+
+    def _detect_location_geocode_columns(self) -> bool:
+        if not self.client:
+            return False
+        try:
+            self.client.table("locations").select("city,state,country").limit(1).execute()
+            return True
+        except Exception:
+            return False
 
     def update_photo_metadata(
         self, photo_id: str, updates: Dict[str, Any]
@@ -267,6 +338,10 @@ class SupabaseClient:
         page_size: int = 50,
         user_id: Optional[str] = None,
         date_range: Optional[Tuple[Optional[str], Optional[str]]] = None,
+        bbox: Optional[Tuple[float, float, float, float]] = None,
+        city: Optional[str] = None,
+        state: Optional[str] = None,
+        country: Optional[str] = None,
         order_desc: bool = True,
         include_signed_urls: bool = False,
         signed_url_ttl: int = 600,
@@ -302,16 +377,19 @@ class SupabaseClient:
             "file_name",
             "latitude",
             "longitude",
+            "location_id",
             "created_at",
             "captured_at",
             "r2_path",
             "r2_key",
             "r2_url",
+            "exif_data",
         ]
         if include_thumbnail_columns:
             column_list.extend(["thumbnail_r2_path", "thumbnail_r2_url"])
         else:
             column_list.append("metadata")
+        column_list.extend(["location_id", "exif_data"])
 
         query = self.client.table("photos").select(",".join(column_list), count="exact")
         query = query.in_("project_id", list(project_ids))
@@ -325,6 +403,25 @@ class SupabaseClient:
                 query = query.gte("created_at", start)
             if end:
                 query = query.lte("created_at", end)
+
+        if bbox:
+            lat_min, lat_max, lon_min, lon_max = bbox
+            query = (
+                query.gte("latitude", lat_min)
+                .lte("latitude", lat_max)
+                .gte("longitude", lon_min)
+                .lte("longitude", lon_max)
+            )
+
+        def _ilike(field: str, value: Optional[str]):
+            if value:
+                return query.ilike(field, f"%{value}%")
+            return query
+
+        # Geocoded filters
+        query = _ilike("city", city)
+        query = _ilike("state", state)
+        query = _ilike("country", country)
 
         query = query.order("created_at", desc=order_desc).limit(safe_page_size).offset(
             offset
@@ -400,6 +497,22 @@ class SupabaseClient:
         except Exception as e:
             print(f"Error getting photos by location: {e}")
             return []
+
+    def get_location(self, location_id: str) -> Optional[Dict[str, Any]]:
+        if not self.client:
+            return None
+        try:
+            response = (
+                self.client.table("locations")
+                .select("*")
+                .eq("id", location_id)
+                .maybe_single()
+                .execute()
+            )
+            return response.data if hasattr(response, "data") else None
+        except Exception as e:
+            print(f"Error getting location: {e}")
+            return None
 
     # ------------------------------------------------------------------
     # Project helpers

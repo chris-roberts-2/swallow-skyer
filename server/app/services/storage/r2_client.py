@@ -122,6 +122,22 @@ class R2Client:
             return url
         return self.generate_presigned_url(key, expires_in=expires_in)
 
+    def upload_project_photo(
+        self,
+        project_id: str,
+        photo_id: str,
+        file_bytes: bytes,
+        ext: str,
+        content_type: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Upload a project-scoped photo and return the object key if successful.
+        """
+        cleaned_ext = ext.lstrip(".")
+        key = f"projects/{project_id}/photos/{photo_id}.{cleaned_ext}"
+        ok = self.upload_bytes(file_bytes, key, content_type=content_type)
+        return key if ok else None
+
     def generate_presigned_url(self, key: str, expires_in: int = 600) -> Optional[str]:
         """
         Generate presigned URL for private R2 object.

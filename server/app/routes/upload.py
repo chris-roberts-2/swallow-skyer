@@ -11,6 +11,8 @@ from flask import jsonify, request
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 from PIL import Image, ImageFile
+from PIL.ExifTags import TAGS, GPSTAGS
+from datetime import datetime, timezone
 
 from app.services.storage.supabase_client import supabase_client
 from app.services.storage.r2_client import r2_client
@@ -28,33 +30,19 @@ def registerUploadRoutes(blueprint):
     @blueprint.route("/api/photos/upload", methods=["POST"])
     def uploadPhoto():
         """
-        Upload a photo to R2 using the canonical projects/{project_id}/photos/{photo_id}.{ext} key.
+        Upload one or many photos to R2 using the canonical projects/{project_id}/photos/{photo_id}.{ext} key.
         """
 
-        fileItem = request.files.get("file")
-        if not fileItem or not getattr(fileItem, "filename", None):
+        files = request.files.getlist("files")
+        # backward compatibility: support single "file"
+        if not files:
+            single = request.files.get("file")
+            files = [single] if single else []
+
+        if not files:
             return (
                 jsonify({"status": "error", "message": "Image file is required"}),
                 400,
-            )
-
-        mimeType = (getattr(fileItem, "mimetype", "") or "").lower()
-        if not mimeType.startswith("image/"):
-            return (
-                jsonify({"status": "error", "message": "Invalid file type. Image required"}),
-                400,
-            )
-
-        contentLength = request.content_length or 0
-        if contentLength and contentLength > MAX_UPLOAD_BYTES:
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "File too large (max 20MB)",
-                    }
-                ),
-                413,
             )
 
         projectIdRaw = (request.form.get("project_id") or "").strip()
@@ -69,25 +57,17 @@ def registerUploadRoutes(blueprint):
         latitudeRaw = request.form.get("latitude")
         longitudeRaw = request.form.get("longitude")
 
-        if latitudeRaw is None or longitudeRaw is None:
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "latitude and longitude are required",
-                    }
-                ),
-                400,
-            )
-
-        try:
-            latitudeValue = float(latitudeRaw)
-            longitudeValue = float(longitudeRaw)
-        except (TypeError, ValueError):
-            return (
-                jsonify({"status": "error", "message": "Invalid latitude/longitude"}),
-                400,
-            )
+        latitudeValue = None
+        longitudeValue = None
+        if latitudeRaw not in (None, "") and longitudeRaw not in (None, ""):
+            try:
+                latitudeValue = float(latitudeRaw)
+                longitudeValue = float(longitudeRaw)
+            except (TypeError, ValueError):
+                return (
+                    jsonify({"status": "error", "message": "Invalid latitude/longitude"}),
+                    400,
+                )
 
         if not r2_client.client:
             return (
@@ -111,239 +91,278 @@ def registerUploadRoutes(blueprint):
                 500,
             )
 
-        safeName = secure_filename(fileItem.filename or "") or "uploaded_file"
+        results = []
 
-        try:
-            originalBytes = _read_file_bytes(fileItem)
-        except ValueError as exc:
-            return jsonify({"status": "error", "message": str(exc)}), 400
+        for fileItem in files:
+            if not fileItem or not getattr(fileItem, "filename", None):
+                return (
+                    jsonify({"status": "error", "message": "Image file is required"}),
+                    400,
+                )
 
-        if len(originalBytes) > MAX_UPLOAD_BYTES:
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "File too large (max 20MB)",
-                    }
-                ),
-                413,
+            mimeType = (getattr(fileItem, "mimetype", "") or "").lower()
+            if not mimeType.startswith("image/"):
+                return (
+                    jsonify({"status": "error", "message": "Invalid file type. Image required"}),
+                    400,
+                )
+
+            try:
+                originalBytes = _read_file_bytes(fileItem)
+            except ValueError as exc:
+                return jsonify({"status": "error", "message": str(exc)}), 400
+
+            if len(originalBytes) > MAX_UPLOAD_BYTES:
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "File too large (max 20MB)",
+                        }
+                    ),
+                    413,
+                )
+
+            try:
+                pil_image = _load_image(originalBytes)
+            except ValueError as exc:
+                return (
+                    jsonify({"status": "error", "message": str(exc)}),
+                    400,
+                )
+
+            safeName = secure_filename(fileItem.filename or "") or "uploaded_file"
+            fileSize = len(originalBytes)
+            extension = _extractExtension(safeName, mimeType)
+
+            exif_data, captured_at, gps_decimal = _extract_exif_data(
+                pil_image, originalBytes
             )
 
-        try:
-            pil_image = _load_image(originalBytes)
-        except ValueError as exc:
-            return (
-                jsonify({"status": "error", "message": str(exc)}),
-                400,
+            location_id = None
+            if gps_decimal and gps_decimal.get("lat") is not None and gps_decimal.get(
+                "lon"
+            ) is not None:
+                location_id = supabase_client.get_or_create_location(
+                    gps_decimal["lat"], gps_decimal["lon"], gps_decimal.get("alt")
+                )
+
+            # Step 1: create placeholder record without r2_path so we can obtain photo_id
+            metadataPayload = {
+                "project_id": projectId,
+                "user_id": userId,
+                "exif_data": exif_data or None,
+                "file_name": safeName,
+                "original_filename": fileItem.filename,
+                "file_type": mimeType or None,
+                "file_size": fileSize,
+                "latitude": latitudeValue
+                if gps_decimal is None
+                else gps_decimal.get("lat", latitudeValue),
+                "longitude": longitudeValue
+                if gps_decimal is None
+                else gps_decimal.get("lon", longitudeValue),
+                "location_id": location_id,
+                "caption": caption or None,
+            }
+            if timestamp:
+                metadataPayload["captured_at"] = timestamp
+            elif captured_at:
+                metadataPayload["captured_at"] = captured_at
+
+            try:
+                placeholderRecord = supabase_client.store_photo_metadata(metadataPayload)
+            except Exception as exc:
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": f"Failed to create photo record: {exc}",
+                        }
+                    ),
+                    500,
+                )
+
+            if not placeholderRecord or not isinstance(placeholderRecord, dict):
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Could not persist photo metadata",
+                        }
+                    ),
+                    502,
+                )
+
+            photoId = placeholderRecord.get("id")
+            if not photoId:
+                _cleanupSupabasePlaceholder(placeholderRecord.get("id"))
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Supabase did not return a photo id",
+                        }
+                    ),
+                    502,
+                )
+
+            uploaded_keys: List[str] = []
+            try:
+                r2Key = r2_client.upload_project_photo(
+                    projectId, photoId, originalBytes, extension, content_type=mimeType
+                )
+            except Exception as exc:
+                _cleanupSupabasePlaceholder(photoId)
+                return (
+                    jsonify({"status": "error", "message": f"Upload failed: {exc}"}),
+                    500,
+                )
+
+            if not r2Key:
+                _cleanupSupabasePlaceholder(photoId)
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Failed to upload to storage",
+                        }
+                    ),
+                    502,
+                )
+            uploaded_keys.append(r2Key)
+
+            fileUrl = r2_client.get_file_url(r2Key)
+            if not fileUrl:
+                _cleanupR2Objects(uploaded_keys)
+                _cleanupSupabasePlaceholder(photoId)
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Failed to generate file URL",
+                        }
+                    ),
+                    500,
+                )
+
+            try:
+                thumbBytes, thumbExt, thumbMime = _generate_thumbnail_bytes(
+                    pil_image, mimeType
+                )
+            except ValueError as exc:
+                _cleanupR2Objects(uploaded_keys)
+                _cleanupSupabasePlaceholder(photoId)
+                return (
+                    jsonify({"status": "error", "message": str(exc)}),
+                    500,
+                )
+
+            thumbnailKey = (
+                f"projects/{projectId}/photos/{photoId}_thumb.{thumbExt}"
             )
+            try:
+                thumbUpload = r2_client.upload_bytes(
+                    thumbBytes, thumbnailKey, content_type=thumbMime
+                )
+            except Exception as exc:
+                _cleanupR2Objects(uploaded_keys)
+                _cleanupSupabasePlaceholder(photoId)
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": f"Thumbnail upload failed: {exc}",
+                        }
+                    ),
+                    500,
+                )
 
-        fileSize = len(originalBytes)
+            if not thumbUpload:
+                _cleanupR2Objects(uploaded_keys)
+                _cleanupSupabasePlaceholder(photoId)
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Failed to upload thumbnail to storage",
+                        }
+                    ),
+                    502,
+                )
 
-        # Step 1: create placeholder record without r2_path so we can obtain photo_id
-        metadataPayload = {
-            "project_id": projectId,
-            "user_id": userId,
-            "file_name": safeName,
-            "file_type": mimeType or None,
-            "file_size": fileSize,
-            "latitude": latitudeValue,
-            "longitude": longitudeValue,
-            "caption": caption or None,
-        }
-        if timestamp:
-            metadataPayload["captured_at"] = timestamp
+            uploaded_keys.append(thumbnailKey)
 
-        try:
-            placeholderRecord = supabase_client.store_photo_metadata(metadataPayload)
-        except Exception as exc:
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": f"Failed to create photo record: {exc}",
-                    }
-                ),
-                500,
+            thumbnailUrl = r2_client.get_file_url(thumbnailKey)
+            if not thumbnailUrl:
+                _cleanupR2Objects(uploaded_keys)
+                _cleanupSupabasePlaceholder(photoId)
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Failed to generate thumbnail URL",
+                        }
+                    ),
+                    500,
+                )
+
+            updatePayload = {
+                "r2_path": r2Key,
+                "r2_url": fileUrl,
+                "r2_key": r2Key,
+                "url": fileUrl,
+            }
+            thumbnail_updates = supabase_client.build_thumbnail_updates(
+                thumbnail_path=thumbnailKey,
+                thumbnail_url=thumbnailUrl,
+                record_hint=placeholderRecord,
             )
+            updatePayload.update(thumbnail_updates)
 
-        if not placeholderRecord or not isinstance(placeholderRecord, dict):
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "Could not persist photo metadata",
-                    }
-                ),
-                502,
-            )
+            try:
+                updatedRecord = supabase_client.update_photo_metadata(
+                    photoId, updatePayload
+                )
+            except Exception as exc:
+                _cleanupR2Objects(uploaded_keys)
+                _cleanupSupabasePlaceholder(photoId)
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": f"Failed to update photo record: {exc}",
+                        }
+                    ),
+                    500,
+                )
 
-        photoId = placeholderRecord.get("id")
-        if not photoId:
-            _cleanupSupabasePlaceholder(placeholderRecord.get("id"))
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "Supabase did not return a photo id",
-                    }
-                ),
-                502,
-            )
+            if not updatedRecord:
+                _cleanupR2Objects(uploaded_keys)
+                _cleanupSupabasePlaceholder(photoId)
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Could not update Supabase record with storage info",
+                        }
+                    ),
+                    502,
+                )
 
-        extension = _extractExtension(safeName, mimeType)
-        r2Key = f"projects/{projectId}/photos/{photoId}.{extension}"
-        uploaded_keys: list[str] = []
-
-        try:
-            uploadSuccess = r2_client.upload_file(
-                io.BytesIO(originalBytes), r2Key, content_type=mimeType or None
-            )
-        except Exception as exc:
-            _cleanupSupabasePlaceholder(photoId)
-            return (
-                jsonify({"status": "error", "message": f"Upload failed: {exc}"}),
-                500,
-            )
-
-        if not uploadSuccess:
-            _cleanupSupabasePlaceholder(photoId)
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "Failed to upload to storage",
-                    }
-                ),
-                502,
-            )
-        uploaded_keys.append(r2Key)
-
-        fileUrl = r2_client.get_file_url(r2Key)
-        if not fileUrl:
-            _cleanupR2Objects(uploaded_keys)
-            _cleanupSupabasePlaceholder(photoId)
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "Failed to generate file URL",
-                    }
-                ),
-                500,
-            )
-
-        try:
-            thumbBytes, thumbExt, thumbMime = _generate_thumbnail_bytes(
-                pil_image, mimeType
-            )
-        except ValueError as exc:
-            _cleanupR2Objects(uploaded_keys)
-            _cleanupSupabasePlaceholder(photoId)
-            return (
-                jsonify({"status": "error", "message": str(exc)}),
-                500,
-            )
-
-        thumbnailKey = f"projects/{projectId}/photos/{photoId}_thumb.{thumbExt}"
-        try:
-            thumbUpload = r2_client.upload_bytes(
-                thumbBytes, thumbnailKey, content_type=thumbMime
-            )
-        except Exception as exc:
-            _cleanupR2Objects(uploaded_keys)
-            _cleanupSupabasePlaceholder(photoId)
-            return (
-                jsonify(
-                    {"status": "error", "message": f"Thumbnail upload failed: {exc}"}
-                ),
-                500,
-            )
-
-        if not thumbUpload:
-            _cleanupR2Objects(uploaded_keys)
-            _cleanupSupabasePlaceholder(photoId)
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "Failed to upload thumbnail to storage",
-                    }
-                ),
-                502,
-            )
-
-        uploaded_keys.append(thumbnailKey)
-
-        thumbnailUrl = r2_client.get_file_url(thumbnailKey)
-        if not thumbnailUrl:
-            _cleanupR2Objects(uploaded_keys)
-            _cleanupSupabasePlaceholder(photoId)
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "Failed to generate thumbnail URL",
-                    }
-                ),
-                500,
-            )
-
-        updatePayload = {
-            "r2_path": r2Key,
-            "r2_url": fileUrl,
-            "r2_key": r2Key,
-            "url": fileUrl,
-        }
-        thumbnail_updates = supabase_client.build_thumbnail_updates(
-            thumbnail_path=thumbnailKey,
-            thumbnail_url=thumbnailUrl,
-            record_hint=placeholderRecord,
-        )
-        updatePayload.update(thumbnail_updates)
-
-        try:
-            updatedRecord = supabase_client.update_photo_metadata(photoId, updatePayload)
-        except Exception as exc:
-            _cleanupR2Objects(uploaded_keys)
-            _cleanupSupabasePlaceholder(photoId)
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": f"Failed to update photo record: {exc}",
-                    }
-                ),
-                500,
-            )
-
-        if not updatedRecord:
-            _cleanupR2Objects(uploaded_keys)
-            _cleanupSupabasePlaceholder(photoId)
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "Could not update Supabase record with storage info",
-                    }
-                ),
-                502,
-            )
-
-        supabase_client.update_thumbnail_column_hint(updatedRecord)
-
-        return (
-            jsonify(
+            supabase_client.update_thumbnail_column_hint(updatedRecord)
+            results.append(
                 {
-                    "status": "success",
                     "photo_id": photoId,
-                    "url": fileUrl,
+                    "r2_url": fileUrl,
                     "r2_path": r2Key,
-                    "thumbnail_url": thumbnailUrl,
                     "thumbnail_r2_path": thumbnailKey,
+                    "thumbnail_r2_url": thumbnailUrl,
+                    "original_filename": fileItem.filename,
                 }
-            ),
-            201,
-        )
+            )
+
+        return jsonify({"status": "success", "uploaded": results}), 201
 
 
 def _validateProjectId(projectId: str) -> str:
@@ -443,4 +462,87 @@ def _generate_thumbnail_bytes(
         extension = target_format.lower()
     content_type = f"image/{'jpeg' if target_format == 'JPEG' else extension}"
     return buffer.getvalue(), extension, content_type
+
+
+def _rational_to_float(value):
+    try:
+        return float(value[0]) / float(value[1])
+    except Exception:
+        return None
+
+
+def _dms_to_decimal(dms, ref):
+    try:
+        degrees = _rational_to_float(dms[0])
+        minutes = _rational_to_float(dms[1])
+        seconds = _rational_to_float(dms[2])
+        if degrees is None or minutes is None or seconds is None:
+            return None
+        decimal = degrees + (minutes / 60.0) + (seconds / 3600.0)
+        if ref in ["S", "W"]:
+            decimal = -decimal
+        return decimal
+    except Exception:
+        return None
+
+
+def _extract_exif_data(image: Image.Image, original_bytes: bytes):
+    exif_data = {}
+    gps_decimal = {}
+    captured_at = None
+
+    try:
+        raw_exif = image._getexif() or {}
+    except Exception:
+        raw_exif = {}
+
+    # Map EXIF tags
+    for tag_id, value in raw_exif.items():
+        tag = TAGS.get(tag_id, tag_id)
+        if tag == "GPSInfo":
+            gps_info = {}
+            for key in value:
+                sub_tag = GPSTAGS.get(key, key)
+                gps_info[sub_tag] = value[key]
+            exif_data["gps"] = gps_info
+        else:
+            exif_data[tag] = value
+
+    # Parse datetime_original
+    dt_original = exif_data.get("DateTimeOriginal") or exif_data.get("DateTime")
+    if dt_original:
+        try:
+            captured_at = datetime.strptime(dt_original, "%Y:%m:%d %H:%M:%S").replace(
+                tzinfo=timezone.utc
+            ).isoformat()
+        except Exception:
+            captured_at = None
+
+    # Parse GPS to decimal
+    gps_info = exif_data.get("gps") or {}
+    lat = gps_info.get("GPSLatitude")
+    lat_ref = gps_info.get("GPSLatitudeRef")
+    lon = gps_info.get("GPSLongitude")
+    lon_ref = gps_info.get("GPSLongitudeRef")
+    alt = gps_info.get("GPSAltitude")
+    alt_ref = gps_info.get("GPSAltitudeRef")
+
+    if lat and lat_ref and lon and lon_ref:
+        lat_decimal = _dms_to_decimal(lat, lat_ref)
+        lon_decimal = _dms_to_decimal(lon, lon_ref)
+        if lat_decimal is not None and lon_decimal is not None:
+            gps_decimal["lat"] = lat_decimal
+            gps_decimal["lon"] = lon_decimal
+            if alt is not None:
+                alt_val = _rational_to_float(alt)
+                if alt_val is not None:
+                    gps_decimal["alt"] = alt_val * (-1 if alt_ref else 1)
+
+    if not captured_at:
+        try:
+            captured_at = datetime.utcnow().replace(tzinfo=timezone.utc).isoformat()
+        except Exception:
+            captured_at = None
+
+    return exif_data or None, captured_at, gps_decimal or None
 

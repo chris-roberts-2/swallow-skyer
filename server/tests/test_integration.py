@@ -69,11 +69,10 @@ def test_upload_save_retrieve_flow(client, monkeypatch, auth_headers):
         raising=True,
     )
 
-    def mock_upload_file(fileobj, key, content_type=None):
+    def mock_upload_project_photo(project_id, photo_id, file_bytes, ext, content_type=None):
+        key = f"projects/{project_id}/photos/{photo_id}.{ext}"
         stored_calls["r2_upload"].append({"key": key, "content_type": content_type})
-        # Consume file-like to mimic real behavior
-        _ = fileobj.read()
-        return True
+        return key
 
     def mock_upload_thumbnail(data, key, content_type=None):
         stored_calls["r2_upload_thumb"].append(
@@ -86,7 +85,7 @@ def test_upload_save_retrieve_flow(client, monkeypatch, auth_headers):
         return f"https://mock.cdn.example/{key}"
 
     monkeypatch.setattr(
-        r2_module.r2_client, "upload_file", mock_upload_file, raising=True
+        r2_module.r2_client, "upload_project_photo", mock_upload_project_photo, raising=True
     )
     monkeypatch.setattr(
         r2_module.r2_client, "upload_bytes", mock_upload_thumbnail, raising=True
@@ -190,8 +189,9 @@ def test_upload_save_retrieve_flow(client, monkeypatch, auth_headers):
     assert upload_resp.status_code == 201, (upload_resp.data, stored_calls)
     upload_json = upload_resp.get_json()
     assert upload_json["status"] == "success"
-    assert upload_json.get("photo_id") == "photo-123"
-    assert upload_json.get("url") and upload_json["url"].startswith(
+    uploaded_item = upload_json["uploaded"][0]
+    assert uploaded_item.get("photo_id") == "photo-123"
+    assert uploaded_item.get("r2_url") and uploaded_item["r2_url"].startswith(
         "https://mock.cdn.example/"
     )
 

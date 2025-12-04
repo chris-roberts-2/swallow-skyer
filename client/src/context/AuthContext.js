@@ -48,6 +48,8 @@ const persistSession = session => {
 const defaultContextValue = {
   user: null,
   session: null,
+  activeProject: null,
+  setActiveProject: () => {},
   isLoading: true,
   login: async () => {},
   signup: async () => {},
@@ -58,9 +60,14 @@ export const AuthContext = createContext(defaultContextValue);
 
 const getInitialAuthState = () => {
   const storedSession = readStoredSession();
+  const storedProject =
+    typeof window !== 'undefined'
+      ? window.localStorage.getItem('activeProjectId')
+      : null;
   return {
     session: storedSession,
     user: storedSession?.user ?? null,
+    activeProject: storedProject,
   };
 };
 
@@ -68,12 +75,27 @@ export const AuthProvider = ({ children }) => {
   const [authState, setAuthState] = useState(getInitialAuthState);
   const [isLoading, setIsLoading] = useState(true);
 
+  const setActiveProject = useCallback(projectId => {
+    if (typeof window !== 'undefined') {
+      if (projectId) {
+        window.localStorage.setItem('activeProjectId', projectId);
+      } else {
+        window.localStorage.removeItem('activeProjectId');
+      }
+    }
+    setAuthState(prev => ({
+      ...prev,
+      activeProject: projectId || null,
+    }));
+  }, []);
+
   const syncSession = useCallback(nextSession => {
     persistSession(nextSession);
-    setAuthState({
+    setAuthState(prev => ({
       session: nextSession,
       user: nextSession?.user ?? null,
-    });
+      activeProject: prev?.activeProject ?? null,
+    }));
   }, []);
 
   useEffect(() => {
@@ -163,12 +185,14 @@ export const AuthProvider = ({ children }) => {
     () => ({
       user: authState.user,
       session: authState.session,
+      activeProject: authState.activeProject,
+      setActiveProject,
       isLoading,
       login,
       signup,
       logout,
     }),
-    [authState, isLoading, login, signup, logout]
+    [authState, isLoading, login, signup, logout, setActiveProject]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
