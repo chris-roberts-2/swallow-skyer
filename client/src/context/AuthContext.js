@@ -9,6 +9,7 @@ import {
 import supabase from '../lib/supabaseClient';
 
 const SESSION_STORAGE_KEY = 'supabaseSession';
+const PROJECT_ROLES_STORAGE_KEY = 'projectRoles';
 
 const readStoredSession = () => {
   if (typeof window === 'undefined') {
@@ -45,11 +46,45 @@ const persistSession = session => {
   }
 };
 
+const readStoredProjectRoles = () => {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+  const raw = window.localStorage.getItem(PROJECT_ROLES_STORAGE_KEY);
+  if (!raw) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    window.localStorage.removeItem(PROJECT_ROLES_STORAGE_KEY);
+    return {};
+  }
+};
+
+const persistProjectRoles = roles => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  try {
+    window.localStorage.setItem(
+      PROJECT_ROLES_STORAGE_KEY,
+      JSON.stringify(roles || {})
+    );
+  } catch {
+    // ignore storage failures
+  }
+};
+
 const defaultContextValue = {
   user: null,
   session: null,
   activeProject: null,
   setActiveProject: () => {},
+  projectRoles: {},
+  setProjectRole: () => {},
+  roleForActiveProject: () => null,
   isLoading: true,
   login: async () => {},
   signup: async () => {},
@@ -68,6 +103,7 @@ const getInitialAuthState = () => {
     session: storedSession,
     user: storedSession?.user ?? null,
     activeProject: storedProject,
+    projectRoles: readStoredProjectRoles(),
   };
 };
 
@@ -89,12 +125,40 @@ export const AuthProvider = ({ children }) => {
     }));
   }, []);
 
+  const setProjectRole = useCallback((projectId, role) => {
+    if (!projectId) {
+      return;
+    }
+    setAuthState(prev => {
+      const nextRoles = { ...(prev?.projectRoles || {}) };
+      if (role) {
+        nextRoles[projectId] = role;
+      } else {
+        delete nextRoles[projectId];
+      }
+      persistProjectRoles(nextRoles);
+      return { ...prev, projectRoles: nextRoles };
+    });
+  }, []);
+
+  const roleForActiveProject = useCallback(
+    (projectIdOverride = null) => {
+      const target = projectIdOverride || authState.activeProject;
+      if (!target) {
+        return null;
+      }
+      return authState.projectRoles?.[target] || null;
+    },
+    [authState.activeProject, authState.projectRoles]
+  );
+
   const syncSession = useCallback(nextSession => {
     persistSession(nextSession);
     setAuthState(prev => ({
       session: nextSession,
       user: nextSession?.user ?? null,
       activeProject: prev?.activeProject ?? null,
+      projectRoles: prev?.projectRoles ?? {},
     }));
   }, []);
 
@@ -187,12 +251,24 @@ export const AuthProvider = ({ children }) => {
       session: authState.session,
       activeProject: authState.activeProject,
       setActiveProject,
+      projectRoles: authState.projectRoles,
+      setProjectRole,
+      roleForActiveProject,
       isLoading,
       login,
       signup,
       logout,
     }),
-    [authState, isLoading, login, signup, logout, setActiveProject]
+    [
+      authState,
+      isLoading,
+      login,
+      signup,
+      logout,
+      setActiveProject,
+      setProjectRole,
+      roleForActiveProject,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

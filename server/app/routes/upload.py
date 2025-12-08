@@ -7,7 +7,7 @@ import io
 from typing import Optional, List, Tuple
 from uuid import UUID
 
-from flask import jsonify, request
+from flask import jsonify, request, g
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 from PIL import Image, ImageFile
@@ -16,6 +16,10 @@ from datetime import datetime, timezone
 
 from app.services.storage.supabase_client import supabase_client
 from app.services.storage.r2_client import r2_client
+from app.middleware.auth_middleware import jwt_required
+from app.services.auth.permissions import require_role
+
+ALLOWED_UPLOAD_ROLES = {"collaborator", "co-owner", "owner"}
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -28,6 +32,7 @@ def registerUploadRoutes(blueprint):
     """
 
     @blueprint.route("/api/photos/upload", methods=["POST"])
+    @jwt_required
     def uploadPhoto():
         """
         Upload one or many photos to R2 using the canonical projects/{project_id}/photos/{photo_id}.{ext} key.
@@ -50,8 +55,12 @@ def registerUploadRoutes(blueprint):
             projectId = _validateProjectId(projectIdRaw)
         except ValueError as exc:
             return jsonify({"status": "error", "message": str(exc)}), 400
+        permission = require_role(projectId, ALLOWED_UPLOAD_ROLES)
+        if isinstance(permission, tuple):
+            payload, status_code = permission
+            return jsonify(payload), status_code
 
-        userId = request.form.get("user_id")
+        userId = permission.get("user_id")
         caption = request.form.get("caption")
         timestamp = request.form.get("timestamp")
         latitudeRaw = request.form.get("latitude")

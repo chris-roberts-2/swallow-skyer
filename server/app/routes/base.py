@@ -95,135 +95,22 @@ def list_uploaded_files():
         return jsonify({"error": str(e)}), 500
 
 
-@main_bp.route("/api/users", methods=["GET"])
-def get_users():
-    """
-    Get all users.
-
-    Returns:
-        dict: List of users
-    """
-    users = User.query.all()
-    return jsonify([user.to_dict() for user in users])
+@main_bp.route("/api/users", methods=["GET", "POST"])
+def legacy_users_gone():
+    """Legacy endpoint disabled."""
+    return jsonify({"error": "gone", "message": "This endpoint is disabled"}), 410
 
 
-@main_bp.route("/api/users", methods=["POST"])
-def create_user():
-    """
-    Create a new user.
-
-    Returns:
-        dict: Created user data
-    """
-    data = request.get_json()
-
-    if not data or not data.get("name"):
-        return jsonify({"error": "Name is required"}), 400
-
-    if not data.get("email"):
-        return jsonify({"error": "Email is required"}), 400
-
-    user = User(
-        name=data["name"],
-        email=data["email"],
-        username=data.get("username"),
-        profile_picture_url=data.get("profile_picture_url"),
-    )
-
-    db.session.add(user)
-    db.session.commit()
-
-    return jsonify(user.to_dict()), 201
+@main_bp.route("/api/photos", methods=["GET", "POST"])
+def legacy_photos_gone():
+    """Legacy endpoint disabled; use /api/v1/photos."""
+    return jsonify({"error": "gone", "message": "Use /api/v1/photos"}), 410
 
 
-@main_bp.route("/api/photos", methods=["GET"])
-@jwt_required
-def get_photos():
-    """Delegate to the shared photo listing handler with auth enforced."""
-    return handle_photo_listing_request()
-
-
-@main_bp.route("/api/photos", methods=["POST"])
-def create_photo():
-    """
-    Create a new photo record.
-
-    Returns:
-        dict: Created photo data
-    """
-    data = request.get_json()
-
-    if not data or not all(k in data for k in ["filename", "latitude", "longitude"]):
-        return jsonify({"error": "filename, latitude, and longitude are required"}), 400
-
-    taken_at_value = data.get("taken_at")
-    taken_at = None
-    if taken_at_value:
-        try:
-            # Support both ISO strings with Z suffix and without timezone
-            cleaned = (
-                taken_at_value.replace("Z", "+00:00")
-                if taken_at_value.endswith("Z")
-                else taken_at_value
-            )
-            taken_at = datetime.fromisoformat(cleaned)
-        except (ValueError, TypeError):
-            taken_at = None
-
-    photo = Photo(
-        filename=data["filename"],
-        caption=data.get("caption"),
-        latitude=data["latitude"],
-        longitude=data["longitude"],
-        altitude=data.get("altitude"),
-        user_id=data.get("user_id"),
-        url=data.get("url") or data.get("file_url"),
-        r2_key=data.get("r2_key"),
-        taken_at=taken_at,
-    )
-
-    db.session.add(photo)
-    db.session.commit()
-
-    return jsonify(photo.to_dict()), 201
-
-
-@main_bp.route("/api/locations", methods=["GET"])
-def get_locations():
-    """
-    Get all locations.
-
-    Returns:
-        dict: List of locations
-    """
-    locations = Location.query.all()
-    return jsonify([location.to_dict() for location in locations])
-
-
-@main_bp.route("/api/locations", methods=["POST"])
-def create_location():
-    """
-    Create a new location record.
-
-    Returns:
-        dict: Created location data
-    """
-    data = request.get_json()
-
-    if not data or not all(k in data for k in ["name", "latitude", "longitude"]):
-        return jsonify({"error": "name, latitude, and longitude are required"}), 400
-
-    location = Location(
-        name=data["name"],
-        latitude=data["latitude"],
-        longitude=data["longitude"],
-        description=data.get("description"),
-    )
-
-    db.session.add(location)
-    db.session.commit()
-
-    return jsonify(location.to_dict()), 201
+@main_bp.route("/api/locations", methods=["GET", "POST"])
+def legacy_locations_gone():
+    """Legacy endpoint disabled; use /api/v1/photos for project data."""
+    return jsonify({"error": "gone", "message": "Use /api/v1/photos"}), 410
 
 
 @main_bp.route("/api/test/supabase-r2", methods=["GET"])

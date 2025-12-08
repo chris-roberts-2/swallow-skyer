@@ -4,19 +4,27 @@ import math
 from datetime import datetime, timezone
 from uuid import UUID
 from app.middleware.auth_middleware import jwt_required
+from app.services.auth.permissions import (
+    DEFAULT_DENIED_MESSAGE,
+    require_role,
+    ROLE_ORDER,
+)
 from app.services.storage.supabase_client import supabase_client
 from app.services.storage.r2_client import r2_client
 from app.models import Photo
 from app.services.photo_service import PhotoService
 from app.utils.validators import validate_photo_data
 from app import db
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Dict, Any, Optional, Tuple, List, Set
 
 bp = Blueprint("photos_v1", __name__)
 photo_service = PhotoService()
 
 DEFAULT_PAGE_SIZE = 50
 MAX_PAGE_SIZE = 200
+VIEW_ROLES: Set[str] = set(ROLE_ORDER)
+COLLAB_ROLES: Set[str] = {"collaborator", "co-owner", "owner"}
+OWNER_ROLES: Set[str] = {"co-owner", "owner"}
 
 
 def _parse_page_args() -> Tuple[int, int]:
@@ -69,20 +77,20 @@ def _normalize_uuid(value: Optional[str]) -> Optional[str]:
 
 def _prefetch_project_scope(
     user_id: str, requested_project_id: Optional[str]
-) -> Tuple[List[str], Dict[str, Dict[str, Any]], Optional[int]]:
+) -> Tuple[List[str], Dict[str, Dict[str, Any]], Optional[Tuple[dict, int]]]:
     """
     Resolve the list of authorized project ids plus a memoized metadata cache.
 
     Returns:
-        (authorized_ids, project_cache, status_code_if_error)
+        (authorized_ids, project_cache, error_payload)
     """
     project_cache: Dict[str, Dict[str, Any]] = {}
 
     if requested_project_id:
-        role = supabase_client.get_project_role(requested_project_id, user_id)
-        if not role:
-            return [], project_cache, 403
-        project_cache[requested_project_id] = {"role": role}
+        permission = require_role(requested_project_id, VIEW_ROLES, user_id=user_id)
+        if isinstance(permission, tuple):
+            return [], project_cache, permission
+        project_cache[requested_project_id] = {"role": permission.get("role")}
         return [requested_project_id], project_cache, None
 
     memberships = supabase_client.list_projects_for_user(user_id) or []
@@ -95,19 +103,6 @@ def _prefetch_project_scope(
         project_cache[pid] = {"role": project.get("role")}
 
     return allowed_ids, project_cache, None
-
-
-def _memoized_project_role(
-    cache: Dict[str, Dict[str, Any]], project_id: str, user_id: str
-) -> bool:
-    """Ensure cache contains membership details for project_id."""
-    if project_id in cache:
-        return True
-    role = supabase_client.get_project_role(project_id, user_id)
-    if role:
-        cache[project_id] = {"role": role}
-        return True
-    return False
 
 
 def _serialize_photo(
@@ -226,11 +221,12 @@ def _build_photo_listing_payload() -> Tuple[Dict[str, Any], int]:
     state = request.args.get("state")
     country = request.args.get("country")
 
-    authorized_ids, project_cache, error_status = _prefetch_project_scope(
+    authorized_ids, project_cache, permission_error = _prefetch_project_scope(
         current_user_id, project_id
     )
-    if error_status:
-        return ({"error": "You do not have access to that project."}, error_status)
+    if permission_error:
+        payload, status_code = permission_error
+        return (payload, status_code)
 
     if not authorized_ids:
         pagination = {
@@ -339,23 +335,35 @@ def get_photo(photo_id):
         current_user = getattr(g, "current_user", None) or {}
         current_user_id = current_user.get("id")
         if not current_user_id:
-            return jsonify({"error": "Unauthorized", "version": "v1"}), 401
+            return (
+                jsonify({"error": "forbidden", "message": "Authentication required"}),
+                401,
+            )
 
         record = supabase_client.get_photo_metadata(photo_id)
         if not record:
             return jsonify({"error": "Photo not found", "version": "v1"}), 404
 
         project_id = record.get("project_id")
-        project_cache: Dict[str, Dict[str, Any]] = {}
-        if not project_id or not _memoized_project_role(
-            project_cache, project_id, current_user_id
-        ):
+        if not project_id:
             return (
                 jsonify(
-                    {"error": "You do not have access to this photo", "version": "v1"}
+                    {
+                        "error": "forbidden",
+                        "message": "Project is required for this photo",
+                    }
                 ),
                 403,
             )
+
+        permission = require_role(project_id, VIEW_ROLES, user_id=current_user_id)
+        if isinstance(permission, tuple):
+            payload, status_code = permission
+            return jsonify(payload), status_code
+
+        project_cache: Dict[str, Dict[str, Any]] = {
+            project_id: {"role": permission.get("role")}
+        }
 
         serialized = _serialize_photo(record, project_cache, {}, {})
         return jsonify({"version": "v1", "photo": serialized})
@@ -393,6 +401,12 @@ def get_photos_by_location():
 def upload_photo():
     """Upload a new photo - API v1"""
     try:
+        project_id = request.form.get("project_id")
+        permission = require_role(project_id, COLLAB_ROLES)
+        if isinstance(permission, tuple):
+            payload, status_code = permission
+            return jsonify(payload), status_code
+
         if "file" not in request.files:
             return jsonify({"error": "No file provided", "version": "v1"}), 400
 
@@ -429,8 +443,26 @@ def upload_photo():
 def update_photo(photo_id):
     """Update a photo - API v1"""
     try:
+        current_user = getattr(g, "current_user", None) or {}
+        current_user_id = current_user.get("id")
+        if not current_user_id:
+            return (
+                jsonify({"error": "forbidden", "message": "Authentication required"}),
+                401,
+            )
+
+        record = supabase_client.get_photo_metadata(photo_id)
+        if not record:
+            return jsonify({"error": "Photo not found", "version": "v1"}), 404
+
+        project_id = record.get("project_id")
+        permission = require_role(project_id, OWNER_ROLES, user_id=current_user_id)
+        if isinstance(permission, tuple):
+            payload, status_code = permission
+            return jsonify(payload), status_code
+
         photo = Photo.query.get_or_404(photo_id)
-        data = request.get_json()
+        data = request.get_json() or {}
 
         if "caption" in data:
             photo.caption = data["caption"]
@@ -446,6 +478,24 @@ def update_photo(photo_id):
 def delete_photo(photo_id):
     """Delete a photo - API v1"""
     try:
+        current_user = getattr(g, "current_user", None) or {}
+        current_user_id = current_user.get("id")
+        if not current_user_id:
+            return (
+                jsonify({"error": "forbidden", "message": "Authentication required"}),
+                401,
+            )
+
+        record = supabase_client.get_photo_metadata(photo_id)
+        if not record:
+            return jsonify({"error": "Photo not found", "version": "v1"}), 404
+
+        project_id = record.get("project_id")
+        permission = require_role(project_id, OWNER_ROLES, user_id=current_user_id)
+        if isinstance(permission, tuple):
+            payload, status_code = permission
+            return jsonify(payload), status_code
+
         photo = Photo.query.get_or_404(photo_id)
 
         # Delete file from storage

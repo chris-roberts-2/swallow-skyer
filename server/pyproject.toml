@@ -20,8 +20,8 @@ extend-exclude = '''
 '''
 
 [tool.pytest.ini_options]
-testpaths = ["app/tests"]
+testpaths = ["tests", "app/tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short"
+addopts = "--cov=server --cov-report=term-missing --cov-fail-under=80 -v --tb=short"

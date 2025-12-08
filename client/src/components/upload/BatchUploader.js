@@ -9,7 +9,7 @@ const apiBase =
 const buildApiUrl = () =>
   `${(apiBase || '').replace(/\/$/, '')}/api/v1/photos/upload`;
 
-const BatchUploader = () => {
+const BatchUploader = ({ onForbidden }) => {
   const { activeProject } = useAuth();
   const [files, setFiles] = useState([]);
   const [statuses, setStatuses] = useState({});
@@ -68,10 +68,17 @@ const BatchUploader = () => {
         },
       });
       const payload = await res.json().catch(() => ({}));
+      if (res.status === 403 && typeof onForbidden === 'function') {
+        onForbidden();
+      }
       if (!res.ok) {
-        throw new Error(
-          payload?.message || payload?.error || `Upload failed (${res.status})`
-        );
+        const errorMessage =
+          payload?.message ||
+          payload?.error ||
+          (res.status === 403
+            ? 'You do not have permission for this action.'
+            : `Upload failed (${res.status})`);
+        throw new Error(errorMessage);
       }
       const nextStatuses = {};
       (payload?.uploaded || []).forEach(item => {

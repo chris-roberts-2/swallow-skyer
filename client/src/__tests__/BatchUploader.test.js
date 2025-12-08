@@ -2,6 +2,7 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react';
 import BatchUploader from '../components/upload/BatchUploader';
 import { AuthContext } from '../context/AuthContext';
+import { usePermissionToast } from '../components/common/PermissionToast';
 
 const renderWithAuth = (ui, { projectId = 'proj-123' } = {}) => {
   const value = {
@@ -77,6 +78,34 @@ describe('BatchUploader', () => {
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     const body = global.fetch.mock.calls[0][1].body;
     expect(body.getAll('files')[0].name).toBe('only.jpg');
+  });
+
+  it('shows toast on 403 response', async () => {
+    const spyToast = jest.fn();
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: () => Promise.resolve({ message: 'forbidden' }),
+    });
+
+    const { getByTestId, getByText } = render(
+      <AuthContext.Provider
+        value={{
+          user: { id: 'user-1' },
+          session: {},
+          activeProject: 'proj-123',
+          setActiveProject: () => {},
+        }}
+      >
+        <BatchUploader onForbidden={spyToast} />
+      </AuthContext.Provider>
+    );
+    const input = getByTestId('dropzone').querySelector('input[type="file"]');
+    const file = new File(['a'], 'only.jpg', { type: 'image/jpeg' });
+    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.click(getByText('Upload'));
+
+    await waitFor(() => expect(spyToast).toHaveBeenCalled());
   });
 });
 

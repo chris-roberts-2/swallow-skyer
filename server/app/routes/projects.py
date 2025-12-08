@@ -5,9 +5,12 @@ Project CRUD routes with Supabase-backed permissions.
 from flask import Blueprint, jsonify, request, g
 
 from app.middleware.auth_middleware import jwt_required
+from app.services.auth.permissions import require_role, ROLE_ORDER
 from app.services.storage.supabase_client import supabase_client
 
 projects_bp = Blueprint("projects", __name__, url_prefix="/api/v1/projects")
+VIEW_ROLES = set(ROLE_ORDER)
+OWNER_ROLES = {"owner", "co-owner"}
 
 
 def _require_auth():
@@ -20,10 +23,6 @@ def _require_auth():
     if not user_id:
         raise PermissionError("Authenticated user not found")
     return user_id
-
-
-def _get_user_role(project_id, user_id):
-    return supabase_client.get_project_role(project_id, user_id)
 
 
 @projects_bp.route("", methods=["POST"])
@@ -80,9 +79,10 @@ def get_project(project_id):
     except PermissionError as exc:
         return jsonify({"error": str(exc)}), 401
 
-    role = _get_user_role(project_id, user_id)
-    if not role:
-        return jsonify({"error": "Not authorized for this project"}), 403
+    permission = require_role(project_id, VIEW_ROLES, user_id=user_id)
+    if isinstance(permission, tuple):
+        payload, status_code = permission
+        return jsonify(payload), status_code
 
     project = supabase_client.get_project(project_id)
     if not project:
@@ -98,9 +98,10 @@ def update_project(project_id):
     except PermissionError as exc:
         return jsonify({"error": str(exc)}), 401
 
-    role = _get_user_role(project_id, user_id)
-    if role not in ("owner", "co-owner"):
-        return jsonify({"error": "Only owners or co-owners may update"}), 403
+    permission = require_role(project_id, OWNER_ROLES, user_id=user_id)
+    if isinstance(permission, tuple):
+        payload, status_code = permission
+        return jsonify(payload), status_code
 
     payload = request.get_json() or {}
     name = payload.get("name")
@@ -131,9 +132,10 @@ def delete_project(project_id):
     except PermissionError as exc:
         return jsonify({"error": str(exc)}), 401
 
-    role = _get_user_role(project_id, user_id)
-    if role not in ("owner", "co-owner"):
-        return jsonify({"error": "Only owners or co-owners may delete"}), 403
+    permission = require_role(project_id, OWNER_ROLES, user_id=user_id)
+    if isinstance(permission, tuple):
+        payload, status_code = permission
+        return jsonify(payload), status_code
 
     try:
         deleted = supabase_client.delete_project(project_id)
