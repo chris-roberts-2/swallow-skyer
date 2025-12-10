@@ -187,9 +187,12 @@ def _build_photo_listing_payload() -> Tuple[Dict[str, Any], int]:
         return ({"error": "Authenticated Supabase user context missing"}, 401)
 
     try:
-        project_id = _normalize_uuid(request.args.get("project_id"))
+    project_id = _normalize_uuid(request.args.get("project_id"))
     except ValueError as exc:
         return ({"error": str(exc)}, 400)
+
+    if not project_id:
+        return ({"error": "project_id is required"}, 400)
 
     page, page_size = _parse_page_args()
 

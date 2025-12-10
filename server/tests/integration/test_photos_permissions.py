@@ -19,6 +19,12 @@ def test_project_scoped_photo_listing(monkeypatch, client, auth_headers):
     assert called["project_ids"] == ["proj-1"]
 
 
+def test_project_id_required(monkeypatch, client, auth_headers):
+    resp = client.get("/api/v1/photos", headers=auth_headers)
+    assert resp.status_code == 400
+    assert resp.get_json().get("error") == "project_id is required"
+
+
 def test_project_scoped_photo_listing_forbidden(monkeypatch, client, auth_headers):
     monkeypatch.setattr(
         "app.api_routes.v1.photos.supabase_client.get_project_role",

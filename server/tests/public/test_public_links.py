@@ -177,3 +177,13 @@ def test_public_download_rejects_cross_project(client, monkeypatch, patch_supaba
     resp = client.get(f"/api/v1/public/{token}/photos/a/download")
     assert resp.status_code == 403
 
+
+def test_public_download_expired(client, patch_supabase):
+    expires_at = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+    token = "expired-download"
+    patch_supabase["project_public_links"].append(
+        {"id": "link-2", "project_id": "proj-1", "token": token, "expires_at": expires_at}
+    )
+    resp = client.get(f"/api/v1/public/{token}/photos/a/download")
+    assert resp.status_code == 410
+

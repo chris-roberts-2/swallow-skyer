@@ -218,3 +218,90 @@ def test_batch_upload_uses_exif_and_locations(client, monkeypatch):
     assert len(store_calls) == 2
     assert all(call[0] == 1.0 for call in location_calls)
 
+
+def test_exif_reuses_location(client, monkeypatch):
+    from app.services.storage import r2_client as r2_module
+    from app.services.storage import supabase_client as supabase_module
+    import app.routes.upload as upload_module
+
+    monkeypatch.setattr(
+        r2_module.r2_client, "client", SimpleNamespace(name="mock_r2"), raising=True
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "client",
+        SimpleNamespace(name="mock_supabase"),
+        raising=True,
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "supports_thumbnail_columns",
+        lambda: True,
+        raising=True,
+    )
+
+    location_calls = []
+
+    def mock_get_or_create_location(lat, lon, elevation=None):
+        location_calls.append((lat, lon))
+        return "loc-existing"
+
+    monkeypatch.setattr(
+        upload_module,
+        "_extract_exif_data",
+        lambda image, original_bytes: (
+            {"DateTimeOriginal": "2024:01:01 00:00:00", "gps": {}},
+            "2024-01-01T00:00:00Z",
+            {"lat": 10.0, "lon": -20.0},
+        ),
+        raising=True,
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "get_or_create_location",
+        mock_get_or_create_location,
+        raising=True,
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "store_photo_metadata",
+        lambda data: {"id": "photo-1", **data},
+        raising=True,
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "update_photo_metadata",
+        lambda photo_id, updates: {"id": photo_id, **updates},
+        raising=True,
+    )
+    monkeypatch.setattr(
+        r2_module.r2_client,
+        "upload_project_photo",
+        lambda project_id, photo_id, file_bytes, ext, content_type=None: f"projects/{project_id}/photos/{photo_id}.{ext}",
+        raising=True,
+    )
+    monkeypatch.setattr(
+        r2_module.r2_client,
+        "upload_bytes",
+        lambda data, key, content_type=None: True,
+        raising=True,
+    )
+    monkeypatch.setattr(
+        r2_module.r2_client,
+        "get_file_url",
+        lambda key: f"https://cdn/{key}",
+        raising=True,
+    )
+
+    resp = client.post(
+        "/api/photos/upload",
+        data={
+          "file": (io.BytesIO(_make_image_with_exif()), "one.jpg", "image/jpeg"),
+          "project_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        },
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 201
+    # reused location once
+    assert location_calls == [(10.0, -20.0)]
+

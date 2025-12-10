@@ -8,6 +8,7 @@ import React, {
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import UploadForm from './components/UploadForm';
+import { useAuth } from './context';
 import PhotoStack from './components/map/PhotoStack';
 
 const envApiBase =
@@ -130,6 +131,7 @@ const buildClusters = (photoList, thresholdMeters) => {
 };
 
 const PhotoMapLive = () => {
+  const { activeProject } = useAuth();
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const [photos, setPhotos] = useState([]);
@@ -232,8 +234,13 @@ const PhotoMapLive = () => {
     let isCancelled = false;
 
     const fetchPhotos = async () => {
+      if (!activeProject) {
+        setPhotos([]);
+        return;
+      }
       const cached = cacheRef.current;
       if (
+        cached.projectId === activeProject &&
         cached.data &&
         Date.now() - cached.fetchedAt < CACHE_TTL_MS &&
         Array.isArray(cached.data)
@@ -258,7 +265,9 @@ const PhotoMapLive = () => {
 
       for (const base of candidates) {
         try {
-          const res = await fetch(`${base}/api/v1/photos/`, {
+          const url = new URL(`${base}/api/v1/photos/`);
+          url.searchParams.set('project_id', activeProject);
+          const res = await fetch(url.toString(), {
             headers: {
               ...(accessToken
                 ? {
@@ -276,7 +285,11 @@ const PhotoMapLive = () => {
           const list = Array.isArray(data.photos) ? data.photos : [];
           if (!isCancelled) {
             setPhotos(list);
-            cacheRef.current = { data: list, fetchedAt: Date.now() };
+            cacheRef.current = {
+              data: list,
+              fetchedAt: Date.now(),
+              projectId: activeProject,
+            };
           }
           return;
         } catch (e) {
@@ -295,7 +308,7 @@ const PhotoMapLive = () => {
     return () => {
       isCancelled = true;
     };
-  }, [refreshCounter]);
+  }, [refreshCounter, activeProject]);
 
   const normalisedPhotos = useMemo(() => {
     return (photos || [])

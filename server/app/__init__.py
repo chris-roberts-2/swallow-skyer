@@ -33,21 +33,14 @@ def create_app(config_name=None):
     app.config["SECRET_KEY"] = (
         os.environ.get("SECRET_KEY") or "dev-secret-key-change-in-production"
     )
-    # Database configuration
-    # Always resolve SQLite paths to an absolute path under server/instance/
-    instance_dir = os.path.join(BASE_DIR, "instance")
-    os.makedirs(instance_dir, exist_ok=True)
-    abs_db_path = os.path.join(instance_dir, "database.db")
-
+    # Database configuration: require Postgres/Supabase DSN in dev and prod.
     env_db_url = os.environ.get("DATABASE_URL", "").strip()
-    if env_db_url.startswith("sqlite:///"):
-        # Normalize relative SQLite URLs to absolute
-        # sqlite:////absolute/path uses 4 slashes; 3 slashes is relative to CWD
-        app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{abs_db_path}"
-    elif env_db_url:
-        app.config["SQLALCHEMY_DATABASE_URI"] = env_db_url
-    else:
-        app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{abs_db_path}"
+    if not env_db_url:
+        raise RuntimeError(
+            "DATABASE_URL is required. Configure a Postgres/Supabase DSN; "
+            "SQLite fallback is disabled for security."
+        )
+    app.config["SQLALCHEMY_DATABASE_URI"] = env_db_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     # Initialize extensions with app
@@ -143,6 +136,10 @@ def create_app(config_name=None):
 
     @app.route("/api/test/connection", methods=["GET"])
     def test_connection():
-        return {"status": "success", "message": "Backend connected"}
+        return {
+            "status": "success",
+            "message": "Backend connected",
+            "db": app.config["SQLALCHEMY_DATABASE_URI"],
+        }
 
     return app

@@ -83,4 +83,69 @@ def test_add_member_success(client, monkeypatch):
     assert resp.get_json()["success"]
 
 
+def test_update_member_forbidden_for_collaborator(client, monkeypatch):
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "get_project_role",
+        lambda project_id, user_id: "collaborator",
+    )
+    resp = client.patch(
+        "/api/v1/projects/proj-1/members/user-2",
+        json={"role": "viewer"},
+        headers=AUTH_HEADER,
+    )
+    assert resp.status_code == 403
+
+
+def test_remove_member_block_last_owner(client, monkeypatch):
+    def mock_get_role(project_id, user_id):
+        if user_id == "user-actor":
+            return "owner"
+        if user_id == "user-target":
+            return "owner"
+        return None
+
+    monkeypatch.setattr(
+        supabase_module.supabase_client, "get_project_role", mock_get_role
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client, "count_owners", lambda project_id: 1
+    )
+
+    resp = client.delete(
+        "/api/v1/projects/proj-1/members/user-target", headers=AUTH_HEADER
+    )
+    assert resp.status_code == 400
+    assert resp.get_json().get("error")
+
+
+def test_remove_member_allows_co_owner_when_multiple(client, monkeypatch):
+    def mock_get_role(project_id, user_id):
+        if user_id == "user-actor":
+            return "owner"
+        if user_id == "user-target":
+            return "co-owner"
+        return None
+
+    called = {}
+
+    monkeypatch.setattr(
+        supabase_module.supabase_client, "get_project_role", mock_get_role
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client, "count_owners", lambda project_id: 2
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "remove_project_member",
+        lambda project_id, user_id: called.setdefault("removed", user_id) or True,
+    )
+
+    resp = client.delete(
+        "/api/v1/projects/proj-1/members/user-target", headers=AUTH_HEADER
+    )
+    assert resp.status_code == 200
+    assert called["removed"] == "user-target"
+
+
 
