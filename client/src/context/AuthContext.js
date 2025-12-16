@@ -4,53 +4,69 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import supabase from '../lib/supabaseClient';
+import apiClient from '../services/api';
 
 const SESSION_STORAGE_KEY = 'supabaseSession';
 const PROJECT_ROLES_STORAGE_KEY = 'projectRoles';
+const getLocalStorage = () => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage;
+    }
+  } catch {
+    // ignore
+  }
+  try {
+    if (typeof globalThis !== 'undefined' && globalThis.localStorage) {
+      return globalThis.localStorage;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+};
 
 const readStoredSession = () => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+  const storage = getLocalStorage();
+  if (!storage) return null;
+  const raw = storage.getItem(SESSION_STORAGE_KEY);
   if (!raw) {
     return null;
   }
   try {
     return JSON.parse(raw);
   } catch {
-    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    storage.removeItem(SESSION_STORAGE_KEY);
     return null;
   }
 };
 
 const persistSession = session => {
-  if (typeof window === 'undefined') {
-    return;
-  }
+  const storage = getLocalStorage();
+  if (!storage) return;
   if (session) {
-    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+    storage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
     if (session.access_token) {
-      window.localStorage.setItem('access_token', session.access_token);
+      storage.setItem('access_token', session.access_token);
     }
     if (session.refresh_token) {
-      window.localStorage.setItem('refresh_token', session.refresh_token);
+      storage.setItem('refresh_token', session.refresh_token);
     }
   } else {
-    window.localStorage.removeItem(SESSION_STORAGE_KEY);
-    window.localStorage.removeItem('access_token');
-    window.localStorage.removeItem('refresh_token');
+    storage.removeItem(SESSION_STORAGE_KEY);
+    storage.removeItem('access_token');
+    storage.removeItem('refresh_token');
   }
 };
 
 const readStoredProjectRoles = () => {
-  if (typeof window === 'undefined') {
-    return {};
-  }
-  const raw = window.localStorage.getItem(PROJECT_ROLES_STORAGE_KEY);
+  const storage = getLocalStorage();
+  if (!storage) return {};
+  const raw = storage.getItem(PROJECT_ROLES_STORAGE_KEY);
   if (!raw) {
     return {};
   }
@@ -58,30 +74,30 @@ const readStoredProjectRoles = () => {
     const parsed = JSON.parse(raw);
     return parsed && typeof parsed === 'object' ? parsed : {};
   } catch {
-    window.localStorage.removeItem(PROJECT_ROLES_STORAGE_KEY);
+    storage.removeItem(PROJECT_ROLES_STORAGE_KEY);
     return {};
   }
 };
 
 const persistProjectRoles = roles => {
-  if (typeof window === 'undefined') {
-    return;
-  }
   try {
-    window.localStorage.setItem(
-      PROJECT_ROLES_STORAGE_KEY,
-      JSON.stringify(roles || {})
-    );
+    const storage = getLocalStorage();
+    if (!storage) return;
+    storage.setItem(PROJECT_ROLES_STORAGE_KEY, JSON.stringify(roles || {}));
   } catch {
     // ignore storage failures
   }
 };
 
+const PROJECTS_STORAGE_KEY = 'projects';
+
 const defaultContextValue = {
   user: null,
   session: null,
+  projects: [],
   activeProject: null,
   setActiveProject: () => {},
+  refreshProjects: async () => {},
   projectRoles: {},
   setProjectRole: () => {},
   roleForActiveProject: () => null,
@@ -96,13 +112,12 @@ export const AuthContext = createContext(defaultContextValue);
 const getInitialAuthState = () => {
   const storedSession = readStoredSession();
   const storedProject =
-    typeof window !== 'undefined'
-      ? window.localStorage.getItem('activeProjectId')
-      : null;
+    getLocalStorage()?.getItem('activeProjectId') || null;
   return {
     session: storedSession,
     user: storedSession?.user ?? null,
-    activeProject: storedProject,
+    activeProjectId: storedProject,
+    projects: [],
     projectRoles: readStoredProjectRoles(),
   };
 };
@@ -110,8 +125,15 @@ const getInitialAuthState = () => {
 export const AuthProvider = ({ children }) => {
   const [authState, setAuthState] = useState(getInitialAuthState);
   const [isLoading, setIsLoading] = useState(true);
+  const isFetchingProjects = useRef(false);
+  const lastProjectsFetchAt = useRef(0);
 
-  const setActiveProject = useCallback(projectId => {
+  const activeProject =
+    authState.projects.find(p => p.id === authState.activeProjectId) || null;
+
+  const setActiveProject = useCallback(project => {
+    const projectId =
+      typeof project === 'string' ? project : project?.id || null;
     if (typeof window !== 'undefined') {
       if (projectId) {
         window.localStorage.setItem('activeProjectId', projectId);
@@ -121,7 +143,7 @@ export const AuthProvider = ({ children }) => {
     }
     setAuthState(prev => ({
       ...prev,
-      activeProject: projectId || null,
+      activeProjectId: projectId || null,
     }));
   }, []);
 
@@ -143,13 +165,13 @@ export const AuthProvider = ({ children }) => {
 
   const roleForActiveProject = useCallback(
     (projectIdOverride = null) => {
-      const target = projectIdOverride || authState.activeProject;
+      const target = projectIdOverride || authState.activeProjectId;
       if (!target) {
         return null;
       }
       return authState.projectRoles?.[target] || null;
     },
-    [authState.activeProject, authState.projectRoles]
+    [authState.activeProjectId, authState.projectRoles]
   );
 
   const syncSession = useCallback(nextSession => {
@@ -157,10 +179,70 @@ export const AuthProvider = ({ children }) => {
     setAuthState(prev => ({
       session: nextSession,
       user: nextSession?.user ?? null,
-      activeProject: prev?.activeProject ?? null,
+      activeProjectId: prev?.activeProjectId ?? null,
+      projects: prev?.projects ?? [],
       projectRoles: prev?.projectRoles ?? {},
     }));
   }, []);
+
+  const refreshProjects = useCallback(
+    async ({ redirectWhenEmpty = false } = {}) => {
+      if (isFetchingProjects.current) return;
+      if (!authState.session) {
+        setAuthState(prev => ({ ...prev, projects: [] }));
+        return;
+      }
+
+      // Throttle to avoid hammering backend/Supabase in React dev (StrictMode + multiple consumers)
+      const now = Date.now();
+      if (now - lastProjectsFetchAt.current < 1500) {
+        return;
+      }
+      lastProjectsFetchAt.current = now;
+
+      isFetchingProjects.current = true;
+      try {
+        const resp = await apiClient.get('/v1/projects');
+        const list = resp?.projects || [];
+
+        // persist for quick render
+        try {
+          window.localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(list));
+        } catch {
+          // ignore
+        }
+
+        setAuthState(prev => {
+          const nextRoles = { ...(prev?.projectRoles || {}) };
+          list.forEach(p => {
+            if (p.id && p.role) {
+              nextRoles[p.id] = p.role;
+            }
+          });
+          persistProjectRoles(nextRoles);
+
+          const currentId = prev?.activeProjectId;
+          const hasCurrent = currentId && list.some(p => p.id === currentId);
+          const nextActiveId =
+            hasCurrent || !list.length ? currentId || null : list[0].id;
+
+          return {
+            ...prev,
+            projects: list,
+            activeProjectId: nextActiveId,
+            projectRoles: nextRoles,
+          };
+        });
+
+        // Redirect removed to avoid unexpected tab switches; callers can handle UI.
+      } catch (err) {
+        console.error('Failed to load projects', err);
+      } finally {
+        isFetchingProjects.current = false;
+      }
+    },
+    [authState.session]
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -176,6 +258,9 @@ export const AuthProvider = ({ children }) => {
           syncSession(null);
         } else {
           syncSession(data?.session ?? null);
+          if (data?.session) {
+            refreshProjects({ redirectWhenEmpty: false });
+          }
         }
       } catch (err) {
         if (isMounted) {
@@ -198,6 +283,15 @@ export const AuthProvider = ({ children }) => {
         return;
       }
       syncSession(nextSession || null);
+      if (nextSession) {
+        refreshProjects({ redirectWhenEmpty: false });
+      } else {
+        setAuthState(prev => ({
+          ...prev,
+          projects: [],
+          activeProjectId: null,
+        }));
+      }
       setIsLoading(false);
     });
 
@@ -205,7 +299,7 @@ export const AuthProvider = ({ children }) => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [syncSession]);
+  }, [refreshProjects, syncSession]);
 
   const login = useCallback(
     async (email, password) => {
@@ -249,8 +343,10 @@ export const AuthProvider = ({ children }) => {
     () => ({
       user: authState.user,
       session: authState.session,
-      activeProject: authState.activeProject,
+      projects: authState.projects,
+      activeProject,
       setActiveProject,
+      refreshProjects,
       projectRoles: authState.projectRoles,
       setProjectRole,
       roleForActiveProject,
@@ -260,7 +356,9 @@ export const AuthProvider = ({ children }) => {
       logout,
     }),
     [
-      authState,
+      authState.projects,
+      authState.session,
+      authState.projectRoles,
       isLoading,
       login,
       signup,
@@ -268,6 +366,8 @@ export const AuthProvider = ({ children }) => {
       setActiveProject,
       setProjectRole,
       roleForActiveProject,
+      activeProject,
+      refreshProjects,
     ]
   );
 

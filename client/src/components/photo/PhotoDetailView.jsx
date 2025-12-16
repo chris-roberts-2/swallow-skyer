@@ -5,6 +5,7 @@ import { usePermissionToast } from '../common/PermissionToast';
 
 const PhotoDetailView = ({ photo }) => {
   const { activeProject, roleForActiveProject } = useAuth();
+  const activeProjectId = activeProject?.id || activeProject || null;
   const role =
     (roleForActiveProject && roleForActiveProject(photo?.project_id)) || null;
   const canDownload = Boolean(role);
@@ -12,7 +13,7 @@ const PhotoDetailView = ({ photo }) => {
 
   const handleDownload = useCallback(async () => {
     if (!photo?.id) return;
-    const projectId = photo?.project_id || activeProject;
+    const projectId = photo?.project_id || activeProjectId;
     if (!projectId) return;
     try {
       const { url } = await fileService.getPresignedDownloadURL(

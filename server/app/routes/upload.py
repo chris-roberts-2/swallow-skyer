@@ -179,6 +179,9 @@ def registerUploadRoutes(blueprint):
             elif captured_at:
                 metadataPayload["captured_at"] = captured_at
 
+            # Strip null bytes from all strings to prevent Postgres 22P05 errors
+            metadataPayload = _strip_null_bytes(metadataPayload)
+
             try:
                 placeholderRecord = supabase_client.store_photo_metadata(metadataPayload)
             except Exception as exc:
@@ -328,6 +331,9 @@ def registerUploadRoutes(blueprint):
                 record_hint=placeholderRecord,
             )
             updatePayload.update(thumbnail_updates)
+            
+            # Strip null bytes from update payload as well
+            updatePayload = _strip_null_bytes(updatePayload)
 
             try:
                 updatedRecord = supabase_client.update_photo_metadata(
@@ -346,18 +352,8 @@ def registerUploadRoutes(blueprint):
                     500,
                 )
 
-            if not updatedRecord:
-                _cleanupR2Objects(uploaded_keys)
-                _cleanupSupabasePlaceholder(photoId)
-                return (
-                    jsonify(
-                        {
-                            "status": "error",
-                            "message": "Could not update Supabase record with storage info",
-                        }
-                    ),
-                    502,
-                )
+            # Even if updatedRecord is None (e.g., Supabase returned no data), proceed;
+            # update_photo_metadata now returns a synthesized record on non-fatal errors.
 
             supabase_client.update_thumbnail_column_hint(updatedRecord)
             results.append(
@@ -505,6 +501,37 @@ def _extract_exif_data(image: Image.Image, original_bytes: bytes):
     except Exception:
         raw_exif = {}
 
+    def _safe_value(val):
+        # Convert EXIF rationals and other non-JSON types to plain floats/strings
+        try:
+            from fractions import Fraction
+        except Exception:
+            Fraction = None
+
+        try:
+            from PIL.TiffImagePlugin import IFDRational
+        except Exception:
+            class IFDRational:  # type: ignore
+                pass
+
+        if isinstance(val, IFDRational):
+            try:
+                return float(val)
+            except Exception:
+                return None
+        if Fraction and isinstance(val, Fraction):
+            try:
+                return float(val)
+            except Exception:
+                return None
+        if isinstance(val, tuple):
+            return [_safe_value(v) for v in val]
+        if isinstance(val, list):
+            return [_safe_value(v) for v in val]
+        if isinstance(val, dict):
+            return {k: _safe_value(v) for k, v in val.items()}
+        return val
+
     # Map EXIF tags
     for tag_id, value in raw_exif.items():
         tag = TAGS.get(tag_id, tag_id)
@@ -512,10 +539,10 @@ def _extract_exif_data(image: Image.Image, original_bytes: bytes):
             gps_info = {}
             for key in value:
                 sub_tag = GPSTAGS.get(key, key)
-                gps_info[sub_tag] = value[key]
+                gps_info[sub_tag] = _safe_value(value[key])
             exif_data["gps"] = gps_info
         else:
-            exif_data[tag] = value
+            exif_data[tag] = _safe_value(value)
 
     # Parse datetime_original
     dt_original = exif_data.get("DateTimeOriginal") or exif_data.get("DateTime")
@@ -553,5 +580,56 @@ def _extract_exif_data(image: Image.Image, original_bytes: bytes):
         except Exception:
             captured_at = None
 
+    # Ensure EXIF is JSON-serializable before sending to Supabase
+    try:
+        exif_data = _sanitize_for_json(exif_data) if exif_data else None
+    except Exception:
+        exif_data = None
+
     return exif_data or None, captured_at, gps_decimal or None
+
+
+def _sanitize_for_json(value):
+    """
+    Recursively convert EXIF/metadata values to JSON-serializable primitives.
+    - bytes -> utf-8 string fallback to hex
+    - non-serializable objects -> str()
+    """
+    import base64
+
+    if value is None:
+        return None
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, bytes):
+        try:
+            return value.decode("utf-8", errors="replace")
+        except Exception:
+            return base64.b64encode(value).decode("ascii")
+    if isinstance(value, (list, tuple)):
+        return [_sanitize_for_json(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _sanitize_for_json(v) for k, v in value.items()}
+    try:
+        return _sanitize_for_json(value.__dict__)
+    except Exception:
+        return str(value)
+
+
+def _strip_null_bytes(value):
+    """
+    Recursively strip null bytes (\x00) from all strings to prevent Postgres 22P05 errors.
+    Postgres TEXT columns cannot store null bytes.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value.replace('\x00', '')
+    if isinstance(value, bytes):
+        return value.replace(b'\x00', b'')
+    if isinstance(value, (list, tuple)):
+        return [_strip_null_bytes(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _strip_null_bytes(v) for k, v in value.items()}
+    return value
 

@@ -146,6 +146,60 @@ def _serialize_photo(
     elif location_id:
         location = location_cache.get(location_id) or {}
 
+    def _dms_to_decimal(dms, ref):
+        try:
+            deg, minutes, seconds = dms
+            deg = float(deg)
+            minutes = float(minutes)
+            seconds = float(seconds)
+            decimal = deg + minutes / 60.0 + seconds / 3600.0
+            if ref in ("S", "W"):
+                decimal = -decimal
+            return decimal
+        except Exception:
+            return None
+
+    # Prefer photo latitude/longitude; fall back to location coords, then EXIF GPS
+    lat = record.get("latitude")
+    lon = record.get("longitude")
+    if (lat is None or lon is None) and location:
+        lat = lat if lat is not None else location.get("latitude")
+        lon = lon if lon is not None else location.get("longitude")
+    if (lat is None or lon is None) and isinstance(record.get("exif_data"), dict):
+        gps = record["exif_data"].get("gps") or {}
+        gps_lat = gps.get("GPSLatitude")
+        gps_lat_ref = gps.get("GPSLatitudeRef")
+        gps_lon = gps.get("GPSLongitude")
+        gps_lon_ref = gps.get("GPSLongitudeRef")
+        if gps_lat and gps_lat_ref and gps_lon and gps_lon_ref:
+            dlat = _dms_to_decimal(gps_lat, gps_lat_ref)
+            dlon = _dms_to_decimal(gps_lon, gps_lon_ref)
+            if dlat is not None and dlon is not None:
+                lat = lat if lat is not None else dlat
+                lon = lon if lon is not None else dlon
+    created_at = record.get("created_at") or record.get("uploaded_at")
+
+    # Build/resolve storage URLs. If r2_path is missing, derive from photo id + extension.
+    key = record.get("r2_path") or record.get("r2_key")
+    if not key:
+        file_name = record.get("file_name") or ""
+        _, ext = os.path.splitext(file_name)
+        ext = ext.lstrip(".") or "jpg"
+        photo_id = record.get("id")
+        project_id = record.get("project_id")
+        if photo_id and project_id:
+            key = f"projects/{project_id}/photos/{photo_id}.{ext}"
+
+    cached_url = url_cache.get(key or "")
+    resolved_url = (
+        record.get("r2_url")
+        or record.get("url")
+        or cached_url
+        or (r2_client.resolve_url(key) if key else None)
+    )
+    if key and key not in url_cache:
+        url_cache[key] = resolved_url
+
     return {
         "id": record.get("id"),
         "project_id": project_id,
@@ -153,18 +207,18 @@ def _serialize_photo(
         "user_id": record.get("user_id"),
         "file_name": record.get("file_name"),
         "caption": record.get("caption"),
-        "latitude": record.get("latitude"),
-        "longitude": record.get("longitude"),
+        "latitude": lat,
+        "longitude": lon,
         "location_id": location_id,
         "location_city": location.get("city"),
         "location_state": location.get("state"),
         "location_country": location.get("country"),
         "geocode_data": location.get("geocode_data"),
-        "created_at": record.get("created_at"),
+        "created_at": created_at,
         "captured_at": record.get("captured_at"),
         "r2_path": key,
         "r2_url": record.get("r2_url") or resolved_url,
-        "url": resolved_url,
+        "url": resolved_url or record.get("r2_url"),
         "thumbnail_r2_path": thumb_path,
         "thumbnail_r2_url": thumb_url or resolved_thumb_url,
         "thumbnail_url": resolved_thumb_url,
@@ -187,7 +241,7 @@ def _build_photo_listing_payload() -> Tuple[Dict[str, Any], int]:
         return ({"error": "Authenticated Supabase user context missing"}, 401)
 
     try:
-    project_id = _normalize_uuid(request.args.get("project_id"))
+        project_id = _normalize_uuid(request.args.get("project_id"))
     except ValueError as exc:
         return ({"error": str(exc)}, 400)
 

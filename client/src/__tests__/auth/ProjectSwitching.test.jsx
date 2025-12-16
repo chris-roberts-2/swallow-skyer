@@ -5,9 +5,11 @@ import { AuthProvider, useAuth } from '../../context/AuthContext';
 const Consumer = () => {
   const { activeProject, setActiveProject } = useAuth();
   React.useEffect(() => {
-    setActiveProject('project-from-test');
+    setActiveProject({ id: 'project-from-test' });
   }, [setActiveProject]);
-  return <div data-testid="active-project">{activeProject}</div>;
+  return (
+    <div data-testid="active-project">{activeProject?.id || activeProject}</div>
+  );
 };
 
 describe('AuthContext project switching', () => {
@@ -30,9 +32,7 @@ describe('AuthContext project switching', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId('active-project').textContent).toBe(
-        'project-from-test'
-      )
+      expect(screen.getByTestId('active-project').textContent).toBe('project-from-test')
     );
     expect(localStorage.getItem('activeProjectId')).toBe('project-from-test');
   });

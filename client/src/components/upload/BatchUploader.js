@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { useAuth } from '../../context';
+import { appendProjectId, requireProjectId } from '../../services/uploadHelper';
 
 const apiBase =
   process.env.REACT_APP_API_BASE_URL ||
@@ -7,10 +8,11 @@ const apiBase =
   'http://localhost:5001';
 
 const buildApiUrl = () =>
-  `${(apiBase || '').replace(/\/$/, '')}/api/v1/photos/upload`;
+  `${(apiBase || '').replace(/\/$/, '')}/api/photos/upload`;
 
 const BatchUploader = ({ onForbidden }) => {
   const { activeProject } = useAuth();
+  const activeProjectId = activeProject?.id || activeProject || null;
   const [files, setFiles] = useState([]);
   const [statuses, setStatuses] = useState({});
   const [isDragging, setIsDragging] = useState(false);
@@ -51,12 +53,16 @@ const BatchUploader = ({ onForbidden }) => {
   const handleSubmit = async e => {
     e.preventDefault();
     if (!files.length) return;
+    try {
+      requireProjectId(activeProjectId);
+    } catch (err) {
+      alert(err.message);
+      return;
+    }
     setIsSubmitting(true);
     const formData = new FormData();
     files.forEach(f => formData.append('files', f));
-    if (activeProject) {
-      formData.append('project_id', activeProject);
-    }
+    appendProjectId(formData, activeProjectId);
 
     const accessToken = localStorage.getItem('access_token') || '';
     try {

@@ -18,7 +18,7 @@ const r2PublicBase =
   process.env.REACT_APP_R2_PUBLIC_URL ||
   process.env.R2_PUBLIC_BASE_URL ||
   '';
-const CACHE_TTL_MS = 60 * 1000; // 1 minute cache window
+const CACHE_TTL_MS = 0; // disable caching to ensure fresh fetches
 const EARTH_RADIUS_METERS = 6_371_000;
 
 const toRadians = value => (value * Math.PI) / 180;
@@ -44,10 +44,11 @@ const formatTimestamp = iso => {
 };
 
 const resolvePhotoUrl = photo => {
-  const primaryUrl = (photo.url || '').trim();
-  const r2Key = photo.r2_key || photo.r2Key;
+  const r2Path = photo.r2_path || photo.r2Path || photo.r2_key || photo.r2Key;
+  const r2Url = (photo.r2_url || '').trim();
+  const primaryUrl = (photo.url || r2Url || '').trim();
   const fallbackUrl =
-    r2PublicBase && r2Key ? `${r2PublicBase.replace(/\/$/, '')}/${r2Key}` : '';
+    r2PublicBase && r2Path ? `${r2PublicBase.replace(/\/$/, '')}/${r2Path}` : '';
   const resolvedUrl = primaryUrl || fallbackUrl;
 
   return { primaryUrl, fallbackUrl, resolvedUrl };
@@ -132,6 +133,7 @@ const buildClusters = (photoList, thresholdMeters) => {
 
 const PhotoMapLive = () => {
   const { activeProject } = useAuth();
+  const activeProjectId = activeProject?.id || activeProject || null;
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const [photos, setPhotos] = useState([]);
@@ -234,29 +236,16 @@ const PhotoMapLive = () => {
     let isCancelled = false;
 
     const fetchPhotos = async () => {
-      if (!activeProject) {
+      if (!activeProjectId) {
         setPhotos([]);
         return;
       }
-      const cached = cacheRef.current;
-      if (
-        cached.projectId === activeProject &&
-        cached.data &&
-        Date.now() - cached.fetchedAt < CACHE_TTL_MS &&
-        Array.isArray(cached.data)
-      ) {
-        setPhotos(cached.data);
-        return;
-      }
-
       const candidates = Array.from(
         new Set(
           [
-            'http://127.0.0.1:5001',
             envApiBase,
+            'http://127.0.0.1:5001',
             'http://localhost:5001',
-            'http://127.0.0.1:5000',
-            'http://localhost:5000',
           ].filter(Boolean)
         )
       );
@@ -266,7 +255,7 @@ const PhotoMapLive = () => {
       for (const base of candidates) {
         try {
           const url = new URL(`${base}/api/v1/photos/`);
-          url.searchParams.set('project_id', activeProject);
+          url.searchParams.set('project_id', activeProjectId);
           const res = await fetch(url.toString(), {
             headers: {
               ...(accessToken
@@ -283,12 +272,13 @@ const PhotoMapLive = () => {
             continue;
           }
           const list = Array.isArray(data.photos) ? data.photos : [];
+          console.debug('Fetched photos', list.length);
           if (!isCancelled) {
             setPhotos(list);
             cacheRef.current = {
               data: list,
               fetchedAt: Date.now(),
-              projectId: activeProject,
+              projectId: activeProjectId,
             };
           }
           return;
@@ -308,7 +298,7 @@ const PhotoMapLive = () => {
     return () => {
       isCancelled = true;
     };
-  }, [refreshCounter, activeProject]);
+  }, [refreshCounter, activeProjectId]);
 
   const normalisedPhotos = useMemo(() => {
     return (photos || [])

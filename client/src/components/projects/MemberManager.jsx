@@ -12,16 +12,17 @@ const buildMembersUrl = projectId =>
 
 const MemberManager = () => {
   const { activeProject, roleForActiveProject } = useAuth();
+  const activeProjectId = activeProject?.id || activeProject || null;
   const role = roleForActiveProject ? roleForActiveProject() : null;
   const normalizedRole = (role || '').toLowerCase();
   const canManage = normalizedRole === 'owner' || normalizedRole === 'co-owner';
   const { Toast, showForbiddenToast } = usePermissionToast();
 
   const handleAddMember = useCallback(async () => {
-    if (!activeProject) return;
+    if (!activeProjectId) return;
     const accessToken = localStorage.getItem('access_token') || '';
     try {
-      const res = await fetch(buildMembersUrl(activeProject), {
+      const res = await fetch(buildMembersUrl(activeProjectId), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -42,9 +43,9 @@ const MemberManager = () => {
       }
       showForbiddenToast();
     }
-  }, [activeProject, showForbiddenToast]);
+  }, [activeProjectId, showForbiddenToast]);
 
-  if (!activeProject) {
+  if (!activeProjectId) {
     return (
       <div data-testid="member-manager-empty">
         No active project selected.

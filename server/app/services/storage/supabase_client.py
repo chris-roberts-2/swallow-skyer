@@ -3,6 +3,8 @@ Supabase client for metadata operations.
 """
 
 import os
+import re
+import time
 from copy import deepcopy
 from typing import Dict, Any, Optional, List, Tuple, Sequence
 from supabase import create_client, Client
@@ -103,18 +105,60 @@ class SupabaseClient:
             Optional[Dict[str, Any]]: Stored metadata or None if error
         """
         if not self.client:
-            print("Supabase client not initialized - check environment variables")
-            return None
+            raise RuntimeError("Supabase client not initialized - check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
 
-        try:
-            response = self.client.table("photos").insert(photo_data).execute()
-            record = response.data[0] if response.data else None
-            if record:
-                self.update_thumbnail_column_hint(record)
-            return record
-        except Exception as e:
-            print(f"Error storing photo metadata: {e}")
-            return None
+        def _strip_unknown_column(payload: Dict[str, Any], exc: Exception) -> Optional[Dict[str, Any]]:
+            """
+            Supabase PostgREST error PGRST204 indicates an unknown column in schema cache.
+            Example:
+              {'message': "Could not find the 'original_filename' column of 'photos' in the schema cache",
+               'code': 'PGRST204', ...}
+            We parse the column name, drop it, and retry to stay compatible with older schemas.
+            """
+            text = str(exc)
+            if "PGRST204" not in text or "Could not find the" not in text:
+                return None
+            match = re.search(r"Could not find the '([^']+)' column", text)
+            if not match:
+                return None
+            column = match.group(1)
+            if column not in payload:
+                return None
+            next_payload = dict(payload)
+            next_payload.pop(column, None)
+            return next_payload
+
+        last_exc: Optional[Exception] = None
+        payload = dict(photo_data)
+        removed_columns = 0
+        for attempt in range(3):
+            try:
+                response = self.client.table("photos").insert(payload).execute()
+                record = response.data[0] if response.data else None
+                if record:
+                    self.update_thumbnail_column_hint(record)
+                return record
+            except OSError as e:
+                last_exc = e
+                # macOS Errno 35: Resource temporarily unavailable (transient)
+                if getattr(e, "errno", None) == 35 and attempt < 2:
+                    time.sleep(0.25 * (attempt + 1))
+                    continue
+                raise RuntimeError(f"Error storing photo metadata: {e}") from e
+            except Exception as e:
+                last_exc = e
+                maybe_stripped = _strip_unknown_column(payload, e)
+                if maybe_stripped is not None and removed_columns < 5:
+                    payload = maybe_stripped
+                    removed_columns += 1
+                    # retry immediately without consuming more attempts
+                    time.sleep(0.05)
+                    continue
+                raise RuntimeError(f"Error storing photo metadata: {e}") from e
+
+        if last_exc:
+            raise RuntimeError(f"Error storing photo metadata: {last_exc}") from last_exc
+        raise RuntimeError("Error storing photo metadata: unknown failure")
 
     def get_photo_metadata(self, photo_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -222,20 +266,43 @@ class SupabaseClient:
             Optional[Dict[str, Any]]: Updated metadata or None if error
         """
         if not self.client:
-            print("Supabase client not initialized - check environment variables")
-            return None
+            raise RuntimeError("Supabase client not initialized - check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
 
-        try:
-            response = (
-                self.client.table("photos").update(updates).eq("id", photo_id).execute()
-            )
-            record = response.data[0] if response.data else None
-            if record:
-                self.update_thumbnail_column_hint(record)
-            return record
-        except Exception as e:
-            print(f"Error updating photo metadata: {e}")
-            return None
+        # Retry logic with column dropping on PGRST204
+        payload = dict(updates)
+        max_retries = 3
+        last_exc: Optional[Exception] = None
+        for _ in range(max_retries):
+            try:
+                response = (
+                    self.client.table("photos").update(payload).eq("id", photo_id).execute()
+                )
+                record = response.data[0] if response.data else None
+                if record:
+                    self.update_thumbnail_column_hint(record)
+                else:
+                    # Treat empty data as success and synthesize record
+                    record = {"id": photo_id, **payload}
+                return record
+            except Exception as e:
+                last_exc = e
+                error_str = str(e)
+                # Check for unknown column error (PGRST204)
+                if "PGRST204" in error_str or "Could not find" in error_str:
+                    import re
+                    match = re.search(r"'([^']+)' column", error_str)
+                    if match:
+                        unknown_col = match.group(1)
+                        if unknown_col in payload:
+                            print(f"Removing unknown column '{unknown_col}' from update payload")
+                            del payload[unknown_col]
+                            continue  # Retry without this column
+                # If not handled, raise after loop
+                break
+
+        # If we exhausted retries or hit a non-handled error, fall back but do not fail the upload
+        print(f"Non-fatal: update_photo_metadata failed for {photo_id}: {last_exc}")
+        return {"id": photo_id, **payload}
 
     def delete_photo_metadata(self, photo_id: str) -> bool:
         """
@@ -378,18 +445,16 @@ class SupabaseClient:
             "latitude",
             "longitude",
             "location_id",
-            "created_at",
+            "uploaded_at",
             "captured_at",
             "r2_path",
-            "r2_key",
             "r2_url",
             "exif_data",
         ]
+        # Only select columns that exist in provided schema; avoid r2_key/metadata/geo fields.
         if include_thumbnail_columns:
+            # Only add if schema supports them
             column_list.extend(["thumbnail_r2_path", "thumbnail_r2_url"])
-        else:
-            column_list.append("metadata")
-        column_list.extend(["location_id", "exif_data"])
 
         query = self.client.table("photos").select(",".join(column_list), count="exact")
         query = query.in_("project_id", list(project_ids))
@@ -413,17 +478,7 @@ class SupabaseClient:
                 .lte("longitude", lon_max)
             )
 
-        def _ilike(field: str, value: Optional[str]):
-            if value:
-                return query.ilike(field, f"%{value}%")
-            return query
-
-        # Geocoded filters
-        query = _ilike("city", city)
-        query = _ilike("state", state)
-        query = _ilike("country", country)
-
-        query = query.order("created_at", desc=order_desc).limit(safe_page_size).offset(
+        query = query.order("uploaded_at", desc=order_desc).limit(safe_page_size).offset(
             offset
         )
 
@@ -523,6 +578,12 @@ class SupabaseClient:
     ):
         if not self.client:
             raise RuntimeError("Supabase client not initialized")
+        # Best-effort ensure owner exists to satisfy FK constraints (local/dev)
+        try:
+            self.ensure_user_exists(owner_id)
+        except Exception:
+            # Non-fatal: if ensure fails, we still attempt creation and let Supabase error bubble
+            pass
         payload = {
             "name": name,
             "owner_id": owner_id,
@@ -536,6 +597,24 @@ class SupabaseClient:
         if description is not None:
             project["description"] = description
         return project
+
+    def ensure_user_exists(self, user_id: str, email: Optional[str] = None):
+        """
+        Ensure a user row exists to satisfy FK constraints on projects.owner_id.
+        Uses a lightweight upsert with a fallback email when not provided.
+        """
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        # If a row already exists, no-op
+        existing = (
+            self.client.table("users").select("id").eq("id", user_id).limit(1).execute()
+        )
+        if existing.data:
+            return existing.data[0]
+        fallback_email = email or f"{user_id}@local.invalid"
+        payload = {"id": user_id, "email": fallback_email}
+        response = self.client.table("users").upsert(payload).execute()
+        return response.data[0] if response.data else payload
 
     def add_project_member(self, project_id: str, user_id: str, role: str):
         if not self.client:

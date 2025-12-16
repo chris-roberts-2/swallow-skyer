@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context';
 
 const envBase =
   process.env.REACT_APP_API_BASE_URL ||
@@ -6,6 +7,8 @@ const envBase =
   'http://localhost:5001';
 
 const UploadForm = ({ onUploaded }) => {
+  const { activeProject } = useAuth();
+  const activeProjectId = activeProject?.id || activeProject || null;
   const [file, setFile] = useState(null);
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
@@ -16,6 +19,10 @@ const UploadForm = ({ onUploaded }) => {
     e.preventDefault();
     if (!file || latitude === '' || longitude === '') {
       alert('Please select a file and enter latitude and longitude.');
+      return;
+    }
+    if (!activeProjectId) {
+      alert('Select or create a project before uploading.');
       return;
     }
 
@@ -32,6 +39,7 @@ const UploadForm = ({ onUploaded }) => {
       }
       formData.append('latitude', String(latNum));
       formData.append('longitude', String(lngNum));
+      formData.append('project_id', activeProjectId);
       if (takenAt) formData.append('timestamp', takenAt);
 
       // Try preferred API bases in order (favor 5001 to avoid macOS AirPlay on 5000)

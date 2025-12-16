@@ -36,6 +36,7 @@ def create_project():
     payload = request.get_json() or {}
     name = (payload.get("name") or "").strip()
     description = payload.get("description")
+    email = payload.get("email") or payload.get("owner_email")
 
     if not name:
         return jsonify({"error": "Project name is required"}), 400

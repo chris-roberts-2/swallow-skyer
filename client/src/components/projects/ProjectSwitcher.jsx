@@ -1,10 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import apiClient from '../../services/api';
 import { useAuth } from '../../context';
 
 const ProjectSwitcher = () => {
-  const { activeProject, setActiveProject, setProjectRole } = useAuth();
-  const [projects, setProjects] = useState([]);
+  const { activeProject, setActiveProject, projects, refreshProjects } =
+    useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -12,23 +11,13 @@ const ProjectSwitcher = () => {
     setLoading(true);
     setError('');
     try {
-      const resp = await apiClient.get('/v1/projects');
-      const list = resp.projects || [];
-      setProjects(list);
-      list.forEach(p => {
-        if (p.id && p.role) {
-          setProjectRole(p.id, p.role);
-        }
-      });
-      if (!activeProject && list.length) {
-        setActiveProject(list[0].id);
-      }
+      await refreshProjects({ redirectWhenEmpty: false });
     } catch (err) {
       setError('Unable to load projects');
     } finally {
       setLoading(false);
     }
-  }, [activeProject, setActiveProject, setProjectRole]);
+  }, [refreshProjects]);
 
   useEffect(() => {
     loadProjects();
@@ -36,7 +25,9 @@ const ProjectSwitcher = () => {
 
   const handleChange = e => {
     const value = e.target.value;
-    setActiveProject(value || null);
+    const selected =
+      projects.find(p => p.id === value) || (value ? { id: value } : null);
+    setActiveProject(selected);
   };
 
   if (loading && !projects.length) {
@@ -50,7 +41,7 @@ const ProjectSwitcher = () => {
     <div data-testid="project-switcher" style={{ marginBottom: 12 }}>
       <label>
         Project:{' '}
-        <select value={activeProject || ''} onChange={handleChange}>
+        <select value={activeProject?.id || ''} onChange={handleChange}>
           <option value="">Select a project</option>
           {projects.map(project => (
             <option key={project.id} value={project.id}>

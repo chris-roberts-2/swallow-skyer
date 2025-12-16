@@ -12,6 +12,7 @@ const buildProjectUrl = projectId =>
 
 const ProjectDashboard = ({ onProjectUpdated = () => {} }) => {
   const { activeProject, roleForActiveProject } = useAuth();
+  const activeProjectId = activeProject?.id || activeProject || null;
   const role = roleForActiveProject ? roleForActiveProject() : null;
   const normalizedRole = (role || '').toLowerCase();
   const canManage = normalizedRole === 'owner' || normalizedRole === 'co-owner';
@@ -19,10 +20,10 @@ const ProjectDashboard = ({ onProjectUpdated = () => {} }) => {
   const { Toast, showForbiddenToast } = usePermissionToast();
 
   const handleDelete = useCallback(async () => {
-    if (!activeProject) return;
+    if (!activeProjectId) return;
     const accessToken = localStorage.getItem('access_token') || '';
     try {
-      const res = await fetch(buildProjectUrl(activeProject), {
+      const res = await fetch(buildProjectUrl(activeProjectId), {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -43,9 +44,9 @@ const ProjectDashboard = ({ onProjectUpdated = () => {} }) => {
       }
       showForbiddenToast();
     }
-  }, [activeProject, onProjectUpdated, showForbiddenToast]);
+  }, [activeProjectId, onProjectUpdated, showForbiddenToast]);
 
-  if (!activeProject) {
+  if (!activeProjectId) {
     return (
       <div data-testid="project-dashboard-empty">
         No active project selected.

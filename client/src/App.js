@@ -18,11 +18,13 @@ import {
   MapPage,
   UploadPage,
   ProfilePage,
+  ProjectsPage,
 } from './pages';
 import PublicProjectView from './pages/PublicProjectView';
 
 const Header = () => {
-  const { user } = useAuth();
+  const { user, activeProject } = useAuth();
+  const hasActiveProject = !!(activeProject?.id || activeProject);
 
   return (
     <header className="App-header">
@@ -33,7 +35,8 @@ const Header = () => {
             {user ? (
               <>
                 <Link to="/map">Map</Link>
-                <Link to="/upload">Upload</Link>
+                <Link to="/projects">Projects</Link>
+                {hasActiveProject && <Link to="/upload">Upload</Link>}
                 <Link to="/profile">Profile</Link>
               </>
             ) : (
@@ -86,6 +89,14 @@ export function AppRoutes() {
             element={
               <AuthGuard>
                 <UploadPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/projects"
+            element={
+              <AuthGuard>
+                <ProjectsPage />
               </AuthGuard>
             }
           />

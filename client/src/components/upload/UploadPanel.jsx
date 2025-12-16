@@ -5,6 +5,7 @@ import { usePermissionToast } from '../common/PermissionToast';
 
 const UploadPanel = () => {
   const { activeProject, roleForActiveProject } = useAuth();
+  const activeProjectId = activeProject?.id || activeProject || null;
   const resolvedRole = roleForActiveProject ? roleForActiveProject() : null;
   const normalizedRole = (resolvedRole || '').toLowerCase();
   const canUpload =
@@ -14,7 +15,7 @@ const UploadPanel = () => {
 
   const { Toast, showForbiddenToast } = usePermissionToast();
 
-  if (!activeProject) {
+  if (!activeProjectId) {
     return (
       <div data-testid="upload-panel-empty">
         Select a project to start uploading photos.

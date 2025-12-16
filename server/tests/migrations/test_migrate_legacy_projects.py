@@ -1,7 +1,7 @@
 import pytest
 
 from app.services.storage.supabase_client import supabase_client
-from server.scripts.migrate_legacy_projects import run
+from scripts.migrate_legacy_projects import run
 
 
 class FakeResult:

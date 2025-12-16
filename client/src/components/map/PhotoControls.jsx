@@ -13,6 +13,7 @@ const buildPhotoUrl = photoId =>
 
 const PhotoControls = ({ photoId, projectId: projectIdProp, onDeleted = () => {} }) => {
   const { roleForActiveProject, activeProject } = useAuth();
+  const activeProjectId = activeProject?.id || activeProject || null;
   const role = roleForActiveProject ? roleForActiveProject() : null;
   const normalizedRole = (role || '').toLowerCase();
   const canDownload = Boolean(role);
@@ -22,7 +23,7 @@ const PhotoControls = ({ photoId, projectId: projectIdProp, onDeleted = () => {}
     normalizedRole === 'owner';
   const canDelete = normalizedRole === 'owner' || normalizedRole === 'co-owner';
   const { Toast, showForbiddenToast } = usePermissionToast();
-  const projectId = projectIdProp || activeProject;
+  const projectId = projectIdProp || activeProjectId;
 
   const handleDelete = useCallback(async () => {
     if (!photoId || !canDelete) return;
