@@ -240,6 +240,7 @@ const PhotoMapLive = () => {
         setPhotos([]);
         return;
       }
+      const cached = cacheRef.current || {};
       const candidates = Array.from(
         new Set(
           [

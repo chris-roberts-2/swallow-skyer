@@ -37,7 +37,6 @@ const Header = () => {
                 <Link to="/map">Map</Link>
                 <Link to="/projects">Projects</Link>
                 {hasActiveProject && <Link to="/upload">Upload</Link>}
-                <Link to="/profile">Profile</Link>
               </>
             ) : (
               <>

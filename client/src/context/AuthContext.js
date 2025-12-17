@@ -93,6 +93,7 @@ const PROJECTS_STORAGE_KEY = 'projects';
 
 const defaultContextValue = {
   user: null,
+  profile: null,
   session: null,
   projects: [],
   activeProject: null,
@@ -105,6 +106,9 @@ const defaultContextValue = {
   login: async () => {},
   signup: async () => {},
   logout: async () => {},
+  refreshProfile: async () => {},
+  updateProfile: async () => {},
+  updateLogin: async () => {},
 };
 
 export const AuthContext = createContext(defaultContextValue);
@@ -116,9 +120,24 @@ const getInitialAuthState = () => {
   return {
     session: storedSession,
     user: storedSession?.user ?? null,
+    profile: null,
     activeProjectId: storedProject,
     projects: [],
     projectRoles: readStoredProjectRoles(),
+  };
+};
+
+const normalizeProfile = row => {
+  if (!row) return null;
+  return {
+    id: row.id || null,
+    email: row.email || '',
+    username: row.username || '',
+    firstName: row.first_name || '',
+    lastName: row.last_name || '',
+    company: row.company || '',
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
   };
 };
 
@@ -127,6 +146,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const isFetchingProjects = useRef(false);
   const lastProjectsFetchAt = useRef(0);
+  const isFetchingProfile = useRef(false);
 
   const activeProject =
     authState.projects.find(p => p.id === authState.activeProjectId) || null;
@@ -174,16 +194,167 @@ export const AuthProvider = ({ children }) => {
     [authState.activeProjectId, authState.projectRoles]
   );
 
+  const setProfileState = useCallback(profile => {
+    setAuthState(prev => ({ ...prev, profile }));
+  }, []);
+
+  const refreshProfile = useCallback(
+    async ({ ensureExists = false, userOverride = null } = {}) => {
+      const sessionUser = userOverride || authState.session?.user;
+      if (!sessionUser?.id) {
+        setProfileState(null);
+        return null;
+      }
+      if (isFetchingProfile.current) {
+        return authState.profile;
+      }
+      isFetchingProfile.current = true;
+
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', sessionUser.id)
+          .maybeSingle();
+
+        let row = data || null;
+        if (error && !(error?.code || '').startsWith('PGRST116')) {
+          throw error;
+        }
+
+        if (!row && ensureExists) {
+          const insertResp = await supabase
+            .from('users')
+            .upsert({
+              id: sessionUser.id,
+              email: sessionUser.email,
+            })
+            .select('*')
+            .single();
+          if (insertResp.error) {
+            throw insertResp.error;
+          }
+          row = insertResp.data || null;
+        }
+
+        const profile = normalizeProfile(row);
+        setProfileState(profile);
+        return profile;
+      } catch (err) {
+        console.error('Failed to load profile', err);
+        return null;
+      } finally {
+        isFetchingProfile.current = false;
+      }
+    },
+    [authState.profile, authState.session, setProfileState]
+  );
+
+  const updateProfile = useCallback(
+    async updates => {
+      const sessionUser = authState.session?.user;
+      if (!sessionUser?.id) {
+        throw new Error('Not authenticated');
+      }
+
+      const payload = {
+        id: sessionUser.id,
+        email: sessionUser.email,
+      };
+
+      if (typeof updates.firstName === 'string') {
+        payload.first_name = updates.firstName.trim();
+      }
+      if (typeof updates.lastName === 'string') {
+        payload.last_name = updates.lastName.trim();
+      }
+      if (typeof updates.company === 'string') {
+        payload.company = updates.company.trim();
+      }
+
+      const { data, error } = await supabase
+        .from('users')
+        .upsert(payload)
+        .select('*')
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      const profile = normalizeProfile(data);
+      setProfileState(profile);
+      return profile;
+    },
+    [authState.session, setProfileState]
+  );
+
   const syncSession = useCallback(nextSession => {
     persistSession(nextSession);
     setAuthState(prev => ({
       session: nextSession,
       user: nextSession?.user ?? null,
+      profile: nextSession ? prev?.profile ?? null : null,
       activeProjectId: prev?.activeProjectId ?? null,
       projects: prev?.projects ?? [],
       projectRoles: prev?.projectRoles ?? {},
     }));
   }, []);
+
+  const updateLogin = useCallback(
+    async ({ email, password }) => {
+      const sessionUser = authState.session?.user;
+      if (!sessionUser?.id) {
+        throw new Error('Not authenticated');
+      }
+
+      const payload = {};
+      const trimmedEmail = typeof email === 'string' ? email.trim() : '';
+      if (trimmedEmail && trimmedEmail !== sessionUser.email) {
+        payload.email = trimmedEmail;
+      }
+      if (typeof password === 'string' && password.length) {
+        payload.password = password;
+      }
+
+      if (!payload.email && !payload.password) {
+        return { user: sessionUser };
+      }
+
+      const { data, error } = await supabase.auth.updateUser(payload);
+      if (error) {
+        throw error;
+      }
+
+      const refreshed =
+        data?.session ??
+        (await supabase.auth.getSession())?.data?.session ??
+        null;
+      syncSession(refreshed);
+
+      if (payload.email) {
+        try {
+          const profileResp = await supabase
+            .from('users')
+            .upsert({
+              id: sessionUser.id,
+              email: payload.email,
+            })
+            .select('*')
+            .single();
+          if (profileResp.error) {
+            throw profileResp.error;
+          }
+          setProfileState(normalizeProfile(profileResp.data));
+        } catch (profileErr) {
+          console.error('Failed to sync profile email', profileErr);
+        }
+      }
+
+      return data;
+    },
+    [authState.session, setProfileState, syncSession]
+  );
 
   const refreshProjects = useCallback(
     async ({ redirectWhenEmpty = false } = {}) => {
@@ -301,34 +472,86 @@ export const AuthProvider = ({ children }) => {
     };
   }, [refreshProjects, syncSession]);
 
+  useEffect(() => {
+    if (authState.session?.user?.id) {
+      refreshProfile({ ensureExists: true });
+    } else {
+      setProfileState(null);
+    }
+  }, [authState.session, refreshProfile, setProfileState]);
+
   const login = useCallback(
     async (email, password) => {
+      const normalizedEmail = (email || '').trim();
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: normalizedEmail,
         password,
       });
       if (error) {
         throw error;
       }
       syncSession(data?.session ?? null);
+      await refreshProfile({ ensureExists: false, userOverride: data?.user });
       return data?.user ?? data?.session?.user ?? null;
     },
-    [syncSession]
+    [refreshProfile, syncSession]
   );
 
   const signup = useCallback(
-    async (email, password) => {
+    async (email, password, { firstName, lastName, company } = {}) => {
+      const normalizedEmail = (email || '').trim();
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
       });
       if (error) {
         throw error;
       }
-      syncSession(data?.session ?? null);
-      return data?.user ?? null;
+
+      let user = data?.user ?? null;
+      let session = data?.session ?? null;
+
+      // If signup didn't return a session (e.g., email confirmation disabled but no session),
+      // fall back to sign-in to auto-login.
+      if (!session) {
+        try {
+          const signin = await supabase.auth.signInWithPassword({
+            email: normalizedEmail,
+            password,
+          });
+          if (signin?.error) {
+            throw signin.error;
+          }
+          session = signin?.data?.session ?? null;
+          user = signin?.data?.user ?? user;
+        } catch (signinErr) {
+          console.error('Post-signup auto-login failed', signinErr);
+        }
+      }
+
+      if (user?.id) {
+        try {
+          await supabase
+            .from('users')
+            .upsert({
+              id: user.id,
+              email: normalizedEmail,
+              first_name: (firstName || '').trim(),
+              last_name: (lastName || '').trim(),
+              company: (company || '').trim(),
+            })
+            .select('*')
+            .single();
+        } catch (profileErr) {
+          console.error('Failed to store user profile on signup', profileErr);
+        }
+      }
+
+      syncSession(session);
+      await refreshProfile({ ensureExists: true, userOverride: user });
+      return user;
     },
-    [syncSession]
+    [refreshProfile, syncSession]
   );
 
   const logout = useCallback(async () => {
@@ -342,6 +565,7 @@ export const AuthProvider = ({ children }) => {
   const value = useMemo(
     () => ({
       user: authState.user,
+      profile: authState.profile,
       session: authState.session,
       projects: authState.projects,
       activeProject,
@@ -354,11 +578,15 @@ export const AuthProvider = ({ children }) => {
       login,
       signup,
       logout,
+      refreshProfile,
+      updateProfile,
+      updateLogin,
     }),
     [
       authState.projects,
       authState.session,
       authState.projectRoles,
+      authState.profile,
       isLoading,
       login,
       signup,
@@ -368,6 +596,9 @@ export const AuthProvider = ({ children }) => {
       roleForActiveProject,
       activeProject,
       refreshProjects,
+      refreshProfile,
+      updateProfile,
+      updateLogin,
     ]
   );
 

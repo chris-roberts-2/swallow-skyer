@@ -1,17 +1,28 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context';
 
 const ProfileMenu = () => {
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
+  const navigate = useNavigate();
 
   const avatarLabel = useMemo(() => {
-    if (!user?.email) {
-      return 'U';
+    const firstInitial = (profile?.firstName || '').trim().charAt(0);
+    const lastInitial = (profile?.lastName || '').trim().charAt(0);
+    if (firstInitial || lastInitial) {
+      return `${firstInitial}${lastInitial}`.toUpperCase() || 'U';
     }
-    return user.email.charAt(0).toUpperCase();
-  }, [user]);
+    const emailFallback = user?.email || '';
+    const emailInitials = emailFallback.replace(/@.*$/, '').slice(0, 2);
+    return (emailInitials || emailFallback.charAt(0) || 'U').toUpperCase();
+  }, [profile, user]);
+
+  const displayName = useMemo(() => {
+    const nameParts = [profile?.firstName, profile?.lastName].filter(Boolean);
+    return nameParts.length ? nameParts.join(' ') : '';
+  }, [profile, user]);
 
   useEffect(() => {
     const handleOutsideClick = event => {
@@ -33,6 +44,11 @@ const ProfileMenu = () => {
     }
   };
 
+  const handleGoToProfile = () => {
+    navigate('/profile');
+    setIsOpen(false);
+  };
+
   if (!user) {
     return null;
   }
@@ -48,7 +64,6 @@ const ProfileMenu = () => {
         <span className="profile-menu__avatar" aria-hidden="true">
           {avatarLabel}
         </span>
-        <span className="profile-menu__email">{user.email}</span>
       </button>
       {isOpen && (
         <div className="profile-menu__panel">
@@ -60,17 +75,32 @@ const ProfileMenu = () => {
               {avatarLabel}
             </span>
             <div>
-              <div className="profile-menu__label">Signed in as</div>
-              <div className="profile-menu__email">{user.email}</div>
+              <div className="profile-menu__label">
+                {displayName || user.email || 'User'}
+              </div>
+              {displayName ? (
+                <div className="profile-menu__email">
+                  {user.email}
+                </div>
+              ) : null}
             </div>
           </div>
-          <button
-            type="button"
-            className="profile-menu__logout"
-            onClick={handleLogout}
-          >
-            Logout
-          </button>
+          <div className="profile-menu__actions profile-menu__actions--inline">
+            <button
+              type="button"
+              className="profile-menu__action"
+              onClick={handleGoToProfile}
+            >
+              Profile
+            </button>
+            <button
+              type="button"
+              className="profile-menu__action"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+          </div>
         </div>
       )}
     </div>

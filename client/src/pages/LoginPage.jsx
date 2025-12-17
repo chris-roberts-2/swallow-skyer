@@ -7,6 +7,7 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [formValues, setFormValues] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -48,14 +49,23 @@ const LoginPage = () => {
         </label>
         <label htmlFor="password">
           Password
-          <input
-            id="password"
-            name="password"
-            type="password"
-            value={formValues.password}
-            onChange={handleChange}
-            required
-          />
+          <div className="auth-input-with-toggle">
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              value={formValues.password}
+              onChange={handleChange}
+              required
+            />
+            <button
+              type="button"
+              className="auth-toggle"
+              onClick={() => setShowPassword(prev => !prev)}
+            >
+              {showPassword ? 'Hide' : 'Show'}
+            </button>
+          </div>
         </label>
         {error ? <div className="auth-error">{error}</div> : null}
         <button type="submit" disabled={isSubmitting}>

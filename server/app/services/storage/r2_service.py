@@ -32,6 +32,31 @@ class R2StorageService:
                 aws_secret_access_key=self.secret_key,
             )
 
+    def _public_base_with_bucket(self) -> Optional[str]:
+        """
+        Ensure the public base URL includes the bucket path when required.
+
+        Cloudflare public endpoints (pub-*.r2.dev or *.r2.cloudflarestorage.com)
+        expect the bucket name as a path segment. If the configured public base
+        points to those domains and lacks the bucket, append it so generated
+        links resolve correctly.
+        """
+        if not self.public_url:
+            return None
+
+        base = self.public_url.rstrip("/")
+        if not self.bucket_name:
+            return base
+
+        normalized = base.lower()
+        bucket_segment = f"/{self.bucket_name.lower()}"
+        if (
+            ("r2.dev" in normalized or "r2.cloudflarestorage.com" in normalized)
+            and bucket_segment not in normalized
+        ):
+            return f"{base}/{self.bucket_name}"
+        return base
+
     def upload_file(self, file: BinaryIO, key: str) -> bool:
         """Upload file to R2 storage."""
         try:
@@ -44,8 +69,9 @@ class R2StorageService:
     def get_file_url(self, key: str) -> Optional[str]:
         """Get public URL for file in R2 storage."""
         try:
-            if self.public_url:
-                return f"{self.public_url.rstrip('/')}/{key}"
+            public_base = self._public_base_with_bucket()
+            if public_base:
+                return f"{public_base}/{key}"
             return f"{self.endpoint_url}/{self.bucket_name}/{key}"
         except Exception as e:
             print(f"Error generating file URL: {e}")
