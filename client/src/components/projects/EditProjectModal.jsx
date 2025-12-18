@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
-const CreateProjectModal = ({ open, onClose, onSubmit }) => {
-  const [name, setName] = useState('');
-  const [address, setAddress] = useState('');
+const EditProjectModal = ({ open, onClose, onSubmit, initial }) => {
+  const [name, setName] = useState(initial?.name || '');
+  const [address, setAddress] = useState(initial?.address || '');
 
   useEffect(() => {
     if (open) {
-      setName('');
-      setAddress('');
+      setName(initial?.name || '');
+      setAddress(initial?.address || '');
     }
-  }, [open]);
+  }, [open, initial]);
 
   if (!open) return null;
 
@@ -48,8 +48,11 @@ const CreateProjectModal = ({ open, onClose, onSubmit }) => {
           maxWidth: '90%',
         }}
       >
-        <h3>Create Project</h3>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <h3>Edit Project</h3>
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+        >
           <label>
             Name (required)
             <input
@@ -74,7 +77,7 @@ const CreateProjectModal = ({ open, onClose, onSubmit }) => {
             <button type="button" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit">Create</button>
+            <button type="submit">Save</button>
           </div>
         </form>
       </div>
@@ -82,4 +85,5 @@ const CreateProjectModal = ({ open, onClose, onSubmit }) => {
   );
 };
 
-export default CreateProjectModal;
+export default EditProjectModal;
+

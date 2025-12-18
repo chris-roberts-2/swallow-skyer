@@ -1,50 +1,223 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 
-const ProjectList = ({ projects, activeProjectId, onActivate }) => {
+const menuItemStyle = {
+  width: '100%',
+  textAlign: 'left',
+  padding: '8px 12px',
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  fontSize: 14,
+};
+
+const ProjectList = ({
+  projects,
+  activeProjectId,
+  onActivate,
+  onEdit,
+  onMembers,
+  onDelete,
+  onUnjoin,
+}) => {
   if (!projects || projects.length === 0) {
     return <div>No projects yet.</div>;
   }
 
-  return (
-    <div data-testid="project-list">
-      {projects.map(project => {
-        const isActive = project.id === activeProjectId;
-        return (
-          <div
-            key={project.id}
-            style={{
-              border: '1px solid #ddd',
-              borderRadius: 6,
-              padding: 12,
-              marginBottom: 8,
-              background: isActive ? '#f0f6ff' : '#fff',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <div>
-              <div style={{ fontWeight: 600 }}>{project.name}</div>
-              {project.description && (
-                <div style={{ color: '#666' }}>{project.description}</div>
-              )}
-              <div style={{ fontSize: 12, color: '#555' }}>
-                Role: {project.role || 'member'}
-              </div>
-              {isActive && (
-                <div style={{ fontSize: 12, color: '#0070f3' }}>Active</div>
-              )}
-            </div>
-            <div>
-              {!isActive && (
-                <button type="button" onClick={() => onActivate(project)}>
-                  Set Active
-                </button>
-              )}
-            </div>
+  const activeProject = projects.find(p => p.id === activeProjectId);
+  const otherProjects = projects.filter(p => p.id !== activeProjectId);
+  const [menuOpenId, setMenuOpenId] = useState(null);
+
+  const closeMenu = useCallback(() => setMenuOpenId(null), []);
+
+  useEffect(() => {
+    const handler = e => {
+      if (!e.target.closest('.project-card-menu')) {
+        closeMenu();
+      }
+    };
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [closeMenu]);
+
+  const cardStyle = isActive => ({
+    border: '1px solid #e5e7eb',
+    borderRadius: 12,
+    padding: '12px 14px',
+    textAlign: 'left',
+    background: isActive ? '#f4f7ff' : '#fff',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+    cursor: 'pointer',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    transition: 'transform 120ms ease, box-shadow 120ms ease',
+    position: 'relative',
+  });
+
+  const renderCard = (project, isActive = false) => {
+    const role = (project.role || '').toLowerCase();
+    const isOwner = role === 'owner' || role === 'co-owner';
+
+    return (
+      <div
+        key={project.id}
+        role="button"
+        tabIndex={0}
+        onClick={() => {
+          closeMenu();
+          onActivate(project);
+        }}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            closeMenu();
+            onActivate(project);
+          }
+        }}
+        style={cardStyle(isActive)}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'none';
+          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>{project.name}</div>
+            {project.address ? (
+              <div style={{ color: '#6b7280', fontSize: 12 }}>{project.address}</div>
+            ) : null}
           </div>
-        );
-      })}
+          <div className="project-card-menu" style={{ position: 'relative' }}>
+            <button
+              type="button"
+              aria-label="Project actions"
+              onClick={e => {
+                e.stopPropagation();
+                setMenuOpenId(prev => (prev === project.id ? null : project.id));
+              }}
+              style={{
+                border: '1px solid #e5e7eb',
+                borderRadius: '50%',
+                width: 28,
+                height: 28,
+                background: '#fff',
+                cursor: 'pointer',
+                lineHeight: '24px',
+              }}
+            >
+              ⋮
+            </button>
+            {menuOpenId === project.id ? (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 32,
+                  right: 0,
+                  background: '#fff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 8,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                  zIndex: 5,
+                  minWidth: 180,
+                  padding: '6px 0',
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                {isOwner ? (
+                  <>
+                    <button
+                      type="button"
+                      style={menuItemStyle}
+                      onClick={() => {
+                        closeMenu();
+                        onEdit(project);
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      style={menuItemStyle}
+                      onClick={() => {
+                        closeMenu();
+                        onMembers(project);
+                      }}
+                    >
+                      Project Members
+                    </button>
+                    <button
+                      type="button"
+                      style={menuItemStyle}
+                      onClick={() => {
+                        closeMenu();
+                        onDelete(project);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      style={menuItemStyle}
+                      onClick={() => {
+                        closeMenu();
+                        onMembers(project);
+                      }}
+                    >
+                      Project Members
+                    </button>
+                    <button
+                      type="button"
+                      style={menuItemStyle}
+                      onClick={() => {
+                        closeMenu();
+                        onUnjoin(project);
+                      }}
+                    >
+                      Unjoin
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: 12, color: '#6b7280' }}>{project.role || 'member'}</div>
+          {isActive ? (
+            <span style={{ fontSize: 12, color: '#2563eb', fontWeight: 600 }}>
+              Active
+            </span>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div data-testid="project-list" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {activeProject ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0, 1fr))' }}>
+          {renderCard(activeProject, true)}
+        </div>
+      ) : null}
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+          gap: 16,
+          width: '100%',
+        }}
+      >
+        {otherProjects.map(project => renderCard(project, false))}
+      </div>
     </div>
   );
 };

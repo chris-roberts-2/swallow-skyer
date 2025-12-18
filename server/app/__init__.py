@@ -110,7 +110,7 @@ def create_app(config_name=None):
         resources={r"/*": {"origins": origin_list}},
         supports_credentials=False,
         allow_headers=["Content-Type", "Authorization"],
-        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
 
     # Import models to ensure they are registered

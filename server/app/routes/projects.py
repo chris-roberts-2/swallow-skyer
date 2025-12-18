@@ -35,7 +35,7 @@ def create_project():
 
     payload = request.get_json() or {}
     name = (payload.get("name") or "").strip()
-    description = payload.get("description")
+    address = payload.get("address")
     email = payload.get("email") or payload.get("owner_email")
 
     if not name:
@@ -44,8 +44,9 @@ def create_project():
     try:
         project = supabase_client.create_project(
             name=name,
-            description=description,
+            description=None,
             owner_id=user_id,
+            address=address,
         )
         supabase_client.add_project_member(
             project_id=project["id"],
@@ -106,7 +107,8 @@ def update_project(project_id):
 
     payload = request.get_json() or {}
     name = payload.get("name")
-    description = payload.get("description")
+    description = None  # deprecated
+    address = payload.get("address")
     if name is not None:
         name = name.strip()
         if not name:
@@ -116,7 +118,7 @@ def update_project(project_id):
         updated = supabase_client.update_project(
             project_id=project_id,
             name=name,
-            description=description,
+            address=address,
         )
         if not updated:
             return jsonify({"error": "Project not found"}), 404
@@ -139,9 +141,71 @@ def delete_project(project_id):
         return jsonify(payload), status_code
 
     try:
-        deleted = supabase_client.delete_project(project_id)
-        if not deleted:
+        updated = supabase_client.update_project(
+            project_id=project_id, show_on_projects=False
+        )
+        if not updated:
             return jsonify({"error": "Project not found"}), 404
-        return jsonify({"status": "deleted"})
+        return jsonify({"status": "hidden"})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@projects_bp.route("/<project_id>/members", methods=["GET"])
+@jwt_required
+def list_project_members(project_id):
+    try:
+        user_id = _require_auth()
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 401
+
+    permission = require_role(project_id, VIEW_ROLES, user_id=user_id)
+    if isinstance(permission, tuple):
+        payload, status_code = permission
+        return jsonify(payload), status_code
+
+    try:
+        members = supabase_client.list_project_members_with_profile(project_id)
+        return jsonify({"members": members})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@projects_bp.route("/<project_id>/unjoin", methods=["POST"])
+@jwt_required
+def unjoin_project(project_id):
+    try:
+        user_id = _require_auth()
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 401
+
+    permission = require_role(project_id, VIEW_ROLES, user_id=user_id)
+    if isinstance(permission, tuple):
+        payload, status_code = permission
+        return jsonify(payload), status_code
+
+    # Prevent owners from leaving
+    role = supabase_client.get_project_role(project_id, user_id)
+    if role in {"owner", "co-owner"}:
+        return jsonify({"error": "Owners cannot unjoin their project"}), 400
+
+    try:
+        removed = supabase_client.remove_project_member(project_id, user_id)
+        return jsonify({"status": "removed" if removed else "not_found"})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@projects_bp.route("/<project_id>/access", methods=["POST"])
+@jwt_required
+def touch_project_access(project_id):
+    try:
+        user_id = _require_auth()
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 401
+
+    try:
+        supabase_client.touch_project_access(project_id, user_id)
+        return jsonify({"status": "ok"})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500

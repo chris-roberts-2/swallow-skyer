@@ -19,6 +19,7 @@ import {
   UploadPage,
   ProfilePage,
   ProjectsPage,
+  ProjectMembersPage,
 } from './pages';
 import PublicProjectView from './pages/PublicProjectView';
 
@@ -96,6 +97,14 @@ export function AppRoutes() {
             element={
               <AuthGuard>
                 <ProjectsPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/projects/:id/members"
+            element={
+              <AuthGuard>
+                <ProjectMembersPage />
               </AuthGuard>
             }
           />

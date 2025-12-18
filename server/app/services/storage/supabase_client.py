@@ -5,6 +5,7 @@ Supabase client for metadata operations.
 import os
 import re
 import time
+import datetime
 from copy import deepcopy
 from typing import Dict, Any, Optional, List, Tuple, Sequence
 from supabase import create_client, Client
@@ -574,7 +575,12 @@ class SupabaseClient:
     # ------------------------------------------------------------------
 
     def create_project(
-        self, name: str, owner_id: str, description: Optional[str] = None
+        self,
+        name: str,
+        owner_id: str,
+        description: Optional[str] = None,
+        address: Optional[str] = None,
+        show_on_projects: Optional[bool] = None,
     ):
         if not self.client:
             raise RuntimeError("Supabase client not initialized")
@@ -590,12 +596,20 @@ class SupabaseClient:
         }
         if description is not None:
             payload["description"] = description
+        if address is not None:
+            payload["address"] = address
+        if show_on_projects is not None:
+            payload["show_on_projects"] = show_on_projects
         response = self.client.table("projects").insert(payload).execute()
         if not response.data:
             raise RuntimeError("Failed to create project")
         project = response.data[0]
         if description is not None:
             project["description"] = description
+        if address is not None:
+            project["address"] = address
+        if show_on_projects is not None:
+            project["show_on_projects"] = show_on_projects
         return project
 
     def ensure_user_exists(self, user_id: str, email: Optional[str] = None):
@@ -623,8 +637,11 @@ class SupabaseClient:
             "project_id": project_id,
             "user_id": user_id,
             "role": role,
+            "last_accessed_at": datetime.datetime.utcnow().isoformat() + "Z",
         }
-        response = self.client.table("project_members").insert(payload).execute()
+        response = self.client.table("project_members").upsert(
+            payload, on_conflict="project_id,user_id"
+        ).execute()
         return response.data[0] if response.data else None
 
     def list_projects_for_user(self, user_id: str) -> List[Dict[str, Any]]:
@@ -632,7 +649,7 @@ class SupabaseClient:
             raise RuntimeError("Supabase client not initialized")
         membership_response = (
             self.client.table("project_members")
-            .select("project_id, role")
+            .select("project_id, role, last_accessed_at")
             .eq("user_id", user_id)
             .execute()
         )
@@ -641,13 +658,28 @@ class SupabaseClient:
         if not project_ids:
             return []
         response = (
-            self.client.table("projects").select("*").in_("id", project_ids).execute()
+            self.client.table("projects")
+            .select("*")
+            .in_("id", project_ids)
+            .eq("show_on_projects", True)
+            .execute()
         )
         projects = response.data or []
         role_map = {row["project_id"]: row["role"] for row in membership}
+        access_map = {
+            row["project_id"]: row.get("last_accessed_at") for row in membership
+        }
         for project in projects:
             project["role"] = role_map.get(project["id"])
-        return projects
+            project["last_accessed_at"] = access_map.get(project["id"])
+
+        # Sort by last accessed desc, fallback created_at desc
+        def sort_key(item):
+            return (
+                item.get("last_accessed_at") or item.get("updated_at") or item.get("created_at") or ""
+            )
+
+        return sorted(projects, key=sort_key, reverse=True)
 
     def get_project(self, project_id: str) -> Optional[Dict[str, Any]]:
         if not self.client:
@@ -661,15 +693,18 @@ class SupabaseClient:
         self,
         project_id: str,
         name: Optional[str] = None,
-        description: Optional[str] = None,
+        address: Optional[str] = None,
+        show_on_projects: Optional[bool] = None,
     ) -> Optional[Dict[str, Any]]:
         if not self.client:
             raise RuntimeError("Supabase client not initialized")
         fields = {}
         if name is not None:
             fields["name"] = name
-        if description is not None:
-            fields["description"] = description
+        if address is not None:
+            fields["address"] = address
+        if show_on_projects is not None:
+            fields["show_on_projects"] = show_on_projects
         if not fields:
             return self.get_project(project_id)
         response = (
@@ -682,6 +717,15 @@ class SupabaseClient:
             raise RuntimeError("Supabase client not initialized")
         response = self.client.table("projects").delete().eq("id", project_id).execute()
         return bool(response.data)
+
+    def touch_project_access(self, project_id: str, user_id: str):
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        now_iso = datetime.datetime.utcnow().isoformat() + "Z"
+        # Update only; avoid duplicate key errors. Rows are created when membership is added.
+        self.client.table("project_members").update(
+            {"last_accessed_at": now_iso}
+        ).eq("project_id", project_id).eq("user_id", user_id).execute()
 
     def get_project_role(self, project_id: str, user_id: str) -> Optional[str]:
         if not self.client:
@@ -707,6 +751,44 @@ class SupabaseClient:
             .execute()
         )
         return response.data or []
+
+    def list_project_members_with_profile(
+        self, project_id: str
+    ) -> List[Dict[str, Any]]:
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        members_resp = (
+            self.client.table("project_members")
+            .select("user_id, role")
+            .eq("project_id", project_id)
+            .execute()
+        )
+        members = members_resp.data or []
+        if not members:
+            return []
+        user_ids = [m["user_id"] for m in members]
+        profiles_resp = (
+            self.client.table("users")
+            .select("id, email, first_name, last_name, company")
+            .in_("id", user_ids)
+            .execute()
+        )
+        profiles = profiles_resp.data or []
+        profile_map = {p["id"]: p for p in profiles}
+        result = []
+        for m in members:
+            user_profile = profile_map.get(m["user_id"], {})
+            result.append(
+                {
+                    "user_id": m["user_id"],
+                    "role": m.get("role"),
+                    "email": user_profile.get("email"),
+                    "first_name": user_profile.get("first_name"),
+                    "last_name": user_profile.get("last_name"),
+                    "company": user_profile.get("company"),
+                }
+            )
+        return result
 
     def update_project_member_role(
         self, project_id: str, user_id: str, role: str
