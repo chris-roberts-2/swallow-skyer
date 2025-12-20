@@ -8,6 +8,7 @@ const menuItemStyle = {
   border: 'none',
   cursor: 'pointer',
   fontSize: 14,
+  transition: 'background 120ms ease',
 };
 
 const ProjectList = ({
@@ -39,7 +40,7 @@ const ProjectList = ({
     return () => document.removeEventListener('click', handler);
   }, [closeMenu]);
 
-  const cardStyle = isActive => ({
+  const cardStyle = (isActive, isMenuOpen) => ({
     border: '1px solid #e5e7eb',
     borderRadius: 12,
     padding: '12px 14px',
@@ -52,11 +53,15 @@ const ProjectList = ({
     gap: 8,
     transition: 'transform 120ms ease, box-shadow 120ms ease',
     position: 'relative',
+    overflow: 'visible',
+    zIndex: isMenuOpen ? 50 : isActive ? 5 : 1,
   });
 
   const renderCard = (project, isActive = false) => {
     const role = (project.role || '').toLowerCase();
     const isOwner = role === 'owner' || role === 'co-owner';
+
+    const isMenuOpen = menuOpenId === project.id;
 
     return (
       <div
@@ -74,7 +79,7 @@ const ProjectList = ({
             onActivate(project);
           }
         }}
-        style={cardStyle(isActive)}
+        style={cardStyle(isActive, isMenuOpen)}
         onMouseEnter={e => {
           e.currentTarget.style.transform = 'translateY(-2px)';
           e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
@@ -91,7 +96,10 @@ const ProjectList = ({
               <div style={{ color: '#6b7280', fontSize: 12 }}>{project.address}</div>
             ) : null}
           </div>
-          <div className="project-card-menu" style={{ position: 'relative' }}>
+          <div
+            className="project-card-menu"
+            style={{ position: 'relative', zIndex: isMenuOpen ? 60 : 1 }}
+          >
             <button
               type="button"
               aria-label="Project actions"
@@ -111,7 +119,7 @@ const ProjectList = ({
             >
               ⋮
             </button>
-            {menuOpenId === project.id ? (
+            {isMenuOpen ? (
               <div
                 style={{
                   position: 'absolute',
@@ -121,7 +129,7 @@ const ProjectList = ({
                   border: '1px solid #e5e7eb',
                   borderRadius: 8,
                   boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                  zIndex: 5,
+                  zIndex: 70,
                   minWidth: 180,
                   padding: '6px 0',
                 }}
@@ -132,6 +140,12 @@ const ProjectList = ({
                     <button
                       type="button"
                       style={menuItemStyle}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = '#f5f7fb';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
                       onClick={() => {
                         closeMenu();
                         onEdit(project);
@@ -142,6 +156,12 @@ const ProjectList = ({
                     <button
                       type="button"
                       style={menuItemStyle}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = '#f5f7fb';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
                       onClick={() => {
                         closeMenu();
                         onMembers(project);
@@ -151,7 +171,13 @@ const ProjectList = ({
                     </button>
                     <button
                       type="button"
-                      style={menuItemStyle}
+                      style={{ ...menuItemStyle, color: '#dc2626' }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = '#fef2f2';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
                       onClick={() => {
                         closeMenu();
                         onDelete(project);
@@ -165,6 +191,12 @@ const ProjectList = ({
                     <button
                       type="button"
                       style={menuItemStyle}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = '#f5f7fb';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
                       onClick={() => {
                         closeMenu();
                         onMembers(project);
@@ -175,6 +207,12 @@ const ProjectList = ({
                     <button
                       type="button"
                       style={menuItemStyle}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = '#f5f7fb';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
                       onClick={() => {
                         closeMenu();
                         onUnjoin(project);

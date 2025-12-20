@@ -88,14 +88,14 @@ const ProfileMenu = () => {
           <div className="profile-menu__actions profile-menu__actions--inline">
             <button
               type="button"
-              className="profile-menu__action"
+              className="profile-menu__action btn-format-1"
               onClick={handleGoToProfile}
             >
               Profile
             </button>
             <button
               type="button"
-              className="profile-menu__action"
+              className="profile-menu__action btn-format-1"
               onClick={handleLogout}
             >
               Logout

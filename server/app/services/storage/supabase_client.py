@@ -630,6 +630,39 @@ class SupabaseClient:
         response = self.client.table("users").upsert(payload).execute()
         return response.data[0] if response.data else payload
 
+    def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch a user by email (case-insensitive). Returns None when not found.
+        """
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        if not email:
+            return None
+        normalized = email.strip()
+        response = (
+            self.client.table("users")
+            .select("*")
+            .ilike("email", normalized)
+            .limit(1)
+            .maybe_single()
+            .execute()
+        )
+        return response.data if hasattr(response, "data") else None
+
+    def create_user_with_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """
+        Create a user row with the given email. Supabase will generate the ID.
+        """
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        if not email:
+            raise ValueError("Email is required to create a user")
+        payload = {"email": email.strip()}
+        response = (
+            self.client.table("users").insert(payload).select("*").maybe_single().execute()
+        )
+        return response.data if hasattr(response, "data") else None
+
     def add_project_member(self, project_id: str, user_id: str, role: str):
         if not self.client:
             raise RuntimeError("Supabase client not initialized")

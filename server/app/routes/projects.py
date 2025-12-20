@@ -171,6 +171,64 @@ def list_project_members(project_id):
         return jsonify({"error": str(exc)}), 500
 
 
+@projects_bp.route("/<project_id>/members/invite", methods=["POST"])
+@jwt_required
+def invite_project_member(project_id):
+    try:
+        user_id = _require_auth()
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 401
+
+    permission = require_role(project_id, OWNER_ROLES, user_id=user_id)
+    if isinstance(permission, tuple):
+        payload, status_code = permission
+        return jsonify(payload), status_code
+
+    actor_role = (permission.get("role") or "").lower()
+
+    payload = request.get_json() or {}
+    raw_email = (payload.get("email") or "").strip()
+    requested_role = (payload.get("role") or "").strip().lower()
+
+    role_map = {
+        "administrator": "co-owner",
+        "admin": "co-owner",
+        "co-owner": "co-owner",
+        "editor": "collaborator",
+        "collaborator": "collaborator",
+        "viewer": "viewer",
+        "owner": "owner",
+    }
+    resolved_role = role_map.get(requested_role)
+
+    if not raw_email or not resolved_role:
+        return jsonify({"error": "Email and valid role are required"}), 400
+
+    if resolved_role == "owner" and actor_role != "owner":
+        return jsonify({"error": "Only owners may assign owner role"}), 403
+    if resolved_role == "co-owner" and actor_role not in {"owner", "co-owner"}:
+        return jsonify({"error": "Only owners and co-owners may assign co-owner"}), 403
+
+    try:
+        target_user = supabase_client.get_user_by_email(raw_email)
+        if not target_user:
+            target_user = supabase_client.create_user_with_email(raw_email)
+        target_user_id = target_user.get("id") if target_user else None
+        if not target_user_id:
+            return jsonify({"error": "Failed to resolve or create user"}), 500
+
+        if supabase_client.get_project_role(project_id, target_user_id):
+            return jsonify({"error": "Member already exists"}), 400
+
+        supabase_client.add_project_member(project_id, target_user_id, resolved_role)
+
+        members = supabase_client.list_project_members_with_profile(project_id)
+        member = next((m for m in members if m.get("user_id") == target_user_id), None)
+        return jsonify({"member": member}), 201
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
 @projects_bp.route("/<project_id>/unjoin", methods=["POST"])
 @jwt_required
 def unjoin_project(project_id):

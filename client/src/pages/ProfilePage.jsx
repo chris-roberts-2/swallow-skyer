@@ -130,28 +130,24 @@ const ProfilePage = () => {
       <div className="profile-section">
         <div className="profile-section__header">
           <h3>User</h3>
-          <button
-            type="button"
-            className="profile-section__edit profile-section__edit--ghost"
-            onClick={() => {
-              setIsEditingUser(prev => {
-                const next = !prev;
-                if (next) {
-                  // entering edit: seed with current profile values
-                  setUserForm({
-                    firstName: profile?.firstName || '',
-                    lastName: profile?.lastName || '',
-                    company: profile?.company || '',
-                  });
-                }
-                return next;
-              });
-              setError('');
-              setStatus('');
-            }}
-          >
-            {isEditingUser ? 'Cancel' : 'Edit'}
-          </button>
+          {!isEditingUser ? (
+            <button
+              type="button"
+              className="profile-section__edit profile-section__edit--ghost"
+              onClick={() => {
+                setUserForm({
+                  firstName: profile?.firstName || '',
+                  lastName: profile?.lastName || '',
+                  company: profile?.company || '',
+                });
+                setIsEditingUser(true);
+                setError('');
+                setStatus('');
+              }}
+            >
+              Edit
+            </button>
+          ) : null}
         </div>
         <div className="profile-section__body">
           <div className={`profile-card ${isEditingUser ? 'profile-card--edit' : ''}`}>
@@ -220,6 +216,7 @@ const ProfilePage = () => {
                   type="button"
                   onClick={handleSaveUser}
                   disabled={isSaving}
+                  className="btn-format-1"
                 >
                   Save
                 </button>
@@ -235,6 +232,7 @@ const ProfilePage = () => {
                       company: profile?.company || '',
                     });
                   }}
+                  className="btn-format-1"
                 >
                   Cancel
                 </button>
@@ -247,26 +245,23 @@ const ProfilePage = () => {
       <div className="profile-section">
         <div className="profile-section__header">
           <h3>Login</h3>
-          <button
-            type="button"
-            className="profile-section__edit profile-section__edit--ghost"
-            onClick={() => {
-              setIsEditingLogin(prev => {
-                const next = !prev;
-                if (next) {
-                  setLoginForm({
-                    email: profile?.email || user?.email || '',
-                    password: '',
-                  });
-                }
-                return next;
-              });
-              setError('');
-              setStatus('');
-            }}
-          >
-            {isEditingLogin ? 'Cancel' : 'Edit'}
-          </button>
+          {!isEditingLogin ? (
+            <button
+              type="button"
+              className="profile-section__edit profile-section__edit--ghost"
+              onClick={() => {
+                setLoginForm({
+                  email: profile?.email || user?.email || '',
+                  password: '',
+                });
+                setIsEditingLogin(true);
+                setError('');
+                setStatus('');
+              }}
+            >
+              Edit
+            </button>
+          ) : null}
         </div>
         <div className="profile-section__body">
           <div className={`profile-card ${isEditingLogin ? 'profile-card--edit' : ''}`}>
@@ -314,6 +309,7 @@ const ProfilePage = () => {
                   type="button"
                   onClick={handleSaveLogin}
                   disabled={isSaving}
+                  className="btn-format-1"
                 >
                   Save
                 </button>
@@ -328,6 +324,7 @@ const ProfilePage = () => {
                       password: '',
                     });
                   }}
+                  className="btn-format-1"
                 >
                   Cancel
                 </button>

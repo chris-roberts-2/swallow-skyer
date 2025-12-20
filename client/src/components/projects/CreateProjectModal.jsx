@@ -71,10 +71,12 @@ const CreateProjectModal = ({ open, onClose, onSubmit }) => {
             />
           </label>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button type="button" onClick={onClose}>
+            <button type="button" onClick={onClose} className="btn-format-1">
               Cancel
             </button>
-            <button type="submit">Create</button>
+            <button type="submit" className="btn-format-1">
+              Create
+            </button>
           </div>
         </form>
       </div>
