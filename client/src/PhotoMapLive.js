@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import UploadForm from './components/UploadForm';
 import { useAuth } from './context';
 import PhotoStack from './components/map/PhotoStack';
 
@@ -20,6 +19,19 @@ const r2PublicBase =
   '';
 const CACHE_TTL_MS = 0; // disable caching to ensure fresh fetches
 const EARTH_RADIUS_METERS = 6_371_000;
+
+const STANDARD_STYLE_URL =
+  'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+
+const SATELLITE_RASTER_SOURCE = {
+  type: 'raster',
+  tiles: [
+    'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  ],
+  tileSize: 256,
+  attribution:
+    'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+};
 
 const toRadians = value => (value * Math.PI) / 180;
 
@@ -131,8 +143,62 @@ const buildClusters = (photoList, thresholdMeters) => {
   return clusters;
 };
 
+class BasemapToggleControl {
+  constructor({ onSelect, getActive }) {
+    this._onSelect = onSelect;
+    this._getActive = getActive;
+    this._container = null;
+  }
+
+  onAdd(map) {
+    this._map = map;
+    const container = document.createElement('div');
+    container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+
+    const addButton = (label, value) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = label;
+      btn.style.padding = '0 8px';
+      btn.style.fontSize = '12px';
+      btn.style.minWidth = '64px';
+      btn.onclick = () => this._onSelect(value);
+      container.appendChild(btn);
+      return btn;
+    };
+
+    this._standardBtn = addButton('Standard', 'standard');
+    this._satelliteBtn = addButton('Satellite', 'satellite');
+    this._container = container;
+    this._updateActive();
+    return container;
+  }
+
+  onRemove() {
+    if (this._container && this._container.parentNode) {
+      this._container.parentNode.removeChild(this._container);
+    }
+    this._map = undefined;
+  }
+
+  _updateActive() {
+    const active = this._getActive();
+    const activeClass = 'maplibregl-ctrl-active';
+    if (this._standardBtn) {
+      this._standardBtn.classList.toggle(activeClass, active === 'standard');
+    }
+    if (this._satelliteBtn) {
+      this._satelliteBtn.classList.toggle(activeClass, active === 'satellite');
+    }
+  }
+
+  setActive() {
+    this._updateActive();
+  }
+}
+
 const PhotoMapLive = () => {
-  const { activeProject } = useAuth();
+  const { activeProject, projects, setActiveProject } = useAuth();
   const activeProjectId = activeProject?.id || activeProject || null;
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
@@ -144,6 +210,47 @@ const PhotoMapLive = () => {
   const hasAutoFitRef = useRef(false);
   const userInteractedRef = useRef(false);
   const [refreshCounter, setRefreshCounter] = useState(0);
+  const activeStyleRef = useRef('standard');
+  const satelliteHiddenLayersRef = useRef({});
+  const satelliteStyledSymbolsRef = useRef({});
+  const [projectToggleWidth, setProjectToggleWidth] = useState(180);
+  const projectSelectRef = useRef(null);
+
+  const selectedProjectName = useMemo(() => {
+    const current =
+      projects.find(p => p.id === activeProjectId)?.name || projects[0]?.name || '';
+    return current || '';
+  }, [projects, activeProjectId]);
+
+  const selectedProjectCoord = useMemo(() => {
+    const current = projects.find(p => p.id === activeProjectId);
+    const coord =
+      current?.address_coord ||
+      current?.addressCoord ||
+      current?.address_coordinates ||
+      current?.addressCoordinates ||
+      null;
+    if (!coord) return null;
+    const lat = Number(coord.lat ?? coord.latitude);
+    const lon = Number(coord.lon ?? coord.lng ?? coord.longitude);
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      return { lat, lon };
+    }
+    return null;
+  }, [projects, activeProjectId]);
+
+  useEffect(() => {
+    // Dynamically size the project toggle to fit the selected text.
+    const selectEl = projectSelectRef.current;
+    if (!selectEl) return;
+    // Reset to auto to measure intrinsic width.
+    selectEl.style.width = 'auto';
+    const scrollWidth = selectEl.scrollWidth;
+    const buffer = 18; // for arrow and breathing room
+    const computed = scrollWidth + buffer;
+    const clamped = Math.min(Math.max(computed, 140), window.innerWidth * 0.9);
+    setProjectToggleWidth(clamped);
+  }, [selectedProjectName, projects.length]);
 
   const clearMarkers = useCallback(() => {
     markersRef.current.forEach(marker => marker.remove());
@@ -159,10 +266,9 @@ const PhotoMapLive = () => {
     ];
     mapInstance.current = new maplibregl.Map({
       container: mapRef.current,
-      style: 'https://demotiles.maplibre.org/style.json',
+      style: STANDARD_STYLE_URL,
       center: [-98.5, 39.8], // USA center
       zoom: 3.5,
-      maxBounds: usaBounds,
     });
     if (typeof mapInstance.current?.addControl === 'function') {
       mapInstance.current.addControl(
@@ -200,6 +306,226 @@ const PhotoMapLive = () => {
       mapInstance.current.on('pitchstart', setInteracted);
       mapInstance.current.__setInteracted = setInteracted;
     }
+
+    const applyStyle = styleKey => {
+      const map = mapInstance.current;
+      if (!map) return;
+      const center = map.getCenter();
+      const zoom = map.getZoom();
+      const bearing = map.getBearing();
+      const pitch = map.getPitch();
+      activeStyleRef.current = styleKey;
+      const targetStyle = STANDARD_STYLE_URL;
+
+      const ensureSatelliteHybrid = () => {
+        try {
+          const style = map.getStyle();
+          if (style && Array.isArray(style.layers)) {
+            const backgroundLayer = style.layers.find(l => l.type === 'background');
+            if (backgroundLayer) {
+              map.setPaintProperty(backgroundLayer.id, 'background-color', 'rgba(0,0,0,0)');
+            }
+          }
+          if (!map.getSource('satellite-raster')) {
+            map.addSource('satellite-raster', SATELLITE_RASTER_SOURCE);
+          }
+          const firstLayerId = map.getStyle()?.layers?.[0]?.id;
+          if (!map.getLayer('satellite-raster')) {
+            if (firstLayerId) {
+              map.addLayer(
+                {
+                  id: 'satellite-raster',
+                  type: 'raster',
+                  source: 'satellite-raster',
+                  minzoom: 0,
+                  maxzoom: 22,
+                },
+                firstLayerId
+              );
+            } else {
+              map.addLayer({
+                id: 'satellite-raster',
+                type: 'raster',
+                source: 'satellite-raster',
+                minzoom: 0,
+                maxzoom: 22,
+              });
+            }
+          }
+
+          // Hide landuse/building fills and keep roads/labels/boundaries
+          const layers = map.getStyle()?.layers || [];
+          const hidden = {};
+          const styledSymbols = {};
+          layers.forEach(layer => {
+            const { id, type } = layer;
+            if (!id || !type) return;
+
+            if (type === 'fill' || type === 'fill-extrusion' || type === 'background') {
+              try {
+                const prevVisibility = map.getLayoutProperty(id, 'visibility') || 'visible';
+                map.setLayoutProperty(id, 'visibility', 'none');
+                hidden[id] = prevVisibility;
+              } catch {
+                // ignore
+              }
+              return;
+            }
+
+            if (type === 'line') {
+              const isRoad =
+                id.includes('road') || id.includes('street') || id.includes('highway');
+              const isBoundary = id.includes('boundary') || id.includes('admin');
+
+              if (isBoundary) {
+                return;
+              }
+
+              if (isRoad) {
+                try {
+                  const prevPaintColor = map.getPaintProperty(id, 'line-color');
+                  const prevPaintOpacity = map.getPaintProperty(id, 'line-opacity');
+                  const prevVisibility = map.getLayoutProperty(id, 'visibility') || 'visible';
+                  styledSymbols[id] = {
+                    lineColor: prevPaintColor,
+                    lineOpacity: prevPaintOpacity,
+                    visibility: prevVisibility,
+                  };
+                  map.setPaintProperty(id, 'line-color', '#000000');
+                  map.setPaintProperty(id, 'line-opacity', 0.0);
+                  map.setLayoutProperty(id, 'visibility', 'visible');
+                } catch {
+                  // ignore
+                }
+                return;
+              }
+
+              try {
+                const prevVisibility = map.getLayoutProperty(id, 'visibility') || 'visible';
+                map.setLayoutProperty(id, 'visibility', 'none');
+                hidden[id] = prevVisibility;
+              } catch {
+                // ignore
+              }
+              return;
+            }
+
+            if (type === 'symbol') {
+              try {
+                const prevVisibility = map.getLayoutProperty(id, 'visibility') || 'visible';
+                if (prevVisibility !== 'visible') {
+                  hidden[id] = prevVisibility;
+                  map.setLayoutProperty(id, 'visibility', 'visible');
+                }
+                const prevTextColor = map.getPaintProperty(id, 'text-color');
+                const prevTextHaloColor = map.getPaintProperty(id, 'text-halo-color');
+                const prevTextHaloWidth = map.getPaintProperty(id, 'text-halo-width');
+                styledSymbols[id] = {
+                  textColor: prevTextColor,
+                  textHaloColor: prevTextHaloColor,
+                  textHaloWidth: prevTextHaloWidth,
+                };
+                map.setPaintProperty(id, 'text-color', '#ffffff');
+                map.setPaintProperty(id, 'text-halo-color', '#000000');
+                map.setPaintProperty(id, 'text-halo-width', 1.5);
+              } catch {
+                // ignore
+              }
+            }
+          });
+          satelliteHiddenLayersRef.current = hidden;
+          satelliteStyledSymbolsRef.current = styledSymbols;
+        } catch (err) {
+          // Non-fatal: skip hybrid overlay if anything fails
+        }
+      };
+
+      const removeSatelliteHybrid = () => {
+        try {
+          if (map.getLayer('satellite-raster')) {
+            map.removeLayer('satellite-raster');
+          }
+          if (map.getSource('satellite-raster')) {
+            map.removeSource('satellite-raster');
+          }
+        } catch (err) {
+          // ignore
+        }
+
+        // Restore visibilities
+        const hidden = satelliteHiddenLayersRef.current || {};
+        Object.entries(hidden).forEach(([layerId, prevVisibility]) => {
+          try {
+            const current = map.getLayoutProperty(layerId, 'visibility');
+            if (current !== prevVisibility) {
+              map.setLayoutProperty(layerId, 'visibility', prevVisibility);
+            }
+          } catch {
+            // ignore
+          }
+        });
+        satelliteHiddenLayersRef.current = {};
+
+        // Restore symbol paint
+        const styled = satelliteStyledSymbolsRef.current || {};
+        Object.entries(styled).forEach(([layerId, prevPaint]) => {
+          try {
+            if (prevPaint.textColor !== undefined) {
+              map.setPaintProperty(layerId, 'text-color', prevPaint.textColor);
+            }
+            if (prevPaint.textHaloColor !== undefined) {
+              map.setPaintProperty(layerId, 'text-halo-color', prevPaint.textHaloColor);
+            }
+            if (prevPaint.textHaloWidth !== undefined) {
+              map.setPaintProperty(layerId, 'text-halo-width', prevPaint.textHaloWidth);
+            }
+            if (prevPaint.lineColor !== undefined) {
+              map.setPaintProperty(layerId, 'line-color', prevPaint.lineColor);
+            }
+            if (prevPaint.lineOpacity !== undefined) {
+              map.setPaintProperty(layerId, 'line-opacity', prevPaint.lineOpacity);
+            }
+            if (prevPaint.visibility !== undefined) {
+              map.setLayoutProperty(layerId, 'visibility', prevPaint.visibility);
+            }
+          } catch {
+            // ignore
+          }
+        });
+        satelliteStyledSymbolsRef.current = {};
+      };
+
+      const applyStandard = () => {
+        removeSatelliteHybrid();
+        try {
+          const style = map.getStyle();
+          if (style && Array.isArray(style.layers)) {
+            const backgroundLayer = style.layers.find(l => l.type === 'background');
+            if (backgroundLayer) {
+              map.setPaintProperty(backgroundLayer.id, 'background-color', '#f8f9fa');
+            }
+          }
+        } catch (err) {
+          // ignore background restore failures
+        }
+      };
+
+      if (styleKey === 'satellite') {
+        ensureSatelliteHybrid();
+      } else {
+        applyStandard();
+      }
+
+      map.jumpTo({ center, zoom, bearing, pitch });
+      toggleControl?.setActive();
+    };
+
+    const toggleControl = new BasemapToggleControl({
+      onSelect: applyStyle,
+      getActive: () => activeStyleRef.current,
+    });
+
+    mapInstance.current.addControl(toggleControl, 'top-right');
 
     return () => {
       if (supportsEvents && typeof mapInstance.current?.off === 'function') {
@@ -484,19 +810,28 @@ const PhotoMapLive = () => {
       }
     });
 
-    if (
-      !bounds.isEmpty() &&
-      !hasAutoFitRef.current &&
-      !userInteractedRef.current
-    ) {
-      mapInstance.current.fitBounds(bounds, {
-        padding: 40,
-        maxZoom: 14,
-        duration: 800,
-      });
+    // Include project address coordinate if present
+    if (selectedProjectCoord) {
+      bounds.extend([selectedProjectCoord.lon, selectedProjectCoord.lat]);
+    }
+
+    if (!bounds.isEmpty() && !hasAutoFitRef.current) {
+      if (clusters.length === 0 && selectedProjectCoord) {
+        mapInstance.current.flyTo({
+          center: [selectedProjectCoord.lon, selectedProjectCoord.lat],
+          zoom: 13,
+          essential: true,
+        });
+      } else {
+        mapInstance.current.fitBounds(bounds, {
+          padding: 60,
+          maxZoom: 14,
+          duration: 800,
+        });
+      }
       hasAutoFitRef.current = true;
     }
-  }, [clusters, clearMarkers, mapZoom]);
+  }, [clusters, clearMarkers, mapZoom, selectedProjectCoord]);
 
   const closeStack = () => setActiveStack(null);
 
@@ -527,23 +862,38 @@ const PhotoMapLive = () => {
       <div
         style={{
           position: 'absolute',
-          zIndex: 2,
+          zIndex: 3,
           top: 8,
           left: 8,
-          background: 'rgba(255,255,255,0.95)',
-          padding: 8,
-          borderRadius: 6,
-          boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
         }}
       >
-        <UploadForm
-          onUploaded={() => {
+        <select
+          className="btn-format-1"
+          ref={projectSelectRef}
+          value={activeProjectId || (projects[0]?.id || '')}
+          onChange={e => {
+            const nextId = e.target.value;
+            setActiveProject(nextId || null);
             cacheRef.current = { data: null, fetchedAt: 0 };
             hasAutoFitRef.current = false;
             userInteractedRef.current = false;
             setRefreshCounter(c => c + 1);
           }}
-        />
+          style={{
+            paddingRight: 28,
+            width: `${projectToggleWidth}px`,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {projects.map(p => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
       </div>
       {activeStack ? (
         <div

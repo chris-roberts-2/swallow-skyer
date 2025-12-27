@@ -597,7 +597,20 @@ class SupabaseClient:
         if description is not None:
             payload["description"] = description
         if address is not None:
-            payload["address"] = address
+            addr = address.strip()
+            payload["address"] = addr
+            try:
+                from app.services.geocoding.forward_geocoder import forward_geocoder
+
+                if addr:
+                    coord = forward_geocoder.geocode(addr)
+                    if coord:
+                        payload["address_coord"] = coord
+                else:
+                    payload["address_coord"] = None
+            except Exception:
+                # Non-fatal geocode failure
+                payload["address_coord"] = None
         if show_on_projects is not None:
             payload["show_on_projects"] = show_on_projects
         response = self.client.table("projects").insert(payload).execute()
@@ -735,7 +748,19 @@ class SupabaseClient:
         if name is not None:
             fields["name"] = name
         if address is not None:
-            fields["address"] = address
+            addr = address.strip()
+            fields["address"] = addr
+            try:
+                from app.services.geocoding.forward_geocoder import forward_geocoder
+
+                if addr:
+                    coord = forward_geocoder.geocode(addr)
+                    fields["address_coord"] = coord if coord else None
+                else:
+                    fields["address_coord"] = None
+            except Exception:
+                # Non-fatal geocode failure
+                fields["address_coord"] = None
         if show_on_projects is not None:
             fields["show_on_projects"] = show_on_projects
         if not fields:
