@@ -553,16 +553,26 @@ def delete_photo(photo_id):
             payload, status_code = permission
             return jsonify(payload), status_code
 
-        photo = Photo.query.get_or_404(photo_id)
+        # Soft-hide by flipping show_on_photos so it disappears from Photos/Map.
+        updated = supabase_client.update_photo_metadata(
+            photo_id, {"show_on_photos": False}
+        )
+        if updated is None:
+            return (
+                jsonify(
+                    {
+                        "error": "Failed to delete photo",
+                        "version": "v1",
+                    }
+                ),
+                500,
+            )
 
-        # Delete file from storage
-        photo_service.delete_photo_file(photo.file_path)
-        if photo.thumbnail_path:
-            photo_service.delete_photo_file(photo.thumbnail_path)
-
-        # Delete from database
-        db.session.delete(photo)
-        db.session.commit()
+        # Best-effort: if a legacy SQLAlchemy record exists, leave files intact but mark deleted.
+        photo = Photo.query.get(photo_id)
+        if photo:
+            # Keep the row for auditing; do not remove files to allow potential restore.
+            db.session.commit()
 
         return jsonify({"message": "Photo deleted successfully", "version": "v1"})
     except Exception as e:

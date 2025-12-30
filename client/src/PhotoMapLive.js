@@ -88,14 +88,9 @@ const distanceMeters = (a, b) => {
   return 2 * EARTH_RADIUS_METERS * Math.asin(Math.sqrt(hav));
 };
 
-const zoomToThresholdMeters = zoom => {
-  if (zoom <= 3) return 200_000;
-  if (zoom <= 5) return 100_000;
-  if (zoom <= 7) return 40_000;
-  if (zoom <= 9) return 10_000;
-  if (zoom <= 11) return 3_000;
-  return 1_000;
-};
+// Cluster photos within ~15 feet
+const FIFTEEN_FEET_METERS = 4.572;
+const zoomToThresholdMeters = () => FIFTEEN_FEET_METERS;
 
 const buildClusters = (photoList, thresholdMeters) => {
   if (!photoList.length) return [];
@@ -630,9 +625,23 @@ const PhotoMapLive = () => {
   const normalisedPhotos = useMemo(() => {
     return (photos || [])
       .map(photo => {
+        if (photo.show_on_photos === false) {
+          return null;
+        }
         const latitude = parseCoordinate(photo.latitude);
         const longitudeRaw = parseCoordinate(photo.longitude);
         if (!Number.isFinite(latitude) || !Number.isFinite(longitudeRaw)) {
+          return null;
+        }
+
+        const hasGpsExif =
+          photo?.exif_data &&
+          photo.exif_data.gps &&
+          photo.exif_data.gps.GPSLatitude &&
+          photo.exif_data.gps.GPSLatitudeRef &&
+          photo.exif_data.gps.GPSLongitude &&
+          photo.exif_data.gps.GPSLongitudeRef;
+        if (!hasGpsExif) {
           return null;
         }
 

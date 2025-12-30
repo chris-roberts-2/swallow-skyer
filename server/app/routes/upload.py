@@ -173,6 +173,7 @@ def registerUploadRoutes(blueprint):
                 else gps_decimal.get("lon", longitudeValue),
                 "location_id": location_id,
                 "caption": caption or None,
+                "show_on_photos": True,
             }
             if timestamp:
                 metadataPayload["captured_at"] = timestamp
@@ -546,11 +547,22 @@ def _extract_exif_data(image: Image.Image, original_bytes: bytes):
 
     # Parse datetime_original
     dt_original = exif_data.get("DateTimeOriginal") or exif_data.get("DateTime")
+    offset_hint = (
+        exif_data.get("OffsetTimeOriginal")
+        or exif_data.get("OffsetTimeDigitized")
+        or exif_data.get("OffsetTime")
+    )
     if dt_original:
         try:
-            captured_at = datetime.strptime(dt_original, "%Y:%m:%d %H:%M:%S").replace(
-                tzinfo=timezone.utc
-            ).isoformat()
+            naive_dt = datetime.strptime(dt_original, "%Y:%m:%d %H:%M:%S")
+            if offset_hint:
+                try:
+                    tzinfo = datetime.strptime(offset_hint, "%z").tzinfo
+                except Exception:
+                    tzinfo = timezone.utc
+            else:
+                tzinfo = timezone.utc
+            captured_at = naive_dt.replace(tzinfo=tzinfo).isoformat()
         except Exception:
             captured_at = None
 

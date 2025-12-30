@@ -17,8 +17,8 @@ const HomePage = () => {
         <Link to="/map" className="btn btn-primary">
           View Map
         </Link>
-        <Link to="/upload" className="btn btn-secondary">
-          Upload Photo
+        <Link to="/photos" className="btn btn-secondary">
+          Photos
         </Link>
       </div>
     </div>

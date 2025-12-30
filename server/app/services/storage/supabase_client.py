@@ -27,6 +27,7 @@ class SupabaseClient:
             self.client = create_client(self.url, self.key)
         self._thumbnail_columns_supported: Optional[bool] = None
         self._location_geocode_columns: Optional[bool] = None
+        self._show_on_photos_supported: Optional[bool] = None
 
     def update_thumbnail_column_hint(self, record: Optional[Dict[str, Any]]) -> None:
         """Infer thumbnail column support from a returned record."""
@@ -48,6 +49,20 @@ class SupabaseClient:
         except Exception:
             self._thumbnail_columns_supported = False
         return self._thumbnail_columns_supported
+
+    def supports_show_on_photos(self) -> bool:
+        """Determine whether photos table has show_on_photos column."""
+        if self._show_on_photos_supported is not None:
+            return self._show_on_photos_supported
+        if not self.client:
+            self._show_on_photos_supported = False
+            return False
+        try:
+            self.client.table("photos").select("show_on_photos").limit(1).execute()
+            self._show_on_photos_supported = True
+        except Exception:
+            self._show_on_photos_supported = False
+        return self._show_on_photos_supported
 
     def extract_thumbnail_fields(
         self, record: Dict[str, Any]
@@ -452,6 +467,8 @@ class SupabaseClient:
             "r2_url",
             "exif_data",
         ]
+        if self.supports_show_on_photos():
+            column_list.append("show_on_photos")
         # Only select columns that exist in provided schema; avoid r2_key/metadata/geo fields.
         if include_thumbnail_columns:
             # Only add if schema supports them
@@ -459,6 +476,8 @@ class SupabaseClient:
 
         query = self.client.table("photos").select(",".join(column_list), count="exact")
         query = query.in_("project_id", list(project_ids))
+        if self.supports_show_on_photos():
+            query = query.eq("show_on_photos", True)
 
         if user_id:
             query = query.eq("user_id", user_id)
@@ -549,9 +568,33 @@ class SupabaseClient:
                 .lte("longitude", longitude + radius)
                 .execute()
             )
+            if self.supports_show_on_photos():
+                response = (
+                    self.client.table("photos")
+                    .select("*")
+                    .gte("latitude", latitude - radius)
+                    .lte("latitude", latitude + radius)
+                    .gte("longitude", longitude - radius)
+                    .lte("longitude", longitude + radius)
+                    .eq("show_on_photos", True)
+                    .execute()
+                )
             return response.data if response.data else []
         except Exception as e:
-            print(f"Error getting photos by location: {e}")
+            # Fallback without show_on_photos filter in case the column is missing
+            try:
+                response = (
+                    self.client.table("photos")
+                    .select("*")
+                    .gte("latitude", latitude - radius)
+                    .lte("latitude", latitude + radius)
+                    .gte("longitude", longitude - radius)
+                    .lte("longitude", longitude + radius)
+                    .execute()
+                )
+                return response.data if response.data else []
+            except Exception as inner_exc:
+                print(f"Error getting photos by location: {inner_exc}")
             return []
 
     def get_location(self, location_id: str) -> Optional[Dict[str, Any]]:

@@ -16,7 +16,7 @@ import {
   LoginPage,
   RegisterPage,
   MapPage,
-  UploadPage,
+  PhotosPage,
   ProfilePage,
   ProjectsPage,
   ProjectMembersPage,
@@ -35,9 +35,9 @@ const Header = () => {
           <nav className="App-nav">
             {user ? (
               <>
-                <Link to="/map">Map</Link>
                 <Link to="/projects">Projects</Link>
-                {hasActiveProject && <Link to="/upload">Upload</Link>}
+                {hasActiveProject && <Link to="/photos">Photos</Link>}
+                <Link to="/map">Map</Link>
               </>
             ) : (
               <>
@@ -85,13 +85,14 @@ export function AppRoutes() {
             }
           />
           <Route
-            path="/upload"
+            path="/photos"
             element={
               <AuthGuard>
-                <UploadPage />
+                <PhotosPage />
               </AuthGuard>
             }
           />
+          <Route path="/upload" element={<Navigate to="/photos" replace />} />
           <Route
             path="/projects"
             element={
