@@ -202,6 +202,7 @@ const PhotoMapLive = () => {
   const [activeStack, setActiveStack] = useState(null);
   const cacheRef = useRef({ data: null, fetchedAt: 0 });
   const markersRef = useRef([]);
+  const stackPopupRef = useRef(null);
   const hasAutoFitRef = useRef(false);
   const userInteractedRef = useRef(false);
   const [refreshCounter, setRefreshCounter] = useState(0);
@@ -210,6 +211,7 @@ const PhotoMapLive = () => {
   const satelliteStyledSymbolsRef = useRef({});
   const [projectToggleWidth, setProjectToggleWidth] = useState(180);
   const projectSelectRef = useRef(null);
+  const closeStack = useCallback(() => setActiveStack(null), []);
 
   const selectedProjectName = useMemo(() => {
     const current =
@@ -689,6 +691,139 @@ const PhotoMapLive = () => {
     }
   }, [activeStack, clusters]);
 
+  const downloadPhotos = useCallback(async items => {
+    if (!items?.length) return;
+
+    const fetchBlob = async url => {
+      const res = await fetch(url, { mode: 'cors' }).catch(() => null);
+      if (!res || !res.ok) {
+        throw new Error('Download failed');
+      }
+      return res.blob();
+    };
+
+    const downloadFile = (blob, filename) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    };
+
+    const downloadDirect = (url, filename) => {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
+    const resolveName = item =>
+      item.file_name || item.caption || `photo-${item.id || Date.now()}`;
+
+    const resolveUrl = item =>
+      item.primaryUrl || item.url || item.fallbackUrl || item.thumbnailUrl;
+
+    const nameCount = new Map();
+    const dedupeName = base => {
+      const count = nameCount.get(base) || 0;
+      nameCount.set(base, count + 1);
+      if (count === 0) return base;
+      const parts = base.split('.');
+      if (parts.length > 1) {
+        const ext = parts.pop();
+        const stem = parts.join('.');
+        return `${stem}(${count}).${ext}`;
+      }
+      return `${base}(${count})`;
+    };
+
+    const accessToken = localStorage.getItem('access_token') || '';
+    const tryServerZip = async () => {
+      const apiUrl = envApiBase?.replace(/\/$/, '');
+      if (!apiUrl) return false;
+      try {
+        const payload = {
+          items: items
+            .map(item => {
+              const url = resolveUrl(item);
+              if (!url) return null;
+              return { url, name: dedupeName(resolveName(item)) };
+            })
+            .filter(Boolean),
+        };
+        if (!payload.items.length) return false;
+
+        const res = await fetch(`${apiUrl}/api/v1/photos/download-zip`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) return false;
+        const zipBlob = await res.blob();
+        downloadFile(zipBlob, `photos-${Date.now()}.zip`);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    try {
+      if (items.length > 1) {
+        const zipped = await tryServerZip();
+        if (zipped) return;
+      }
+
+      if (items.length === 1) {
+        const item = items[0];
+        const url = resolveUrl(item);
+        if (!url) throw new Error('No URL to download');
+        downloadDirect(url, resolveName(item));
+        return;
+      }
+
+      const { default: JSZip } = await import('jszip');
+      const zip = new JSZip();
+      let added = 0;
+      const failed = [];
+
+      for (const item of items) {
+        const url = resolveUrl(item);
+        if (!url) continue;
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const blob = await fetchBlob(url);
+          const name = dedupeName(resolveName(item));
+          zip.file(name, blob);
+          added += 1;
+        } catch (error) {
+          failed.push(item);
+        }
+      }
+
+      if (added > 0) {
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        downloadFile(zipBlob, `photos-${Date.now()}.zip`);
+      } else if (failed.length) {
+        failed.forEach(item => {
+          const url = resolveUrl(item);
+          if (url) downloadDirect(url, resolveName(item));
+        });
+      }
+    } catch {
+      // Soft-fail; in future surface toast.
+    }
+  }, []);
+
   useEffect(() => {
     if (!mapInstance.current) return;
 
@@ -698,16 +833,31 @@ const PhotoMapLive = () => {
 
     const createPhotoMarker = photo => {
       const container = document.createElement('div');
-      container.style.width = '16px';
-      container.style.height = '16px';
+      container.style.width = '18px';
+      container.style.height = '18px';
       container.style.borderRadius = '50%';
-      container.style.background = '#e53935';
-      container.style.border = '2px solid white';
-      container.style.boxShadow = '0 0 6px rgba(0,0,0,0.4)';
+      container.style.background = '#61dafb';
+      container.style.border = '1px solid #61dafb';
+      container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
+      container.style.display = 'grid';
+      container.style.placeItems = 'center';
       container.title = photo.caption || 'View photo';
+
+      const innerDot = document.createElement('div');
+      innerDot.style.width = '6px';
+      innerDot.style.height = '6px';
+      innerDot.style.borderRadius = '50%';
+      innerDot.style.background = '#2ca7e5';
+      innerDot.style.boxShadow = '0 0 0 2px rgba(44,167,229,0.18)';
+      container.appendChild(innerDot);
 
       const wrapper = document.createElement('div');
       wrapper.style.maxWidth = '260px';
+      wrapper.style.padding = '10px 10px 12px 10px';
+      wrapper.style.background = '#ffffff';
+      wrapper.style.borderRadius = '12px';
+      wrapper.style.boxShadow = '0 8px 18px rgba(0,0,0,0.12)';
+      wrapper.style.overflow = 'hidden';
 
       const img = document.createElement('img');
       img.alt = photo.caption || 'Photo';
@@ -723,11 +873,6 @@ const PhotoMapLive = () => {
       fallback.style.fontSize = '12px';
       fallback.style.color = '#666';
 
-      const timestamp = document.createElement('div');
-      timestamp.style.fontSize = '12px';
-      timestamp.style.color = '#666';
-      timestamp.textContent = photo.createdAt || '';
-
       img.onerror = () => {
         if (photo.fallbackUrl && img.src !== photo.fallbackUrl) {
           img.src = photo.fallbackUrl;
@@ -741,21 +886,69 @@ const PhotoMapLive = () => {
 
       wrapper.appendChild(img);
       wrapper.appendChild(fallback);
-      wrapper.appendChild(timestamp);
-      const actions = document.createElement('div');
-      actions.style.marginTop = '6px';
+
+      const footer = document.createElement('div');
+      footer.style.marginTop = '8px';
+      footer.style.display = 'flex';
+      footer.style.alignItems = 'center';
+      footer.style.justifyContent = 'space-between';
+
+      const timestamp = document.createElement('div');
+      timestamp.style.fontSize = '12px';
+      timestamp.style.color = '#555';
+      timestamp.textContent = formatTimestamp(photo.createdAt || photo.created_at || '');
+
       const dl = document.createElement('a');
-      dl.textContent = 'Download';
+      dl.textContent = '⤓';
+      dl.setAttribute('aria-label', 'Download photo');
       dl.href = photo.primaryUrl || photo.url;
       dl.target = '_blank';
       dl.rel = 'noopener noreferrer';
       dl.download = '';
-      dl.style.fontSize = '12px';
+      dl.style.fontSize = '18px';
       dl.style.color = '#1e88e5';
-      actions.appendChild(dl);
-      wrapper.appendChild(actions);
+      dl.style.textDecoration = 'none';
+      dl.style.fontWeight = '700';
+      dl.style.display = 'inline-flex';
+      dl.style.alignItems = 'center';
+      dl.style.justifyContent = 'center';
+      dl.style.padding = '2px 6px';
+      dl.style.borderRadius = '6px';
+      dl.style.transition = 'color 0.15s ease, background 0.15s ease';
+      dl.onmouseover = () => {
+        dl.style.color = '#1565c0';
+        dl.style.background = 'rgba(21,101,192,0.08)';
+      };
+      dl.onmouseout = () => {
+        dl.style.color = '#1e88e5';
+        dl.style.background = 'transparent';
+      };
 
-      const popup = new maplibregl.Popup({ offset: 24 }).setDOMContent(wrapper);
+      footer.appendChild(timestamp);
+      footer.appendChild(dl);
+      wrapper.appendChild(footer);
+
+      const popup = new maplibregl.Popup({ offset: 24, closeButton: true }).setDOMContent(wrapper);
+      popup.on('open', () => {
+        const el = popup.getElement();
+        const closeBtn = el?.querySelector('.maplibregl-popup-close-button');
+        if (closeBtn) {
+          closeBtn.style.width = '22px';
+          closeBtn.style.height = '22px';
+          closeBtn.style.fontSize = '18px';
+          closeBtn.style.lineHeight = '18px';
+          closeBtn.style.top = '6px';
+          closeBtn.style.right = '6px';
+          closeBtn.style.background = '#fff';
+          closeBtn.style.borderRadius = '50%';
+          closeBtn.style.boxShadow = '0 1px 4px rgba(0,0,0,0.15)';
+        }
+        const content = el?.querySelector('.maplibregl-popup-content');
+        if (content) {
+          content.style.borderRadius = '12px';
+          content.style.padding = '0';
+        }
+      });
       const marker = new maplibregl.Marker({ element: container })
         .setLngLat([photo.mapLongitude, photo.mapLatitude])
         .setPopup(popup)
@@ -767,18 +960,29 @@ const PhotoMapLive = () => {
     const createClusterMarker = cluster => {
       const button = document.createElement('button');
       button.type = 'button';
-      button.style.width = '34px';
-      button.style.height = '34px';
+      button.style.width = '20px';
+      button.style.height = '20px';
       button.style.borderRadius = '50%';
-      button.style.background = '#1e88e5';
-      button.style.color = '#fff';
-      button.style.border = '2px solid white';
-      button.style.boxShadow = '0 0 8px rgba(0,0,0,0.35)';
+      button.style.background = '#282c34';
+      button.style.border = '1px solid #282c34';
+      button.style.boxShadow = '0 2px 6px rgba(0,0,0,0.16)';
       button.style.cursor = 'pointer';
-      button.style.fontSize = '14px';
-      button.style.fontWeight = '600';
-      button.textContent =
-        cluster.photos.length > 99 ? '99+' : `${cluster.photos.length}`;
+      button.style.display = 'grid';
+      button.style.placeItems = 'center';
+      button.style.padding = '0';
+      button.style.position = 'relative';
+      button.setAttribute(
+        'aria-label',
+        `${cluster.photos.length} photos at this location`
+      );
+
+      const core = document.createElement('div');
+      core.style.width = '6px';
+      core.style.height = '6px';
+      core.style.borderRadius = '50%';
+      core.style.background = '#61dafb';
+      core.style.boxShadow = '0 0 0 3px rgba(97,218,251,0.16)';
+      button.appendChild(core);
 
       button.addEventListener('click', evt => {
         evt.stopPropagation();
@@ -842,7 +1046,192 @@ const PhotoMapLive = () => {
     }
   }, [clusters, clearMarkers, mapZoom, selectedProjectCoord]);
 
-  const closeStack = () => setActiveStack(null);
+  useEffect(() => {
+    if (stackPopupRef.current) {
+      stackPopupRef.current.remove();
+      stackPopupRef.current = null;
+    }
+    if (!activeStack || !mapInstance.current) return undefined;
+
+    const root = document.createElement('div');
+    root.style.maxWidth = '320px';
+    root.style.padding = '10px 10px 12px';
+    root.style.background = '#ffffff';
+    root.style.borderRadius = '12px';
+    root.style.boxShadow = 'none';
+    root.style.display = 'flex';
+    root.style.flexDirection = 'column';
+    root.style.gap = '8px';
+
+    const header = document.createElement('div');
+    header.style.display = 'flex';
+    header.style.alignItems = 'center';
+    header.style.justifyContent = 'space-between';
+
+    const titleRow = document.createElement('div');
+    titleRow.style.display = 'flex';
+    titleRow.style.alignItems = 'center';
+    titleRow.style.gap = '6px';
+
+    const title = document.createElement('div');
+    title.textContent = 'Grouped Photos';
+    title.style.fontWeight = '700';
+    title.style.fontSize = '14px';
+    title.style.color = '#1f2937';
+
+    const count = document.createElement('div');
+    count.textContent = `${activeStack.photos.length} items`;
+    count.style.fontSize = '13px';
+    count.style.color = '#4b5563';
+
+    titleRow.appendChild(title);
+    titleRow.appendChild(count);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.textContent = '×';
+    closeBtn.style.width = '22px';
+    closeBtn.style.height = '22px';
+    closeBtn.style.fontSize = '18px';
+    closeBtn.style.lineHeight = '18px';
+    closeBtn.style.background = '#fff';
+    closeBtn.style.borderRadius = '50%';
+    closeBtn.style.border = '1px solid rgba(0,0,0,0.08)';
+    closeBtn.style.boxShadow = '0 1px 4px rgba(0,0,0,0.15)';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.onclick = evt => {
+      evt.stopPropagation();
+      closeStack();
+    };
+
+    header.appendChild(titleRow);
+    header.appendChild(closeBtn);
+    root.appendChild(header);
+
+    const list = document.createElement('div');
+    list.style.display = 'flex';
+    list.style.flexDirection = 'column';
+    list.style.gap = '8px';
+
+    activeStack.photos.forEach((photo, index) => {
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.gap = '12px';
+      row.style.padding = '10px';
+      row.style.background = '#f8fafc';
+      row.style.borderRadius = '10px';
+
+      const thumb = document.createElement('img');
+      thumb.alt = photo.caption || `Photo ${index + 1}`;
+      thumb.src =
+        photo.thumbnailUrl ||
+        photo.primaryUrl ||
+        photo.url ||
+        photo.fallbackUrl ||
+        '';
+      thumb.style.width = '96px';
+      thumb.style.height = '96px';
+      thumb.style.objectFit = 'cover';
+      thumb.style.borderRadius = '8px';
+      thumb.style.background = '#e5e7eb';
+      thumb.onerror = () => {
+        thumb.style.display = 'none';
+      };
+
+      const meta = document.createElement('div');
+      meta.style.display = 'flex';
+      meta.style.flexDirection = 'column';
+      meta.style.gap = '6px';
+      meta.style.flex = '1';
+
+      const time = document.createElement('div');
+      time.textContent = formatTimestamp(photo.createdAt || photo.created_at || '');
+      time.style.fontSize = '13px';
+      time.style.color = '#1f2937';
+      time.style.fontWeight = '600';
+
+      meta.appendChild(time);
+
+      const dl = document.createElement('a');
+      dl.textContent = '⤓';
+      dl.setAttribute('aria-label', 'Download photo');
+      dl.href = '#';
+      dl.style.fontSize = '18px';
+      dl.style.color = '#1e88e5';
+      dl.style.textDecoration = 'none';
+      dl.style.fontWeight = '700';
+      dl.style.display = 'inline-flex';
+      dl.style.alignItems = 'center';
+      dl.style.justifyContent = 'center';
+      dl.style.padding = '2px 6px';
+      dl.style.borderRadius = '6px';
+      dl.style.transition = 'color 0.15s ease, background 0.15s ease';
+      dl.onmouseover = () => {
+        dl.style.color = '#1565c0';
+        dl.style.background = 'rgba(21,101,192,0.08)';
+      };
+      dl.onmouseout = () => {
+        dl.style.color = '#1e88e5';
+        dl.style.background = 'transparent';
+      };
+      dl.onclick = evt => {
+        evt.preventDefault();
+        evt.stopPropagation();
+        downloadPhotos([photo]);
+      };
+
+      row.appendChild(thumb);
+      row.appendChild(meta);
+      row.appendChild(dl);
+      list.appendChild(row);
+    });
+
+    root.appendChild(list);
+
+    const downloadAll = document.createElement('button');
+    downloadAll.type = 'button';
+    downloadAll.className = 'btn-format-1';
+    downloadAll.textContent = `Download all (${activeStack.photos.length})`;
+    downloadAll.style.alignSelf = 'flex-end';
+    downloadAll.style.marginTop = '4px';
+    downloadAll.onclick = async evt => {
+      evt.stopPropagation();
+      await downloadPhotos(activeStack.photos);
+    };
+
+    root.appendChild(downloadAll);
+
+    const popup = new maplibregl.Popup({
+      closeButton: false,
+      closeOnClick: false,
+      anchor: 'left',
+      offset: [16, 0],
+      maxWidth: '340px',
+    })
+      .setDOMContent(root)
+      .setLngLat([activeStack.longitude, activeStack.latitude])
+      .addTo(mapInstance.current);
+
+    stackPopupRef.current = popup;
+
+    const popupEl = popup?.getElement?.();
+    if (popupEl) {
+      popupEl.style.background = 'transparent';
+      popupEl.style.boxShadow = 'none';
+      popupEl.style.padding = '0';
+      const tip = popupEl.querySelector('.maplibregl-popup-tip');
+      if (tip) tip.style.display = 'none';
+      const content = popupEl.querySelector('.maplibregl-popup-content');
+      if (content) {
+        content.style.background = 'transparent';
+        content.style.boxShadow = 'none';
+        content.style.padding = '0';
+      }
+    }
+
+    return () => popup.remove();
+  }, [activeStack, closeStack, downloadPhotos]);
 
   const handlePhotoSelect = photo => {
     if (!photo) return;
@@ -904,44 +1293,6 @@ const PhotoMapLive = () => {
           ))}
         </select>
       </div>
-      {activeStack ? (
-        <div
-          style={{
-            position: 'absolute',
-            top: 8,
-            right: 8,
-            maxWidth: 340,
-            zIndex: 3,
-          }}
-        >
-          <div
-            style={{
-              background: 'rgba(255,255,255,0.97)',
-              padding: 12,
-              borderRadius: 8,
-              boxShadow: '0 1px 6px rgba(0,0,0,0.2)',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                color: '#555',
-                marginBottom: 8,
-              }}
-            >
-              Cluster @{' '}
-              {`${activeStack.latitude.toFixed(
-                4
-              )}, ${activeStack.longitude.toFixed(4)}`}
-            </div>
-            <PhotoStack
-              photos={activeStack.photos}
-              onPhotoSelect={handlePhotoSelect}
-              onToggle={closeStack}
-            />
-          </div>
-        </div>
-      ) : null}
       <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
     </div>
   );

@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import BatchUploader from '../components/upload/BatchUploader';
 import { useAuth } from '../context';
+import { useNavigate } from 'react-router-dom';
 
 const envApiBase =
   process.env.REACT_APP_API_BASE_URL ||
@@ -65,6 +66,7 @@ const menuItemStyle = {
 
 const PhotosPage = () => {
   const { activeProject, projects, setActiveProject } = useAuth();
+  const navigate = useNavigate();
   const activeProjectId = activeProject?.id || activeProject || null;
   const [photos, setPhotos] = useState([]);
   const [error, setError] = useState('');
@@ -464,6 +466,11 @@ const PhotosPage = () => {
                   flexDirection: 'column',
                   position: 'relative',
                   overflow: 'hidden',
+                }}
+                onClick={() => {
+                  if (!selectionMode) {
+                    navigate(`/photos/${photo.id}/options`);
+                  }
                 }}
               >
                 {selectionMode ? (

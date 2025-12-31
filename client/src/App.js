@@ -21,6 +21,7 @@ import {
   ProjectsPage,
   ProjectMembersPage,
 } from './pages';
+import PhotoOptionsPage from './pages/PhotoOptionsPage';
 import PublicProjectView from './pages/PublicProjectView';
 
 const Header = () => {
@@ -89,6 +90,14 @@ export function AppRoutes() {
             element={
               <AuthGuard>
                 <PhotosPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/photos/:id/options"
+            element={
+              <AuthGuard>
+                <PhotoOptionsPage />
               </AuthGuard>
             }
           />

@@ -1,8 +1,12 @@
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, send_file
 import os
 import math
 from datetime import datetime, timezone
 from uuid import UUID
+import io
+import time
+import zipfile
+import requests
 from app.middleware.auth_middleware import jwt_required
 from app.services.auth.permissions import (
     DEFAULT_DENIED_MESSAGE,
@@ -578,6 +582,46 @@ def delete_photo(photo_id):
     except Exception as e:
         return jsonify({"error": str(e), "version": "v1"}), 500
 
+
+@bp.route("/download-zip", methods=["POST"])
+@jwt_required
+def download_zip():
+    """
+    Server-side zip download to avoid frontend CORS issues when bundling photos.
+    Body: { items: [{ url: string, name?: string }] }
+    """
+    payload = request.get_json(silent=True) or {}
+    items = payload.get("items") or []
+    if not isinstance(items, list) or not items:
+        return jsonify({"error": "items array required"}), 400
+
+    memory_file = io.BytesIO()
+    added = 0
+    with zipfile.ZipFile(memory_file, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for idx, item in enumerate(items):
+            url = (item or {}).get("url")
+            name = (item or {}).get("name") or f"photo-{idx + 1}.jpg"
+            if not url:
+                continue
+            try:
+                resp = requests.get(url, stream=True, timeout=20)
+                resp.raise_for_status()
+                zf.writestr(name, resp.content)
+                added += 1
+            except Exception:
+                continue
+
+    if added == 0:
+        return jsonify({"error": "Unable to fetch any photos"}), 502
+
+    memory_file.seek(0)
+    filename = f"photos-{int(time.time())}.zip"
+    return send_file(
+        memory_file,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=filename,
+    )
 
 @bp.route("/stats", methods=["GET"])
 @jwt_required
