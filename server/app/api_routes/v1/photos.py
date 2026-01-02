@@ -104,7 +104,7 @@ def _prefetch_project_scope(
         if not pid:
             continue
         allowed_ids.append(pid)
-        project_cache[pid] = {"role": project.get("role")}
+        project_cache[pid] = {"role": project.get("role"), "name": project.get("name")}
 
     return allowed_ids, project_cache, None
 
@@ -138,6 +138,13 @@ def _serialize_photo(
 
     project_id = record.get("project_id")
     role = project_cache.get(project_id, {}).get("role")
+    project_name = project_cache.get(project_id, {}).get("name")
+    if project_id and not project_name:
+        try:
+            project_row = supabase_client.get_project(project_id) or {}
+            project_name = project_row.get("name")
+        except Exception:
+            project_name = None
 
     location_id = record.get("location_id")
     location = {}
@@ -181,7 +188,30 @@ def _serialize_photo(
             if dlat is not None and dlon is not None:
                 lat = lat if lat is not None else dlat
                 lon = lon if lon is not None else dlon
+    uploaded_at = record.get("uploaded_at") or record.get("created_at")
     created_at = record.get("created_at") or record.get("uploaded_at")
+
+    user_id = record.get("user_id")
+    uploaded_by = None
+    if user_id:
+        try:
+            user_row = supabase_client.get_user_metadata(user_id) or {}
+            first = (user_row.get("first_name") or "").strip()
+            last = (user_row.get("last_name") or "").strip()
+            company = (user_row.get("company") or "").strip()
+            name = " ".join([part for part in [first, last] if part])
+            display = name
+            if company:
+                display = f"{name}, {company}" if name else company
+            uploaded_by = {
+                "id": user_id,
+                "first_name": first or None,
+                "last_name": last or None,
+                "company": company or None,
+                "display": display or None,
+            }
+        except Exception:
+            uploaded_by = {"id": user_id}
 
     # Build/resolve storage URLs. If r2_path is missing, derive from photo id + extension.
     key = record.get("r2_path") or record.get("r2_key")
@@ -207,9 +237,12 @@ def _serialize_photo(
     return {
         "id": record.get("id"),
         "project_id": project_id,
+        "project_name": project_name,
         "project_role": role,
-        "user_id": record.get("user_id"),
+        "user_id": user_id,
+        "uploaded_by": uploaded_by,
         "file_name": record.get("file_name"),
+        "file_size": record.get("file_size"),
         "caption": record.get("caption"),
         "latitude": lat,
         "longitude": lon,
@@ -218,6 +251,7 @@ def _serialize_photo(
         "location_state": location.get("state"),
         "location_country": location.get("country"),
         "geocode_data": location.get("geocode_data"),
+        "uploaded_at": uploaded_at,
         "created_at": created_at,
         "captured_at": record.get("captured_at"),
         "r2_path": key,
@@ -422,8 +456,15 @@ def get_photo(photo_id):
             payload, status_code = permission
             return jsonify(payload), status_code
 
+        project_name = None
+        try:
+            project_row = supabase_client.get_project(project_id) or {}
+            project_name = project_row.get("name")
+        except Exception:
+            project_name = None
+
         project_cache: Dict[str, Dict[str, Any]] = {
-            project_id: {"role": permission.get("role")}
+            project_id: {"role": permission.get("role"), "name": project_name}
         }
 
         serialized = _serialize_photo(record, project_cache, {}, {})

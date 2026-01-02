@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useNavigate } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useAuth } from './context';
@@ -52,6 +53,29 @@ const formatTimestamp = iso => {
     return new Date(iso).toLocaleString();
   } catch (error) {
     return String(iso);
+  }
+};
+
+const formatDateTimeParts = iso => {
+  if (!iso) return { dateLabel: '', timeLabel: '' };
+  try {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) {
+      return { dateLabel: String(iso), timeLabel: '' };
+    }
+    return {
+      dateLabel: date.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      }),
+      timeLabel: date.toLocaleTimeString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    };
+  } catch (error) {
+    return { dateLabel: String(iso), timeLabel: '' };
   }
 };
 
@@ -193,6 +217,7 @@ class BasemapToggleControl {
 }
 
 const PhotoMapLive = () => {
+  const navigate = useNavigate();
   const { activeProject, projects, setActiveProject } = useAuth();
   const activeProjectId = activeProject?.id || activeProject || null;
   const mapRef = useRef(null);
@@ -203,6 +228,7 @@ const PhotoMapLive = () => {
   const cacheRef = useRef({ data: null, fetchedAt: 0 });
   const markersRef = useRef([]);
   const stackPopupRef = useRef(null);
+  const photoPopupRef = useRef(null);
   const hasAutoFitRef = useRef(false);
   const userInteractedRef = useRef(false);
   const [refreshCounter, setRefreshCounter] = useState(0);
@@ -212,6 +238,12 @@ const PhotoMapLive = () => {
   const [projectToggleWidth, setProjectToggleWidth] = useState(180);
   const projectSelectRef = useRef(null);
   const closeStack = useCallback(() => setActiveStack(null), []);
+  const closePhotoPopup = useCallback(() => {
+    if (photoPopupRef.current) {
+      photoPopupRef.current.remove();
+      photoPopupRef.current = null;
+    }
+  }, []);
 
   const selectedProjectName = useMemo(() => {
     const current =
@@ -235,6 +267,14 @@ const PhotoMapLive = () => {
     }
     return null;
   }, [projects, activeProjectId]);
+
+  const openPhotoOptions = useCallback(
+    photo => {
+      if (!photo?.id) return;
+      navigate(`/photos/${photo.id}/options`, { state: { from: 'map' } });
+    },
+    [navigate]
+  );
 
   useEffect(() => {
     // Dynamically size the project toggle to fit the selected text.
@@ -291,9 +331,15 @@ const PhotoMapLive = () => {
       });
     };
 
+    const handleMapClick = () => {
+      closeStack();
+      closePhotoPopup();
+    };
+
     const supportsEvents = typeof mapInstance.current?.on === 'function';
     if (supportsEvents) {
       mapInstance.current.on('zoomend', handleZoom);
+      mapInstance.current.on('click', handleMapClick);
       const setInteracted = () => {
         userInteractedRef.current = true;
       };
@@ -527,6 +573,7 @@ const PhotoMapLive = () => {
     return () => {
       if (supportsEvents && typeof mapInstance.current?.off === 'function') {
         mapInstance.current.off('zoomend', handleZoom);
+        mapInstance.current.off('click', handleMapClick);
         if (mapInstance.current.__setInteracted) {
           mapInstance.current.off(
             'dragstart',
@@ -553,7 +600,7 @@ const PhotoMapLive = () => {
       }
       mapInstance.current = null;
     };
-  }, [clearMarkers]);
+  }, [clearMarkers, closeStack, closePhotoPopup]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -842,6 +889,9 @@ const PhotoMapLive = () => {
       container.style.display = 'grid';
       container.style.placeItems = 'center';
       container.title = photo.caption || 'View photo';
+      container.addEventListener('click', () => {
+        closeStack();
+      });
 
       const innerDot = document.createElement('div');
       innerDot.style.width = '6px';
@@ -851,60 +901,100 @@ const PhotoMapLive = () => {
       innerDot.style.boxShadow = '0 0 0 2px rgba(44,167,229,0.18)';
       container.appendChild(innerDot);
 
-      const wrapper = document.createElement('div');
-      wrapper.style.maxWidth = '260px';
-      wrapper.style.padding = '10px 10px 12px 10px';
-      wrapper.style.background = '#ffffff';
-      wrapper.style.borderRadius = '12px';
-      wrapper.style.boxShadow = '0 8px 18px rgba(0,0,0,0.12)';
-      wrapper.style.overflow = 'hidden';
+      const root = document.createElement('div');
+      root.style.position = 'relative';
+      root.style.maxWidth = '320px';
+      root.style.width = '320px';
+      root.style.padding = '10px 10px 12px';
+      root.style.background = '#ffffff';
+      root.style.borderRadius = '12px';
+      root.style.boxShadow = '0 8px 18px rgba(0,0,0,0.12)';
+      root.style.display = 'flex';
+      root.style.flexDirection = 'column';
+      root.style.gap = '10px';
+      root.addEventListener('click', evt => {
+        evt.stopPropagation();
+      });
 
-      const img = document.createElement('img');
-      img.alt = photo.caption || 'Photo';
-      img.crossOrigin = 'anonymous';
-      img.style.width = '100%';
-      img.style.height = 'auto';
-      img.style.borderRadius = '4px';
-      img.style.marginBottom = '6px';
-
-      const fallback = document.createElement('div');
-      fallback.textContent = 'Image unavailable';
-      fallback.style.display = 'none';
-      fallback.style.fontSize = '12px';
-      fallback.style.color = '#666';
-
-      img.onerror = () => {
-        if (photo.fallbackUrl && img.src !== photo.fallbackUrl) {
-          img.src = photo.fallbackUrl;
-        } else {
-          img.style.display = 'none';
-          fallback.style.display = 'block';
-        }
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.textContent = '×';
+      closeBtn.style.position = 'absolute';
+      closeBtn.style.top = '8px';
+      closeBtn.style.right = '8px';
+      closeBtn.style.width = '22px';
+      closeBtn.style.height = '22px';
+      closeBtn.style.fontSize = '18px';
+      closeBtn.style.lineHeight = '18px';
+      closeBtn.style.background = '#fff';
+      closeBtn.style.borderRadius = '50%';
+      closeBtn.style.border = '1px solid rgba(0,0,0,0.08)';
+      closeBtn.style.boxShadow = '0 1px 4px rgba(0,0,0,0.15)';
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.onclick = evt => {
+        evt.stopPropagation();
+        closePhotoPopup();
       };
 
-      img.src = photo.primaryUrl || photo.url;
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.gap = '12px';
 
-      wrapper.appendChild(img);
-      wrapper.appendChild(fallback);
+      const thumb = document.createElement('img');
+      thumb.alt = photo.caption || 'Photo';
+      thumb.crossOrigin = 'anonymous';
+      thumb.style.width = '120px';
+      thumb.style.height = '120px';
+      thumb.style.objectFit = 'cover';
+      thumb.style.borderRadius = '8px';
+      thumb.style.background = '#e5e7eb';
+      thumb.onerror = () => {
+        if (photo.fallbackUrl && thumb.src !== photo.fallbackUrl) {
+          thumb.src = photo.fallbackUrl;
+        } else {
+          thumb.style.display = 'none';
+        }
+      };
+      thumb.src = photo.primaryUrl || photo.url || photo.fallbackUrl || '';
+      thumb.style.cursor = 'pointer';
+      thumb.onclick = evt => {
+        evt.stopPropagation();
+        openPhotoOptions(photo);
+      };
 
-      const footer = document.createElement('div');
-      footer.style.marginTop = '8px';
-      footer.style.display = 'flex';
-      footer.style.alignItems = 'center';
-      footer.style.justifyContent = 'space-between';
+      const meta = document.createElement('div');
+      meta.style.display = 'flex';
+      meta.style.flex = '1';
+      meta.style.flexDirection = 'column';
+      meta.style.alignItems = 'center';
+      meta.style.justifyContent = 'center';
+      meta.style.gap = '4px';
 
-      const timestamp = document.createElement('div');
-      timestamp.style.fontSize = '12px';
-      timestamp.style.color = '#555';
-      timestamp.textContent = formatTimestamp(photo.createdAt || photo.created_at || '');
+      const { dateLabel, timeLabel } = formatDateTimeParts(
+        photo.timestampIso || photo.createdAt || photo.created_at || ''
+      );
+
+      const date = document.createElement('div');
+      date.textContent = dateLabel;
+      date.style.fontSize = '13px';
+      date.style.color = '#1f2937';
+      date.style.fontWeight = '700';
+      date.style.lineHeight = '18px';
+
+      const time = document.createElement('div');
+      time.textContent = timeLabel;
+      time.style.fontSize = '13px';
+      time.style.color = '#1f2937';
+      time.style.fontWeight = '700';
+      time.style.lineHeight = '18px';
 
       const dl = document.createElement('a');
       dl.textContent = '⤓';
       dl.setAttribute('aria-label', 'Download photo');
-      dl.href = photo.primaryUrl || photo.url;
+      dl.href = photo.primaryUrl || photo.url || photo.fallbackUrl || '#';
       dl.target = '_blank';
       dl.rel = 'noopener noreferrer';
-      dl.download = '';
       dl.style.fontSize = '18px';
       dl.style.color = '#1e88e5';
       dl.style.textDecoration = 'none';
@@ -923,32 +1013,55 @@ const PhotoMapLive = () => {
         dl.style.color = '#1e88e5';
         dl.style.background = 'transparent';
       };
-
-      footer.appendChild(timestamp);
-      footer.appendChild(dl);
-      wrapper.appendChild(footer);
-
-      const popup = new maplibregl.Popup({ offset: 24, closeButton: true }).setDOMContent(wrapper);
-      popup.on('open', () => {
-        const el = popup.getElement();
-        const closeBtn = el?.querySelector('.maplibregl-popup-close-button');
-        if (closeBtn) {
-          closeBtn.style.width = '22px';
-          closeBtn.style.height = '22px';
-          closeBtn.style.fontSize = '18px';
-          closeBtn.style.lineHeight = '18px';
-          closeBtn.style.top = '6px';
-          closeBtn.style.right = '6px';
-          closeBtn.style.background = '#fff';
-          closeBtn.style.borderRadius = '50%';
-          closeBtn.style.boxShadow = '0 1px 4px rgba(0,0,0,0.15)';
+      dl.onclick = evt => {
+        if (dl.href === '#') {
+          evt.preventDefault();
+          return;
         }
-        const content = el?.querySelector('.maplibregl-popup-content');
-        if (content) {
-          content.style.borderRadius = '12px';
-          content.style.padding = '0';
+      };
+
+      meta.appendChild(date);
+      meta.appendChild(time);
+
+      row.appendChild(thumb);
+      row.appendChild(meta);
+      row.appendChild(dl);
+
+      root.appendChild(closeBtn);
+      root.appendChild(row);
+
+      const popup = new maplibregl.Popup({
+        offset: 24,
+        closeButton: false,
+        closeOnClick: false,
+        maxWidth: '340px',
+      }).setDOMContent(root);
+
+      popup.on('open', () => {
+        closePhotoPopup();
+        photoPopupRef.current = popup;
+        const el = popup.getElement?.();
+        if (el) {
+          el.style.background = 'transparent';
+          el.style.boxShadow = 'none';
+          el.style.padding = '0';
+          const tip = el.querySelector('.maplibregl-popup-tip');
+          if (tip) tip.style.display = 'none';
+          const content = el.querySelector('.maplibregl-popup-content');
+          if (content) {
+            content.style.background = 'transparent';
+            content.style.boxShadow = 'none';
+            content.style.padding = '0';
+          }
         }
       });
+
+      popup.on('close', () => {
+        if (photoPopupRef.current === popup) {
+          photoPopupRef.current = null;
+        }
+      });
+
       const marker = new maplibregl.Marker({ element: container })
         .setLngLat([photo.mapLongitude, photo.mapLatitude])
         .setPopup(popup)
@@ -986,6 +1099,7 @@ const PhotoMapLive = () => {
 
       button.addEventListener('click', evt => {
         evt.stopPropagation();
+        closePhotoPopup();
         setActiveStack({
           latitude: cluster.latitude,
           longitude: cluster.longitude,
@@ -1044,7 +1158,7 @@ const PhotoMapLive = () => {
       }
       hasAutoFitRef.current = true;
     }
-  }, [clusters, clearMarkers, mapZoom, selectedProjectCoord]);
+  }, [clusters, clearMarkers, closePhotoPopup, closeStack, mapZoom, selectedProjectCoord]);
 
   useEffect(() => {
     if (stackPopupRef.current) {
@@ -1055,6 +1169,7 @@ const PhotoMapLive = () => {
 
     const root = document.createElement('div');
     root.style.maxWidth = '320px';
+    root.style.width = '320px';
     root.style.padding = '10px 10px 12px';
     root.style.background = '#ffffff';
     root.style.borderRadius = '12px';
@@ -1062,6 +1177,9 @@ const PhotoMapLive = () => {
     root.style.display = 'flex';
     root.style.flexDirection = 'column';
     root.style.gap = '8px';
+    root.addEventListener('click', evt => {
+      evt.stopPropagation();
+    });
 
     const header = document.createElement('div');
     header.style.display = 'flex';
@@ -1076,7 +1194,7 @@ const PhotoMapLive = () => {
     const title = document.createElement('div');
     title.textContent = 'Grouped Photos';
     title.style.fontWeight = '700';
-    title.style.fontSize = '14px';
+    title.style.fontSize = '16px';
     title.style.color = '#1f2937';
 
     const count = document.createElement('div');
@@ -1130,27 +1248,45 @@ const PhotoMapLive = () => {
         photo.url ||
         photo.fallbackUrl ||
         '';
-      thumb.style.width = '96px';
-      thumb.style.height = '96px';
+      thumb.style.width = '120px';
+      thumb.style.height = '120px';
       thumb.style.objectFit = 'cover';
       thumb.style.borderRadius = '8px';
       thumb.style.background = '#e5e7eb';
+      thumb.style.cursor = 'pointer';
       thumb.onerror = () => {
         thumb.style.display = 'none';
+      };
+      thumb.onclick = evt => {
+        evt.stopPropagation();
+        openPhotoOptions(photo);
       };
 
       const meta = document.createElement('div');
       meta.style.display = 'flex';
       meta.style.flexDirection = 'column';
-      meta.style.gap = '6px';
+      meta.style.gap = '4px';
       meta.style.flex = '1';
 
+      const { dateLabel, timeLabel } = formatDateTimeParts(
+        photo.timestampIso || photo.createdAt || photo.created_at || ''
+      );
+
+      const date = document.createElement('div');
+      date.textContent = dateLabel;
+      date.style.fontSize = '13px';
+      date.style.color = '#1f2937';
+      date.style.fontWeight = '700';
+      date.style.lineHeight = '18px';
+
       const time = document.createElement('div');
-      time.textContent = formatTimestamp(photo.createdAt || photo.created_at || '');
+      time.textContent = timeLabel;
       time.style.fontSize = '13px';
       time.style.color = '#1f2937';
-      time.style.fontWeight = '600';
+      time.style.fontWeight = '700';
+      time.style.lineHeight = '18px';
 
+      meta.appendChild(date);
       meta.appendChild(time);
 
       const dl = document.createElement('a');
