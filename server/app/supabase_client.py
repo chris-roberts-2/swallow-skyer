@@ -91,7 +91,14 @@ def verify_supabase_jwt(access_token: str) -> Dict[str, Any]:
 
     client = get_service_role_client()
     if not client:
-        raise RuntimeError("Supabase client is not configured")
+        # Service role key is preferred, but anon key is sufficient for calling
+        # the Auth API to resolve a user from an access token.
+        client = get_anon_supabase_client()
+    if not client:
+        raise RuntimeError(
+            "Supabase client is not configured (set SUPABASE_URL and SUPABASE_ANON_KEY "
+            "or SUPABASE_SERVICE_ROLE_KEY in server/.env.local or server/.env)"
+        )
 
     try:
         response = client.auth.get_user(token)

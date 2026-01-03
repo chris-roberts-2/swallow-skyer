@@ -8,10 +8,12 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-# Load environment variables from server/.env
+# Load environment variables from server/.env.local (preferred) then server/.env
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# Ensure .env values override any inherited shell vars during dev
-load_dotenv(os.path.join(BASE_DIR, ".env"), override=True)
+# Load .env files if present, but allow real environment variables to win.
+# This makes local testing predictable (you can override config per-shell).
+load_dotenv(os.path.join(BASE_DIR, ".env.local"), override=False)
+load_dotenv(os.path.join(BASE_DIR, ".env"), override=False)
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -34,20 +36,60 @@ def create_app(config_name=None):
         os.environ.get("SECRET_KEY") or "dev-secret-key-change-in-production"
     )
     # Database configuration
-    # Always resolve SQLite paths to an absolute path under server/instance/
-    instance_dir = os.path.join(BASE_DIR, "instance")
-    os.makedirs(instance_dir, exist_ok=True)
-    abs_db_path = os.path.join(instance_dir, "database.db")
-
+    # - Prefer DATABASE_URL when set (Postgres/Supabase in production)
+    # - Default to a local SQLite file for local development
     env_db_url = os.environ.get("DATABASE_URL", "").strip()
-    if env_db_url.startswith("sqlite:///"):
-        # Normalize relative SQLite URLs to absolute
-        # sqlite:////absolute/path uses 4 slashes; 3 slashes is relative to CWD
-        app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{abs_db_path}"
-    elif env_db_url:
-        app.config["SQLALCHEMY_DATABASE_URI"] = env_db_url
-    else:
-        app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{abs_db_path}"
+    if env_db_url.startswith("postgres://"):
+        # Normalize deprecated scheme so SQLAlchemy can parse it.
+        env_db_url = env_db_url.replace("postgres://", "postgresql://", 1)
+
+    def sqlite_fallback_url() -> str:
+        instance_dir = os.path.join(BASE_DIR, "instance")
+        os.makedirs(instance_dir, exist_ok=True)
+        db_path = os.path.join(instance_dir, "database.db")
+        # When db_path is absolute, sqlite URL needs 4 slashes.
+        return f"sqlite:///{db_path}"
+
+    def normalize_sqlite_url(sqlite_url: str) -> str:
+        """
+        Normalize sqlite URLs so they are absolute and the directory exists.
+
+        SQLAlchemy's sqlite relative paths depend on CWD (easy to break when running
+        from repo root vs server/). We anchor relative sqlite paths under server/.
+        """
+        prefix = "sqlite:///"
+        if not sqlite_url.startswith(prefix):
+            return sqlite_url
+
+        path_part = sqlite_url[len(prefix) :]  # may be absolute (starts with /) or relative
+        if not path_part:
+            return sqlite_fallback_url()
+
+        if path_part.startswith("/"):
+            db_path = path_part
+        else:
+            db_path = os.path.join(BASE_DIR, path_part)
+
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        return f"{prefix}{db_path}"
+
+    if not env_db_url:
+        env_db_url = sqlite_fallback_url()
+    elif env_db_url.startswith("sqlite:///"):
+        env_db_url = normalize_sqlite_url(env_db_url)
+    elif env_db_url.startswith("postgresql"):
+        # If the Postgres driver isn't installed, fall back to SQLite for local dev.
+        # This prevents confusing SQLAlchemy dialect/plugin errors on fresh setups.
+        try:
+            import psycopg2  # noqa: F401
+        except Exception:
+            app.logger.warning(
+                "Postgres DATABASE_URL configured but psycopg2 is not installed; "
+                "falling back to local SQLite. Install psycopg2-binary to use Postgres."
+            )
+            env_db_url = sqlite_fallback_url()
+
+    app.config["SQLALCHEMY_DATABASE_URI"] = env_db_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     # Initialize extensions with app
@@ -69,7 +111,7 @@ def create_app(config_name=None):
         resources={r"/*": {"origins": origin_list}},
         supports_credentials=False,
         allow_headers=["Content-Type", "Authorization"],
-        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
 
     # Import models to ensure they are registered
@@ -126,15 +168,27 @@ def create_app(config_name=None):
 
     # Register blueprints
     from app.routes import main_bp
+    from app.routes.projects import projects_bp
+    from app.routes.project_members import project_members_bp
     from app.api_routes.auth import bp as auth_bp
     from app.api_routes.v1.photos import bp as photos_v1_bp
+    from app.api_routes.files import bp as files_bp
+    from app.api_routes.public_links import bp as public_links_bp
 
     app.register_blueprint(main_bp)
+    app.register_blueprint(projects_bp)
+    app.register_blueprint(project_members_bp)
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(photos_v1_bp, url_prefix="/api/v1/photos")
+    app.register_blueprint(files_bp)
+    app.register_blueprint(public_links_bp)
 
     @app.route("/api/test/connection", methods=["GET"])
     def test_connection():
-        return {"status": "success", "message": "Backend connected"}
+        return {
+            "status": "success",
+            "message": "Backend connected",
+            "db": app.config["SQLALCHEMY_DATABASE_URI"],
+        }
 
     return app

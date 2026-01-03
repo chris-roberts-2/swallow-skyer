@@ -4,6 +4,7 @@ import os
 from types import SimpleNamespace
 
 import pytest
+from PIL import Image
 
 
 def create_test_app():
@@ -29,17 +30,23 @@ def client(app):
 
 
 def _make_image_bytes() -> bytes:
-    # Minimal JPEG header + padding, sufficient for mimetype=image/jpeg in tests
-    return b"\xff\xd8\xff\xe0" + b"0" * 1024 + b"\xff\xd9"
+    img = Image.new("RGB", (32, 32), color=(120, 120, 220))
+    buffer = io.BytesIO()
+    img.save(buffer, format="JPEG")
+    return buffer.getvalue()
 
 
-def test_upload_save_retrieve_flow(client, monkeypatch):
+def test_upload_save_retrieve_flow(client, monkeypatch, auth_headers):
     # Arrange: mock R2 client upload and URL generation
+    project_uuid = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+
     stored_calls = {
         "r2_upload": [],
+        "r2_upload_thumb": [],
         "r2_get_url": [],
         "supabase_store": [],
-        "supabase_get": [],
+        "supabase_update": [],
+        "supabase_fetch": [],
     }
 
     from app.services.storage import r2_client as r2_module
@@ -55,11 +62,22 @@ def test_upload_save_retrieve_flow(client, monkeypatch):
         SimpleNamespace(name="mock_supabase"),
         raising=True,
     )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "supports_thumbnail_columns",
+        lambda: True,
+        raising=True,
+    )
 
-    def mock_upload_file(fileobj, key):
-        stored_calls["r2_upload"].append({"key": key})
-        # Consume file-like to mimic real behavior
-        _ = fileobj.read()
+    def mock_upload_project_photo(project_id, photo_id, file_bytes, ext, content_type=None):
+        key = f"projects/{project_id}/photos/{photo_id}.{ext}"
+        stored_calls["r2_upload"].append({"key": key, "content_type": content_type})
+        return key
+
+    def mock_upload_thumbnail(data, key, content_type=None):
+        stored_calls["r2_upload_thumb"].append(
+            {"key": key, "content_type": content_type}
+        )
         return True
 
     def mock_get_file_url(key):
@@ -67,7 +85,10 @@ def test_upload_save_retrieve_flow(client, monkeypatch):
         return f"https://mock.cdn.example/{key}"
 
     monkeypatch.setattr(
-        r2_module.r2_client, "upload_file", mock_upload_file, raising=True
+        r2_module.r2_client, "upload_project_photo", mock_upload_project_photo, raising=True
+    )
+    monkeypatch.setattr(
+        r2_module.r2_client, "upload_bytes", mock_upload_thumbnail, raising=True
     )
     monkeypatch.setattr(
         r2_module.r2_client, "get_file_url", mock_get_file_url, raising=True
@@ -77,6 +98,7 @@ def test_upload_save_retrieve_flow(client, monkeypatch):
     created_record = {
         "id": "photo-123",
         "user_id": "user-42",
+        "project_id": project_uuid,
         "r2_key": None,  # will be filled after upload
         "url": None,  # will be filled after upload
         "latitude": 37.7749,
@@ -91,25 +113,31 @@ def test_upload_save_retrieve_flow(client, monkeypatch):
         created.update(photo_data)
         if not created.get("id"):
             created["id"] = "photo-123"
+        stored_calls["placeholder_result"] = created
         return created
 
-    def mock_get_photos(limit=None, offset=None, since=None, bbox=None, user_id=None):
-        stored_calls["supabase_get"].append(
-            {
-                "limit": limit,
-                "offset": offset,
-                "since": since,
-                "bbox": bbox,
-                "user_id": user_id,
-            }
+    def mock_update_photo_metadata(photo_id, updates):
+        stored_calls["supabase_update"].append(
+            {"photo_id": photo_id, "updates": updates}
         )
+        updated = dict(created_record)
+        updated.update(updates)
+        updated["id"] = photo_id
+        return updated
+
+    def mock_list_projects_for_user(user_id):
+        return [{"id": project_uuid, "role": "owner"}]
+
+    def mock_fetch_project_photos(**kwargs):
+        stored_calls["supabase_fetch"].append(kwargs)
         return {
             "data": [
                 {
                     **created_record,
-                    "url": created_record["url"]
-                    or "https://mock.cdn.example/uploads/anonymous/abc.jpg",
-                    "r2_key": created_record["r2_key"] or "uploads/anonymous/abc.jpg",
+                    "r2_path": f"projects/{project_uuid}/photos/{created_record['id']}.jpg",
+                    "r2_url": None,
+                    "thumbnail_r2_path": f"projects/{project_uuid}/photos/{created_record['id']}_thumb.jpg",
+                    "thumbnail_r2_url": None,
                 }
             ],
             "count": 1,
@@ -122,7 +150,22 @@ def test_upload_save_retrieve_flow(client, monkeypatch):
         raising=True,
     )
     monkeypatch.setattr(
-        supabase_module.supabase_client, "get_photos", mock_get_photos, raising=True
+        supabase_module.supabase_client,
+        "update_photo_metadata",
+        mock_update_photo_metadata,
+        raising=True,
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "list_projects_for_user",
+        mock_list_projects_for_user,
+        raising=True,
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "fetch_project_photos",
+        mock_fetch_project_photos,
+        raising=True,
     )
 
     # Act: upload a mock image
@@ -133,6 +176,7 @@ def test_upload_save_retrieve_flow(client, monkeypatch):
         "latitude": "37.7749",
         "longitude": "-122.4194",
         "timestamp": "2024-01-01T00:00:00Z",
+        "project_id": project_uuid,
     }
 
     upload_resp = client.post(
@@ -142,11 +186,12 @@ def test_upload_save_retrieve_flow(client, monkeypatch):
     )
 
     # Assert: upload result
-    assert upload_resp.status_code == 201, upload_resp.data
+    assert upload_resp.status_code == 201, (upload_resp.data, stored_calls)
     upload_json = upload_resp.get_json()
     assert upload_json["status"] == "success"
-    assert upload_json.get("photo_id") == "photo-123"
-    assert upload_json.get("url") and upload_json["url"].startswith(
+    uploaded_item = upload_json["uploaded"][0]
+    assert uploaded_item.get("photo_id") == "photo-123"
+    assert uploaded_item.get("r2_url") and uploaded_item["r2_url"].startswith(
         "https://mock.cdn.example/"
     )
 
@@ -160,11 +205,24 @@ def test_upload_save_retrieve_flow(client, monkeypatch):
     stored_record = stored_calls["supabase_store"][0]
     assert stored_record["latitude"] == pytest.approx(37.7749)
     assert stored_record["longitude"] == pytest.approx(-122.4194)
-    assert stored_record.get("taken_at") == "2024-01-01T00:00:00Z"
+    assert stored_record.get("captured_at") == "2024-01-01T00:00:00Z"
+    assert stored_record.get("project_id") == project_uuid
+    assert "r2_path" not in stored_record
+
+    updated_payload = stored_calls["supabase_update"][0]
+    assert updated_payload["photo_id"] == "photo-123"
+    assert updated_payload["updates"]["r2_path"].startswith(
+        f"projects/{project_uuid}/photos/"
+    )
+    assert stored_calls["r2_upload_thumb"], "Expected thumbnail upload to be called"
+    assert updated_payload["updates"]["thumbnail_r2_path"].endswith("_thumb.jpg")
 
     # Act: retrieve photos
-    list_resp = client.get("/api/photos")
-    assert list_resp.status_code == 200
+    list_resp = client.get(
+        "/api/photos",
+        headers=auth_headers,
+    )
+    assert list_resp.status_code == 200, list_resp.data
     list_json = list_resp.get_json()
     photos = list_json.get("photos", [])
     assert len(photos) == 1
@@ -175,3 +233,32 @@ def test_upload_save_retrieve_flow(client, monkeypatch):
     assert photo.get("url") and photo["url"].startswith("https://mock.cdn.example/")
     assert photo.get("latitude") == pytest.approx(37.7749)
     assert photo.get("longitude") == pytest.approx(-122.4194)
+    assert photo.get("thumbnail_r2_path").endswith("_thumb.jpg")
+    assert photo.get("thumbnail_url").startswith("https://mock.cdn.example/")
+
+
+def test_photo_listing_enforces_project_membership(client, monkeypatch, auth_headers):
+    from app.services.storage import supabase_client as supabase_module
+
+    monkeypatch.setattr(
+        supabase_module.supabase_client, "client", SimpleNamespace(name="mock_sb")
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "supports_thumbnail_columns",
+        lambda: True,
+        raising=True,
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "get_project_role",
+        lambda project_id, user_id: None,
+        raising=True,
+    )
+
+    resp = client.get(
+        "/api/photos?project_id=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        headers=auth_headers,
+    )
+
+    assert resp.status_code == 403

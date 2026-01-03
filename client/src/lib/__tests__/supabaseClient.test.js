@@ -52,14 +52,16 @@ describe('supabaseClient', () => {
     expect(client).toBeDefined();
   });
 
-  it('throws when required environment variables are missing', () => {
+  it('does not throw when required environment variables are missing', () => {
     delete process.env.REACT_APP_SUPABASE_URL;
     delete process.env.REACT_APP_SUPABASE_ANON_KEY;
     delete process.env.SUPABASE_URL;
     delete process.env.SUPABASE_ANON_KEY;
 
-    expect(() => loadClient()).toThrow(
-      'Missing Supabase environment variables'
-    );
+    const client = loadClient();
+
+    expect(getCreateClientMock()).not.toHaveBeenCalled();
+    expect(client).toBeDefined();
+    expect(client.__isConfigured).toBe(false);
   });
 });

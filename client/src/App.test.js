@@ -41,5 +41,5 @@ test('shows login/register links when signed out', () => {
 test('shows profile navigation when signed in', () => {
   renderWithAuth({ user: { email: 'pilot@example.com' } }, ['/map']);
   expect(screen.getAllByText(/pilot@example.com/i).length).toBeGreaterThan(0);
-  expect(screen.getByRole('link', { name: /upload/i })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /photos/i })).toBeInTheDocument();
 });

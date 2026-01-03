@@ -29,8 +29,11 @@ def mock_supabase_response():
             {
                 "id": "550e8400-e29b-41d4-a716-446655440000",
                 "user_id": "123e4567-e89b-12d3-a456-426614174000",
-                "r2_key": "photos/2024/test.jpg",
-                "url": "https://example.com/presigned-url",
+                "project_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "r2_path": "projects/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/photos/550e8400-e29b-41d4-a716-446655440000.jpg",
+                "r2_url": "https://example.com/photos/one.jpg",
+                "thumbnail_r2_path": "projects/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/photos/550e8400-e29b-41d4-a716-446655440000_thumb.jpg",
+                "thumbnail_r2_url": "https://example.com/photos/one_thumb.jpg",
                 "latitude": 37.7749,
                 "longitude": -122.4194,
                 "taken_at": "2024-01-15T10:30:00Z",
@@ -39,8 +42,11 @@ def mock_supabase_response():
             {
                 "id": "660e8400-e29b-41d4-a716-446655440001",
                 "user_id": "123e4567-e89b-12d3-a456-426614174000",
-                "r2_key": "photos/2024/test2.jpg",
-                "url": "",  # Empty URL to test presigned generation
+                "project_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "r2_path": "projects/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/photos/660e8400-e29b-41d4-a716-446655440001.jpg",
+                "r2_url": "",  # Empty to force signed URL generation
+                "thumbnail_r2_path": "projects/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/photos/660e8400-e29b-41d4-a716-446655440001_thumb.jpg",
+                "thumbnail_r2_url": "",  # Empty to force signed URL generation
                 "latitude": 37.7849,
                 "longitude": -122.4294,
                 "taken_at": "2024-01-16T10:30:00Z",
@@ -63,161 +69,219 @@ class TestPhotosAPI:
     @patch("app.api_routes.v1.photos.supabase_client")
     @patch("app.api_routes.v1.photos.r2_client")
     def test_get_photos_default_params(
-        self, mock_r2, mock_supabase, client, mock_supabase_response
+        self,
+        mock_r2,
+        mock_supabase,
+        client,
+        mock_supabase_response,
+        auth_headers,
     ):
-        """Test GET /api/v1/photos with default parameters."""
-        # Setup mocks
-        mock_supabase.get_photos.return_value = mock_supabase_response
-        mock_r2.generate_presigned_url.return_value = "https://presigned.url"
+        """GET /api/v1/photos uses default pagination and membership scope."""
+        mock_supabase.client = True
+        mock_supabase.list_projects_for_user.return_value = [
+            {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "role": "owner"}
+        ]
+        mock_supabase.fetch_project_photos.return_value = mock_supabase_response
+        mock_supabase.extract_thumbnail_fields.side_effect = (
+            lambda record: (
+                record.get("thumbnail_r2_path"),
+                record.get("thumbnail_r2_url"),
+            )
+        )
+        mock_r2.resolve_url.return_value = "https://signed.example/path"
 
-        # Make request
-        response = client.get("/api/v1/photos/")
+        response = client.get("/api/v1/photos/", headers=auth_headers)
 
-        # Assertions
         assert response.status_code == 200
         data = response.get_json()
-
-        assert "photos" in data
-        assert "pagination" in data
-        assert len(data["photos"]) == 2
-        assert data["pagination"]["limit"] == 50
-        assert data["pagination"]["offset"] == 0
-        assert data["pagination"]["total"] == 2
-
-        # Verify Supabase was called with defaults
-        mock_supabase.get_photos.assert_called_once_with(
-            limit=50, offset=0, since=None, bbox=None, user_id=None
+        assert data["pagination"]["page"] == 1
+        assert data["pagination"]["page_size"] == 50
+        assert data["photos"][0]["thumbnail_url"] == "https://example.com/photos/one_thumb.jpg"
+        mock_supabase.fetch_project_photos.assert_called_once_with(
+            project_ids=["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],
+            page=1,
+            page_size=50,
+            user_id=None,
+            date_range=None,
+            include_signed_urls=True,
         )
 
     @patch("app.api_routes.v1.photos.supabase_client")
     @patch("app.api_routes.v1.photos.r2_client")
     def test_get_photos_with_pagination(
-        self, mock_r2, mock_supabase, client, mock_supabase_response
+        self,
+        mock_r2,
+        mock_supabase,
+        client,
+        mock_supabase_response,
+        auth_headers,
     ):
-        """Test GET /api/v1/photos with pagination parameters."""
-        mock_supabase.get_photos.return_value = mock_supabase_response
+        mock_supabase.client = True
+        mock_supabase.get_project_role.return_value = "viewer"
+        mock_supabase.fetch_project_photos.return_value = mock_supabase_response
+        mock_supabase.extract_thumbnail_fields.side_effect = (
+            lambda record: (
+                record.get("thumbnail_r2_path"),
+                record.get("thumbnail_r2_url"),
+            )
+        )
+        mock_r2.resolve_url.return_value = "https://signed.example/path"
 
-        response = client.get("/api/v1/photos/?limit=10&offset=20")
+        response = client.get(
+            "/api/v1/photos/?page=3&page_size=25&project_id=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            headers=auth_headers,
+        )
 
         assert response.status_code == 200
+        mock_supabase.fetch_project_photos.assert_called_once_with(
+            project_ids=["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],
+            page=3,
+            page_size=25,
+            user_id=None,
+            date_range=None,
+            include_signed_urls=True,
+        )
+
+    @patch("app.api_routes.v1.photos.supabase_client")
+    @patch("app.api_routes.v1.photos.r2_client")
+    def test_get_photos_with_filters(
+        self,
+        mock_r2,
+        mock_supabase,
+        client,
+        mock_supabase_response,
+        auth_headers,
+    ):
+        mock_supabase.client = True
+        mock_supabase.list_projects_for_user.return_value = [
+            {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "role": "owner"}
+        ]
+        mock_supabase.fetch_project_photos.return_value = mock_supabase_response
+        mock_supabase.extract_thumbnail_fields.side_effect = (
+            lambda record: (
+                record.get("thumbnail_r2_path"),
+                record.get("thumbnail_r2_url"),
+            )
+        )
+        mock_r2.resolve_url.return_value = "https://signed.example/path"
+
+        response = client.get(
+            "/api/v1/photos/?user_id=abc&date_range=2024-01-01,2024-02-01",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        mock_supabase.fetch_project_photos.assert_called_once_with(
+            project_ids=["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],
+            page=1,
+            page_size=50,
+            user_id="abc",
+            date_range=("2024-01-01", "2024-02-01"),
+            include_signed_urls=True,
+        )
+
+    @patch("app.api_routes.v1.photos.supabase_client")
+    @patch("app.api_routes.v1.photos.r2_client")
+    def test_get_photos_enforces_page_size_cap(
+        self,
+        mock_r2,
+        mock_supabase,
+        client,
+        mock_supabase_response,
+        auth_headers,
+    ):
+        mock_supabase.client = True
+        mock_supabase.list_projects_for_user.return_value = [
+            {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "role": "owner"}
+        ]
+        mock_supabase.fetch_project_photos.return_value = mock_supabase_response
+        mock_supabase.extract_thumbnail_fields.side_effect = (
+            lambda record: (
+                record.get("thumbnail_r2_path"),
+                record.get("thumbnail_r2_url"),
+            )
+        )
+        mock_r2.resolve_url.return_value = "https://signed.example/path"
+
+        response = client.get("/api/v1/photos/?page_size=500", headers=auth_headers)
         data = response.get_json()
-
-        assert data["pagination"]["limit"] == 10
-        assert data["pagination"]["offset"] == 20
-
-        mock_supabase.get_photos.assert_called_once_with(
-            limit=10, offset=20, since=None, bbox=None, user_id=None
-        )
-
-    @patch("app.api_routes.v1.photos.supabase_client")
-    @patch("app.api_routes.v1.photos.r2_client")
-    def test_get_photos_with_bbox_filter(
-        self, mock_r2, mock_supabase, client, mock_supabase_response
-    ):
-        """Test GET /api/v1/photos with bounding box filter."""
-        mock_supabase.get_photos.return_value = mock_supabase_response
-
-        bbox = "37.7,122.4,37.8,122.5"
-        response = client.get(f"/api/v1/photos/?bbox={bbox}")
-
-        assert response.status_code == 200
-        mock_supabase.get_photos.assert_called_once_with(
-            limit=50, offset=0, since=None, bbox=bbox, user_id=None
-        )
-
-    @patch("app.api_routes.v1.photos.supabase_client")
-    @patch("app.api_routes.v1.photos.r2_client")
-    def test_get_photos_with_since_filter(
-        self, mock_r2, mock_supabase, client, mock_supabase_response
-    ):
-        """Test GET /api/v1/photos with since timestamp filter."""
-        mock_supabase.get_photos.return_value = mock_supabase_response
-
-        since = "2024-01-01T00:00:00Z"
-        response = client.get(f"/api/v1/photos/?since={since}")
-
-        assert response.status_code == 200
-        mock_supabase.get_photos.assert_called_once_with(
-            limit=50, offset=0, since=since, bbox=None, user_id=None
-        )
-
-    @patch("app.api_routes.v1.photos.supabase_client")
-    @patch("app.api_routes.v1.photos.r2_client")
-    def test_get_photos_with_user_filter(
-        self, mock_r2, mock_supabase, client, mock_supabase_response
-    ):
-        """Test GET /api/v1/photos with user_id filter."""
-        mock_supabase.get_photos.return_value = mock_supabase_response
-
-        user_id = "123e4567-e89b-12d3-a456-426614174000"
-        response = client.get(f"/api/v1/photos/?user_id={user_id}")
-
-        assert response.status_code == 200
-        mock_supabase.get_photos.assert_called_once_with(
-            limit=50, offset=0, since=None, bbox=None, user_id=user_id
-        )
-
-    @patch("app.api_routes.v1.photos.supabase_client")
-    @patch("app.api_routes.v1.photos.r2_client")
-    def test_get_photos_enforces_max_limit(
-        self, mock_r2, mock_supabase, client, mock_supabase_response
-    ):
-        """Test that limit is capped at 200."""
-        mock_supabase.get_photos.return_value = mock_supabase_response
-
-        response = client.get("/api/v1/photos/?limit=500")
-
-        assert response.status_code == 200
-        data = response.get_json()
-        assert data["pagination"]["limit"] == 200
-
-        mock_supabase.get_photos.assert_called_once_with(
-            limit=200, offset=0, since=None, bbox=None, user_id=None
+        assert data["pagination"]["page_size"] == 200
+        mock_supabase.fetch_project_photos.assert_called_once_with(
+            project_ids=["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],
+            page=1,
+            page_size=200,
+            user_id=None,
+            date_range=None,
+            include_signed_urls=True,
         )
 
     @patch("app.api_routes.v1.photos.supabase_client")
     @patch("app.api_routes.v1.photos.r2_client")
     def test_get_photos_generates_presigned_url_when_empty(
-        self, mock_r2, mock_supabase, client, mock_supabase_response, mock_presigned_url
+        self,
+        mock_r2,
+        mock_supabase,
+        client,
+        mock_supabase_response,
+        auth_headers,
     ):
-        """Test that presigned URLs are generated when url field is empty."""
-        mock_supabase.get_photos.return_value = mock_supabase_response
-        mock_r2.generate_presigned_url.return_value = mock_presigned_url
+        mock_supabase.client = True
+        mock_supabase.list_projects_for_user.return_value = [
+            {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "role": "owner"}
+        ]
+        mock_supabase.fetch_project_photos.return_value = mock_supabase_response
+        mock_supabase.extract_thumbnail_fields.side_effect = (
+            lambda record: (
+                record.get("thumbnail_r2_path"),
+                record.get("thumbnail_r2_url"),
+            )
+        )
+        mock_r2.resolve_url.side_effect = [
+            "https://signed.example/full",
+            "https://signed.example/thumb",
+        ]
 
-        response = client.get("/api/v1/photos/")
+        response = client.get("/api/v1/photos/", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.get_json()
-
-        # First photo has URL, should not generate presigned
-        assert data["photos"][0]["url"] == "https://example.com/presigned-url"
-
-        # Second photo has empty URL, should have presigned generated
-        assert data["photos"][1]["url"] == mock_presigned_url
-
-        # Verify presigned URL was generated for second photo only
-        mock_r2.generate_presigned_url.assert_called_once_with(
-            "photos/2024/test2.jpg", expires_in=600
-        )
+        assert data["photos"][1]["url"] == "https://signed.example/full"
+        assert data["photos"][1]["thumbnail_url"] == "https://signed.example/thumb"
+        assert mock_r2.resolve_url.call_count == 2
 
     @patch("app.api_routes.v1.photos.supabase_client")
-    def test_get_photos_handles_errors(self, mock_supabase, client):
-        """Test error handling when Supabase fails."""
-        mock_supabase.get_photos.side_effect = Exception("Database connection failed")
+    def test_get_photos_handles_errors(
+        self, mock_supabase, client, auth_headers
+    ):
+        mock_supabase.client = True
+        mock_supabase.list_projects_for_user.return_value = [
+            {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "role": "owner"}
+        ]
+        mock_supabase.fetch_project_photos.side_effect = Exception("boom")
+        mock_supabase.extract_thumbnail_fields.side_effect = (
+            lambda record: (record.get("thumbnail_r2_path"), record.get("thumbnail_r2_url"))
+        )
 
-        response = client.get("/api/v1/photos/")
+        response = client.get("/api/v1/photos/", headers=auth_headers)
 
         assert response.status_code == 500
-        data = response.get_json()
-        assert "error" in data
+        assert "error" in response.get_json()
 
     @patch("app.api_routes.v1.photos.supabase_client")
     @patch("app.api_routes.v1.photos.r2_client")
-    def test_get_photos_empty_result(self, mock_r2, mock_supabase, client):
-        """Test GET /api/v1/photos with no results."""
-        mock_supabase.get_photos.return_value = {"data": [], "count": 0}
+    def test_get_photos_empty_result(
+        self, mock_r2, mock_supabase, client, auth_headers
+    ):
+        mock_supabase.client = True
+        mock_supabase.list_projects_for_user.return_value = [
+            {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "role": "owner"}
+        ]
+        mock_supabase.fetch_project_photos.return_value = {"data": [], "count": 0}
+        mock_supabase.extract_thumbnail_fields.side_effect = (
+            lambda record: (record.get("thumbnail_r2_path"), record.get("thumbnail_r2_url"))
+        )
 
-        response = client.get("/api/v1/photos/")
+        response = client.get("/api/v1/photos/", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.get_json()
@@ -226,20 +290,20 @@ class TestPhotosAPI:
 
 
 class TestSupabaseClientGetPhotos:
-    """Test cases for SupabaseClient.get_photos method."""
+    """Test cases for SupabaseClient.fetch_project_photos method."""
 
     @patch("app.services.storage.supabase_client.create_client")
-    def test_get_photos_filters_correctly(self, mock_create_client):
-        """Test that filters are applied correctly to Supabase query."""
+    def test_fetch_project_photos_filters_correctly(self, mock_create_client):
+        """Verify project, pagination, and filter clauses are applied."""
         from app.services.storage.supabase_client import SupabaseClient
 
-        # Setup mock
         mock_client = Mock()
         mock_table = Mock()
         mock_query = Mock()
 
         mock_client.table.return_value = mock_table
         mock_table.select.return_value = mock_query
+        mock_query.in_.return_value = mock_query
         mock_query.eq.return_value = mock_query
         mock_query.gte.return_value = mock_query
         mock_query.lte.return_value = mock_query
@@ -248,16 +312,26 @@ class TestSupabaseClientGetPhotos:
         mock_query.offset.return_value = mock_query
         mock_query.execute.return_value = Mock(data=[], count=0)
 
-        # Create client with mocked supabase
         client = SupabaseClient()
         client.client = mock_client
+        client._thumbnail_columns_supported = True
 
-        # Test with bbox
-        client.get_photos(bbox="37.7,-122.5,37.8,-122.4")
+        client.fetch_project_photos(
+            project_ids=["proj-1"],
+            page=2,
+            page_size=25,
+            user_id="user-99",
+            date_range=("2024-01-01", "2024-01-31"),
+            include_signed_urls=False,
+        )
 
-        # Verify bbox filters were applied
-        assert mock_query.gte.called
-        assert mock_query.lte.called
+        mock_query.in_.assert_called_once()
+        mock_query.eq.assert_called_with("user_id", "user-99")
+        mock_query.gte.assert_any_call("created_at", "2024-01-01")
+        mock_query.lte.assert_any_call("created_at", "2024-01-31")
+        mock_query.order.assert_called_once_with("created_at", desc=True)
+        mock_query.limit.assert_called_once_with(25)
+        mock_query.offset.assert_called_once_with(25)
 
 
 class TestR2ClientPresignedURL:

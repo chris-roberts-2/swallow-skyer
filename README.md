@@ -46,7 +46,7 @@ swallow-skyer/
 │   │   ├── context/          # React Context providers
 │   │   ├── utils/            # Utility functions
 │   │   └── assets/           # Static assets (fonts, icons, images)
-│   ├── .env.example          # Frontend environment template
+│   ├── env.example           # Frontend environment template (copy to .env.local)
 │   └── package.json
 ├── server/                   # Flask backend
 │   ├── app/
@@ -147,7 +147,7 @@ If you prefer manual setup or need to troubleshoot:
    # Copy example files
    cp .env.example .env
    cp server/.env.example server/.env
-   cp client/.env.example client/.env
+cp client/env.example client/.env.local
    
    # Edit the files with your actual credentials:
    # - Supabase URL and service key

@@ -13,6 +13,16 @@ jest.mock('../../lib/supabaseClient', () =>
 );
 
 const supabaseMock = require('../../__mocks__/supabase');
+jest.mock('../../services/api', () => ({
+  __esModule: true,
+  default: {
+    get: jest.fn().mockResolvedValue({ projects: [] }),
+    post: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn(),
+    request: jest.fn(),
+  },
+}));
 
 const TestComponent = () => {
   const { isLoading, user } = useAuth();

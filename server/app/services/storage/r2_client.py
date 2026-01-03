@@ -3,6 +3,7 @@ Cloudflare R2 storage client for file operations.
 """
 
 import os
+import io
 import boto3
 from typing import BinaryIO, Optional
 from botocore.exceptions import ClientError
@@ -34,13 +35,41 @@ class R2Client:
                 aws_secret_access_key=self.secret_key,
             )
 
-    def upload_file(self, file: BinaryIO, key: str) -> bool:
+    def _public_base_with_bucket(self) -> Optional[str]:
         """
-        Upload file to R2 storage.
+        Return a public base URL that includes the bucket path when required.
+
+        Cloudflare's public endpoints (pub-*.r2.dev or *.r2.cloudflarestorage.com)
+        expect the bucket name as a path segment. If the configured public base
+        points at those domains and the bucket segment is missing, append it so
+        generated URLs resolve correctly.
+        """
+        if not self.public_url:
+            return None
+
+        base = self.public_url.rstrip("/")
+        if not self.bucket_name:
+            return base
+
+        normalized = base.lower()
+        bucket_segment = f"/{self.bucket_name.lower()}"
+        if (
+            ("r2.dev" in normalized or "r2.cloudflarestorage.com" in normalized)
+            and bucket_segment not in normalized
+        ):
+            return f"{base}/{self.bucket_name}"
+        return base
+
+    def upload_file(
+        self, file: BinaryIO, key: str, content_type: Optional[str] = None
+    ) -> bool:
+        """
+        Upload file to R2 storage using the provided fully-qualified object key.
 
         Args:
             file (BinaryIO): File object to upload
             key (str): Object key/path in bucket
+            content_type (Optional[str]): MIME type for the object
 
         Returns:
             bool: True if successful, False otherwise
@@ -50,11 +79,23 @@ class R2Client:
             return False
 
         try:
-            self.client.upload_fileobj(file, self.bucket_name, key)
+            extra_args = {"ContentType": content_type} if content_type else None
+            upload_kwargs = {"ExtraArgs": extra_args} if extra_args else {}
+            self.client.upload_fileobj(file, self.bucket_name, key, **upload_kwargs)
             return True
         except ClientError as e:
             print(f"Error uploading file to R2: {e}")
             return False
+
+    def upload_bytes(
+        self, data: bytes, key: str, content_type: Optional[str] = None
+    ) -> bool:
+        """
+        Convenience helper to upload raw bytes without requiring callers to manage streams.
+        """
+        buffer = io.BytesIO(data)
+        buffer.seek(0)
+        return self.upload_file(buffer, key, content_type)
 
     def get_file_url(self, key: str) -> Optional[str]:
         """
@@ -71,13 +112,56 @@ class R2Client:
             return None
 
         try:
-            if self.public_url:
-                return f"{self.public_url}/{key}"
-            else:
-                return f"{self.endpoint_url}/{self.bucket_name}/{key}"
+            public_base = self._public_base_with_bucket()
+            if public_base:
+                return f"{public_base}/{key}"
+            return f"{self.endpoint_url}/{self.bucket_name}/{key}"
         except Exception as e:
             print(f"Error generating file URL: {e}")
             return None
+
+    def resolve_url(
+        self, key: str, require_signed: bool = False, expires_in: int = 600
+    ) -> Optional[str]:
+        """
+        Resolve a usable URL for the given key, optionally forcing a signed URL.
+
+        Args:
+            key (str): Object key/path.
+            require_signed (bool): Force presigned URLs even if public base exists.
+            expires_in (int): Lifespan for signed URLs.
+        """
+        if not key:
+            return None
+
+        if not self.client:
+            print("R2 client not initialized - check environment variables")
+            return None
+
+        if require_signed:
+            return self.generate_presigned_url(key, expires_in=expires_in)
+
+        # Prefer configured public base, fall back to signed URLs.
+        url = self.get_file_url(key)
+        if url:
+            return url
+        return self.generate_presigned_url(key, expires_in=expires_in)
+
+    def upload_project_photo(
+        self,
+        project_id: str,
+        photo_id: str,
+        file_bytes: bytes,
+        ext: str,
+        content_type: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Upload a project-scoped photo and return the object key if successful.
+        """
+        cleaned_ext = ext.lstrip(".")
+        key = f"projects/{project_id}/photos/{photo_id}.{cleaned_ext}"
+        ok = self.upload_bytes(file_bytes, key, content_type=content_type)
+        return key if ok else None
 
     def generate_presigned_url(self, key: str, expires_in: int = 600) -> Optional[str]:
         """

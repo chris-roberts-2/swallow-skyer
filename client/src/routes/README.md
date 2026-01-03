@@ -18,5 +18,5 @@ Routes are configured in `App.js` using React Router DOM.
 - `/` - Home page
 - `/map` - Interactive map view
 - `/photo/:id` - Individual photo view
-- `/upload` - Photo upload form
+- `/photos` - Project photo grid & upload
 - `/profile` - User profile

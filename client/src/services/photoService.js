@@ -18,6 +18,9 @@ class PhotoService {
     formData.append('caption', photoData.caption);
     formData.append('latitude', photoData.latitude);
     formData.append('longitude', photoData.longitude);
+    if (photoData.project_id) {
+      formData.append('project_id', photoData.project_id);
+    }
 
     return apiClient.request('/photos/upload', {
       method: 'POST',

@@ -1,38 +1,13 @@
-from flask import Flask, jsonify, request
-from flask_sqlalchemy import SQLAlchemy
 import os
 
-app = Flask(__name__)
+from app import create_app
 
-# Database setup
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-db = SQLAlchemy(app)
-
-
-# Example model
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), nullable=False)
-
-
-# Create DB tables
-with app.app_context():
-    db.create_all()
-
-
-# Example routes
-@app.route("/users", methods=["GET"])
-def get_users():
-    users = User.query.all()
-    return jsonify([{"id": u.id, "name": u.name} for u in users])
-
-
-@app.route("/api/hello", methods=["GET"])
-def hello():
-    return {"message": "Hello from Flask!"}
+# Use the real application factory (same as `flask run`)
+app = create_app()
 
 
 # Run the app
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    port = int(os.environ.get("PORT", "5001"))
+    debug = os.environ.get("FLASK_DEBUG", "1") not in ("0", "false", "False")
+    app.run(host="0.0.0.0", port=port, debug=debug)

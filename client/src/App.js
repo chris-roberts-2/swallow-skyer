@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
   Link,
+  useLocation,
 } from 'react-router-dom';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './App.css';
@@ -15,12 +16,17 @@ import {
   LoginPage,
   RegisterPage,
   MapPage,
-  UploadPage,
+  PhotosPage,
   ProfilePage,
+  ProjectsPage,
+  ProjectMembersPage,
 } from './pages';
+import PhotoOptionsPage from './pages/PhotoOptionsPage';
+import PublicProjectView from './pages/PublicProjectView';
 
 const Header = () => {
-  const { user } = useAuth();
+  const { user, activeProject } = useAuth();
+  const hasActiveProject = !!(activeProject?.id || activeProject);
 
   return (
     <header className="App-header">
@@ -30,9 +36,9 @@ const Header = () => {
           <nav className="App-nav">
             {user ? (
               <>
+                <Link to="/projects">Projects</Link>
+                {hasActiveProject && <Link to="/photos">Photos</Link>}
                 <Link to="/map">Map</Link>
-                <Link to="/upload">Upload</Link>
-                <Link to="/profile">Profile</Link>
               </>
             ) : (
               <>
@@ -59,9 +65,14 @@ const RootRedirect = () => {
 };
 
 export function AppRoutes() {
+  const location = useLocation();
+  const showHeader =
+    !(location.pathname.startsWith('/public') &&
+      new URLSearchParams(location.search).get('embed') === '1');
+
   return (
     <div className="App">
-      <Header />
+      {showHeader && <Header />}
       <main className="App-main">
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -75,10 +86,35 @@ export function AppRoutes() {
             }
           />
           <Route
-            path="/upload"
+            path="/photos"
             element={
               <AuthGuard>
-                <UploadPage />
+                <PhotosPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/photos/:id/options"
+            element={
+              <AuthGuard>
+                <PhotoOptionsPage />
+              </AuthGuard>
+            }
+          />
+          <Route path="/upload" element={<Navigate to="/photos" replace />} />
+          <Route
+            path="/projects"
+            element={
+              <AuthGuard>
+                <ProjectsPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/projects/:id/members"
+            element={
+              <AuthGuard>
+                <ProjectMembersPage />
               </AuthGuard>
             }
           />
@@ -90,6 +126,7 @@ export function AppRoutes() {
               </AuthGuard>
             }
           />
+          <Route path="/public/:token" element={<PublicProjectView />} />
           <Route path="/" element={<RootRedirect />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
