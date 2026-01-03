@@ -562,6 +562,30 @@ export const AuthProvider = ({ children }) => {
     syncSession(null);
   }, [syncSession]);
 
+  // Register API auth handlers once so the ApiClient can refresh on 401
+  // and force logout if refresh fails.
+  useEffect(() => {
+    const refreshTokens = async () => {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error) {
+        throw error;
+      }
+      syncSession(data?.session ?? null);
+      return data?.session ?? null;
+    };
+
+    const apiLogout = async () => {
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // ignore
+      }
+      syncSession(null);
+    };
+
+    apiClient.setAuthHandlers({ refreshTokens, logout: apiLogout });
+  }, [syncSession]);
+
   const value = useMemo(
     () => ({
       user: authState.user,

@@ -32,8 +32,11 @@ def jwt_required(fn):
         supabase_user = None
         try:
             supabase_user = verify_supabase_jwt(token)
-        except RuntimeError:
-            supabase_user = None
+        except RuntimeError as exc:
+            # Server misconfiguration: without Supabase config we can't validate
+            # Supabase access tokens, so falling back to our legacy JWT verifier
+            # produces confusing "Invalid token" errors.
+            return jsonify({"error": str(exc)}), 500
         except (ValueError, PermissionError) as exc:
             return jsonify({"error": str(exc)}), 401
 

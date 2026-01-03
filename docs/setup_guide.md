@@ -42,7 +42,7 @@ source venv/bin/activate
 
 # Configure environment variables
 cp server/.env.example server/.env
-cp client/.env.example client/.env
+cp client/env.example client/.env.local
 # Edit .env files with your credentials
 
 # Start backend (terminal 1)
@@ -207,11 +207,11 @@ npm install
 #### Step 2.2: Configure Environment Variables
 
 ```bash
-# Copy example file
-cp .env.example .env
+# Copy example file (we keep it as env.example in the repo)
+cp client/env.example client/.env.local
 
 # Edit with your configuration
-nano .env
+nano client/.env.local
 ```
 
 **Required Variables:**

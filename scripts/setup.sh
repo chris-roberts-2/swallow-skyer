@@ -109,16 +109,16 @@ else
     print_success "server/.env file already exists"
 fi
 
-if [ ! -f "client/.env" ]; then
-    if [ -f "client/.env.example" ]; then
-        cp client/.env.example client/.env
-        print_success "Created client/.env from client/.env.example"
-        print_warning "Please edit client/.env file with your API URLs"
+if [ ! -f "client/.env.local" ]; then
+    if [ -f "client/env.example" ]; then
+        cp client/env.example client/.env.local
+        print_success "Created client/.env.local from client/env.example"
+        print_warning "Please edit client/.env.local with your Supabase anon key and API URLs"
     else
-        print_warning "No client/.env.example found"
+        print_warning "No client/env.example found"
     fi
 else
-    print_success "client/.env file already exists"
+    print_success "client/.env.local file already exists"
 fi
 
 # Install backend dependencies

@@ -20,12 +20,7 @@ const ProjectList = ({
   onDelete,
   onUnjoin,
 }) => {
-  if (!projects || projects.length === 0) {
-    return <div>No projects yet.</div>;
-  }
-
-  const activeProject = projects.find(p => p.id === activeProjectId);
-  const otherProjects = projects.filter(p => p.id !== activeProjectId);
+  const safeProjects = Array.isArray(projects) ? projects : [];
   const [menuOpenId, setMenuOpenId] = useState(null);
 
   const closeMenu = useCallback(() => setMenuOpenId(null), []);
@@ -39,6 +34,13 @@ const ProjectList = ({
     document.addEventListener('click', handler);
     return () => document.removeEventListener('click', handler);
   }, [closeMenu]);
+
+  if (safeProjects.length === 0) {
+    return <div>No projects yet.</div>;
+  }
+
+  const activeProject = safeProjects.find(p => p.id === activeProjectId);
+  const otherProjects = safeProjects.filter(p => p.id !== activeProjectId);
 
   const cardStyle = (isActive, isMenuOpen) => ({
     border: '1px solid #e5e7eb',

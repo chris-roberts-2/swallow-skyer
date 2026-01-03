@@ -40,10 +40,10 @@ def _load_env_keys(path: Path) -> set[str]:
 def test_client_and_server_env_examples_list_required_keys():
     repo_root = Path(__file__).resolve().parents[3]
     server_keys = _load_env_keys(repo_root / "server/.env.example")
-    client_keys = _load_env_keys(repo_root / "client/.env.example")
+    client_keys = _load_env_keys(repo_root / "client/env.example")
 
     for key in SERVER_REQUIRED_KEYS:
         assert key in server_keys, f"{key} missing from server/.env.example"
 
     for key in CLIENT_REQUIRED_KEYS:
-        assert key in client_keys, f"{key} missing from client/.env.example"
+        assert key in client_keys, f"{key} missing from client/env.example"

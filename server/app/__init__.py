@@ -8,10 +8,11 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-# Load environment variables from server/.env
+# Load environment variables from server/.env.local (preferred) then server/.env
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# Load .env if present, but allow real environment variables to win.
+# Load .env files if present, but allow real environment variables to win.
 # This makes local testing predictable (you can override config per-shell).
+load_dotenv(os.path.join(BASE_DIR, ".env.local"), override=False)
 load_dotenv(os.path.join(BASE_DIR, ".env"), override=False)
 
 # Initialize extensions

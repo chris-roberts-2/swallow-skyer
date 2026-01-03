@@ -18,7 +18,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "ESLINT_NO_DEV_ERRORS=true react-scripts start",
+    "start": "node ./scripts/bootstrapEnv.js && ESLINT_NO_DEV_ERRORS=true react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test --env=jsdom --setupFilesAfterEnv=./jest.setup.js",
     "eject": "react-scripts eject",
