@@ -42,7 +42,9 @@ describe('Public embed mode', () => {
       </AuthProvider>
     );
 
-    await waitFor(() => expect(queryByText('Swallow Skyer')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(queryByText('Skyer by Swallow Robotics')).not.toBeInTheDocument()
+    );
   });
 });
 

@@ -13,6 +13,19 @@ _service_role_client: Optional[Client] = None
 _anon_client: Optional[Client] = None
 
 
+class SupabaseConfigError(RuntimeError):
+    """
+    Raised when Supabase environment configuration is missing.
+
+    Attributes:
+        missing_env_keys: list of env var names that must be set for this operation.
+    """
+
+    def __init__(self, message: str, missing_env_keys: list[str]):
+        super().__init__(message)
+        self.missing_env_keys = missing_env_keys
+
+
 def _get_supabase_url() -> str:
     return (os.getenv("SUPABASE_URL") or "").strip()
 
@@ -95,9 +108,23 @@ def verify_supabase_jwt(access_token: str) -> Dict[str, Any]:
         # the Auth API to resolve a user from an access token.
         client = get_anon_supabase_client()
     if not client:
-        raise RuntimeError(
+        missing: list[str] = []
+        if not _get_supabase_url():
+            missing.append("SUPABASE_URL")
+
+        anon_key = (os.getenv("SUPABASE_ANON_KEY") or "").strip()
+        service_key = (
+            (os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
+            or (os.getenv("SUPABASE_SERVICE_KEY") or "").strip()
+        )
+        if not anon_key and not service_key:
+            missing.extend(["SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"])
+
+        raise SupabaseConfigError(
             "Supabase client is not configured (set SUPABASE_URL and SUPABASE_ANON_KEY "
-            "or SUPABASE_SERVICE_ROLE_KEY in server/.env.local or server/.env)"
+            "or SUPABASE_SERVICE_ROLE_KEY in server/.env.local, server/.env, "
+            "repo-root .env.local, or repo-root .env)",
+            missing_env_keys=missing,
         )
 
     try:
