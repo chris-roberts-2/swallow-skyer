@@ -472,6 +472,12 @@ def _generate_thumbnail_bytes(
 
 def _rational_to_float(value):
     try:
+        if isinstance(value, (int, float)):
+            return float(value)
+        # Pillow may already have converted rationals into tuples/lists or floats.
+        # Handle common shapes: (num, denom) or [num, denom].
+        if isinstance(value, (list, tuple)) and len(value) == 2:
+            return float(value[0]) / float(value[1])
         return float(value[0]) / float(value[1])
     except Exception:
         return None
@@ -479,6 +485,10 @@ def _rational_to_float(value):
 
 def _dms_to_decimal(dms, ref):
     try:
+        # DMS can arrive as:
+        # - rationals (num, denom)
+        # - floats/ints
+        # - already-normalized [deg, min, sec] floats
         degrees = _rational_to_float(dms[0])
         minutes = _rational_to_float(dms[1])
         seconds = _rational_to_float(dms[2])
@@ -493,6 +503,9 @@ def _dms_to_decimal(dms, ref):
 
 
 def _extract_exif_data(image: Image.Image, original_bytes: bytes):
+    # We intentionally store a minimal, stable EXIF payload in Supabase:
+    # - only the canonical GPS decimal coordinates (+ a few optional fields)
+    # - avoids huge/non-deterministic fields like MakerNote that may contain null bytes
     exif_data = {}
     gps_decimal = {}
     captured_at = None
@@ -533,24 +546,33 @@ def _extract_exif_data(image: Image.Image, original_bytes: bytes):
             return {k: _safe_value(v) for k, v in val.items()}
         return val
 
-    # Map EXIF tags
+    # Extract only what we need from EXIF.
+    gps_info = {}
     for tag_id, value in raw_exif.items():
         tag = TAGS.get(tag_id, tag_id)
         if tag == "GPSInfo":
-            gps_info = {}
-            for key in value:
-                sub_tag = GPSTAGS.get(key, key)
-                gps_info[sub_tag] = _safe_value(value[key])
-            exif_data["gps"] = gps_info
-        else:
-            exif_data[tag] = _safe_value(value)
+            try:
+                for key in value:
+                    sub_tag = GPSTAGS.get(key, key)
+                    gps_info[sub_tag] = _safe_value(value[key])
+            except Exception:
+                gps_info = {}
+            break
 
     # Parse datetime_original
-    dt_original = exif_data.get("DateTimeOriginal") or exif_data.get("DateTime")
+    dt_original = None
+    if gps_info:
+        # Date/time tags are not part of GPSInfo; they are top-level tags.
+        # Pull from raw EXIF to avoid persisting huge EXIF payloads.
+        pass
+    try:
+        dt_original = _safe_value(raw_exif.get(36867)) or _safe_value(raw_exif.get(306))
+    except Exception:
+        dt_original = None
     offset_hint = (
-        exif_data.get("OffsetTimeOriginal")
-        or exif_data.get("OffsetTimeDigitized")
-        or exif_data.get("OffsetTime")
+        (_safe_value(raw_exif.get(36881)) if raw_exif else None)
+        or (_safe_value(raw_exif.get(36882)) if raw_exif else None)
+        or (_safe_value(raw_exif.get(36880)) if raw_exif else None)
     )
     if dt_original:
         try:
@@ -567,13 +589,13 @@ def _extract_exif_data(image: Image.Image, original_bytes: bytes):
             captured_at = None
 
     # Parse GPS to decimal
-    gps_info = exif_data.get("gps") or {}
     lat = gps_info.get("GPSLatitude")
     lat_ref = gps_info.get("GPSLatitudeRef")
     lon = gps_info.get("GPSLongitude")
     lon_ref = gps_info.get("GPSLongitudeRef")
     alt = gps_info.get("GPSAltitude")
     alt_ref = gps_info.get("GPSAltitudeRef")
+    hpe = gps_info.get("GPSHPositioningError")
 
     if lat and lat_ref and lon and lon_ref:
         lat_decimal = _dms_to_decimal(lat, lat_ref)
@@ -585,6 +607,14 @@ def _extract_exif_data(image: Image.Image, original_bytes: bytes):
                 alt_val = _rational_to_float(alt)
                 if alt_val is not None:
                     gps_decimal["alt"] = alt_val * (-1 if alt_ref else 1)
+            if hpe is not None:
+                # Store horizontal positioning error in meters if we can coerce it.
+                try:
+                    hpe_val = float(hpe)
+                    if hpe_val >= 0:
+                        gps_decimal["hpe_m"] = hpe_val
+                except Exception:
+                    pass
 
     if not captured_at:
         try:
@@ -593,6 +623,17 @@ def _extract_exif_data(image: Image.Image, original_bytes: bytes):
             captured_at = None
 
     # Ensure EXIF is JSON-serializable before sending to Supabase
+    if gps_decimal and gps_decimal.get("lat") is not None and gps_decimal.get("lon") is not None:
+        exif_data = {
+            "gps": {
+                "lat": gps_decimal.get("lat"),
+                "lon": gps_decimal.get("lon"),
+                "alt": gps_decimal.get("alt"),
+                "hpe_m": gps_decimal.get("hpe_m"),
+            }
+        }
+    else:
+        exif_data = {"gps": {}}
     try:
         exif_data = _sanitize_for_json(exif_data) if exif_data else None
     except Exception:

@@ -148,8 +148,12 @@ export const AuthProvider = ({ children }) => {
   const lastProjectsFetchAt = useRef(0);
   const isFetchingProfile = useRef(false);
 
+  // If projects cannot be fetched temporarily (backend 500, offline, etc), keep the
+  // active project id usable for upload/map flows by falling back to the stored id.
   const activeProject =
-    authState.projects.find(p => p.id === authState.activeProjectId) || null;
+    authState.projects.find(p => p.id === authState.activeProjectId) ||
+    authState.activeProjectId ||
+    null;
 
   const setActiveProject = useCallback(project => {
     const projectId =
@@ -364,9 +368,9 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      // Throttle to avoid hammering backend/Supabase in React dev (StrictMode + multiple consumers)
+      // Throttle to avoid hammering backend/Supabase (multiple consumers + retries).
       const now = Date.now();
-      if (now - lastProjectsFetchAt.current < 1500) {
+      if (now - lastProjectsFetchAt.current < 10_000) {
         return;
       }
       lastProjectsFetchAt.current = now;

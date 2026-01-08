@@ -186,6 +186,8 @@ def create_app(config_name=None):
         return {
             "status": "success",
             "message": "Backend connected",
+            "platform": "v1",
+            "exif_mode": "canonical_gps_only",
             "db": app.config["SQLALCHEMY_DATABASE_URI"],
         }
 
