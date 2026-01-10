@@ -26,11 +26,18 @@ const RegisterPage = () => {
     setError('');
     setIsSubmitting(true);
     try {
-      await signup(formValues.email, formValues.password, {
+      const result = await signup(formValues.email, formValues.password, {
         firstName: formValues.firstName,
         lastName: formValues.lastName,
         company: formValues.company,
       });
+      if (result?.needsEmailConfirmation) {
+        navigate('/check-email', {
+          replace: true,
+          state: { email: result.email || formValues.email },
+        });
+        return;
+      }
       navigate('/map', { replace: true });
     } catch (err) {
       setError(err?.message || 'Unable to register');

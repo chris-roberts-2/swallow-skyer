@@ -487,6 +487,18 @@ export const AuthProvider = ({ children }) => {
         password,
       });
       if (error) {
+        // Supabase commonly returns a generic 400 "Invalid login credentials" for
+        // both wrong credentials and some unconfirmed-email cases.
+        if (
+          (error?.status === 400 || error?.status === 401) &&
+          (error?.message || '')
+            .toLowerCase()
+            .includes('invalid login credentials')
+        ) {
+          throw new Error(
+            'Invalid email/password, or the account email has not been confirmed yet.'
+          );
+        }
         throw error;
       }
       syncSession(data?.session ?? null);
@@ -499,10 +511,22 @@ export const AuthProvider = ({ children }) => {
   const signup = useCallback(
     async (email, password, { firstName, lastName, company } = {}) => {
       const normalizedEmail = (email || '').trim();
-      const { data, error } = await supabase.auth.signUp({
-        email: normalizedEmail,
-        password,
-      });
+      const emailRedirectTo =
+        typeof window !== 'undefined' && window.location
+          ? `${window.location.origin}/auth/callback`
+          : undefined;
+      const { data, error } = await supabase.auth.signUp(
+        emailRedirectTo
+          ? {
+              email: normalizedEmail,
+              password,
+              options: { emailRedirectTo },
+            }
+          : {
+              email: normalizedEmail,
+              password,
+            }
+      );
       if (error) {
         throw error;
       }
@@ -510,25 +534,19 @@ export const AuthProvider = ({ children }) => {
       let user = data?.user ?? null;
       let session = data?.session ?? null;
 
-      // If signup didn't return a session (e.g., email confirmation disabled but no session),
-      // fall back to sign-in to auto-login.
+      // If signup didn't return a session, Supabase is likely configured to require
+      // email confirmation. In that case, we cannot log in yet.
       if (!session) {
-        try {
-          const signin = await supabase.auth.signInWithPassword({
-            email: normalizedEmail,
-            password,
-          });
-          if (signin?.error) {
-            throw signin.error;
-          }
-          session = signin?.data?.session ?? null;
-          user = signin?.data?.user ?? user;
-        } catch (signinErr) {
-          console.error('Post-signup auto-login failed', signinErr);
-        }
+        return {
+          user,
+          needsEmailConfirmation: true,
+          email: normalizedEmail,
+        };
       }
 
-      if (user?.id) {
+      // Only write the profile when we have an authenticated session (RLS typically
+      // requires an authenticated user).
+      if (user?.id && session?.access_token) {
         try {
           await supabase
             .from('users')
@@ -548,7 +566,7 @@ export const AuthProvider = ({ children }) => {
 
       syncSession(session);
       await refreshProfile({ ensureExists: true, userOverride: user });
-      return user;
+      return { user, needsEmailConfirmation: false, email: normalizedEmail };
     },
     [refreshProfile, syncSession]
   );

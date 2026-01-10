@@ -23,6 +23,9 @@ import {
 } from './pages';
 import PhotoOptionsPage from './pages/PhotoOptionsPage';
 import PublicProjectView from './pages/PublicProjectView';
+import ConfirmEmailPage from './pages/ConfirmEmailPage';
+import AuthCallbackPage from './pages/AuthCallbackPage';
+import EmailConfirmedPage from './pages/EmailConfirmedPage';
 
 const Header = () => {
   const { user, activeProject } = useAuth();
@@ -64,6 +67,21 @@ const RootRedirect = () => {
     return <div>Loading...</div>;
   }
 
+  // Supabase email confirmation links may redirect back to the site root with
+  // access tokens in the URL hash (/#access_token=...&type=signup) or errors
+  // (/#error=access_denied&error_code=otp_expired...). Handle those here so
+  // users don't get stuck on a blank/incorrect route.
+  if (typeof window !== 'undefined') {
+    const hash = window.location.hash || '';
+    if (
+      hash.includes('access_token=') ||
+      hash.includes('refresh_token=') ||
+      hash.includes('error=')
+    ) {
+      return <AuthCallbackPage />;
+    }
+  }
+
   return <Navigate to={user ? '/map' : '/login'} replace />;
 };
 
@@ -81,6 +99,9 @@ export function AppRoutes() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/check-email" element={<ConfirmEmailPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route path="/email-confirmed" element={<EmailConfirmedPage />} />
           <Route
             path="/map"
             element={
@@ -142,7 +163,7 @@ export function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <Router basename={process.env.PUBLIC_URL || '/'}>
         <AppRoutes />
       </Router>
     </AuthProvider>
