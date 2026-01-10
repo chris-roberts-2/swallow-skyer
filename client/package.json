@@ -1,6 +1,7 @@
 {
   "name": "client",
   "version": "0.1.0",
+  "homepage": "https://chris-roberts-2.github.io/swallow-skyer/",
   "private": true,
   "dependencies": {
     "@supabase/supabase-js": "^2.75.0",
