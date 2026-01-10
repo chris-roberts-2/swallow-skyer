@@ -1,6 +1,6 @@
 # Tests Directory
 
-This directory contains test files for the Swallow Skyer application.
+This directory contains **frontend test files** for the Swallow Skyer React app. These tests are used during development/CI and are not part of the deployed GitHub Pages static site.
 
 ## Setup
 

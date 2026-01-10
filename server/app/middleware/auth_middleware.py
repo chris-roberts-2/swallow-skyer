@@ -3,7 +3,7 @@ from functools import wraps
 from flask import jsonify, g, request
 
 from app.services.auth_service import AuthError, AuthService
-from app.supabase_client import verify_supabase_jwt
+from app.supabase_client import SupabaseConfigError, verify_supabase_jwt
 
 auth_service = AuthService()
 
@@ -32,10 +32,21 @@ def jwt_required(fn):
         supabase_user = None
         try:
             supabase_user = verify_supabase_jwt(token)
-        except RuntimeError as exc:
+        except SupabaseConfigError as exc:
             # Server misconfiguration: without Supabase config we can't validate
             # Supabase access tokens, so falling back to our legacy JWT verifier
             # produces confusing "Invalid token" errors.
+            return (
+                jsonify(
+                    {
+                        "error": str(exc),
+                        "code": "SUPABASE_NOT_CONFIGURED",
+                        "missingEnv": getattr(exc, "missing_env_keys", []),
+                    }
+                ),
+                503,
+            )
+        except RuntimeError as exc:
             return jsonify({"error": str(exc)}), 500
         except (ValueError, PermissionError) as exc:
             return jsonify({"error": str(exc)}), 401

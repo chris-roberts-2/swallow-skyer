@@ -1,18 +1,15 @@
 # API Version 1 Routes
 
 ## Purpose
-This directory contains version 1 of the API routes for backward compatibility and future API evolution.
+This directory contains the **versioned v1 HTTP API** served by the Flask backend under `/api/v1/...`. It is the primary API contract used by the current frontend.
 
 ## Versioning Strategy
-- **Current API**: Routes in `/server/app/routes/` (latest version)
-- **v1 API**: Routes in `/server/app/routes/v1/` (stable version)
-- **Future versions**: v2, v3, etc. as needed
+- **v1 API**: Modules under `server/app/api_routes/v1/` registered with URL prefixes like `/api/v1/photos`
+- **Legacy endpoints**: Some older `/api/...` routes exist for compatibility (e.g., upload), while older listing endpoints may be disabled
 
 ## URL Structure
 ```
 /api/v1/photos/          # Versioned photo endpoints
-/api/v1/locations/       # Versioned location endpoints
-/api/v1/auth/            # Versioned auth endpoints
 ```
 
 ## Benefits
@@ -22,14 +19,11 @@ This directory contains version 1 of the API routes for backward compatibility a
 - **Deprecation Path**: Clear deprecation timeline for old versions
 
 ## Implementation
-- All v1 routes include `version: 'v1'` in responses
-- Error responses include version information
-- Maintains same functionality as current routes
-- Can be extended with additional v1-specific features
+- v1 endpoints are protected by JWT middleware and enforce project-level roles where required.
+- Photo responses typically include `version: "v1"` and normalized photo fields (including R2 URLs when available).
 
 ## Usage
 ```python
-# Register v1 routes
-from app.routes.v1 import photos as photos_v1
-app.register_blueprint(photos_v1.bp, url_prefix='/api/v1/photos')
+# v1 routes are registered in the app factory with url_prefixes such as:
+# app.register_blueprint(photos_v1_bp, url_prefix="/api/v1/photos")
 ```

@@ -32,7 +32,10 @@ const Header = () => {
     <header className="App-header">
       <div className="App-header__inner">
         <div className="App-header__brand">
-          <h1>Swallow Skyer</h1>
+          <h1>
+            <span className="App-header__brandPrimary">Skyer</span>{' '}
+            <span className="App-header__brandByline">by Swallow Robotics</span>
+          </h1>
           <nav className="App-nav">
             {user ? (
               <>

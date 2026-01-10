@@ -1,22 +1,21 @@
 # User Guide
 
-This directory contains user-facing documentation and tutorials.
+This directory contains **end-user documentation** for the Swallow Skyer web application.
 
-## Getting Started
+## Where the app runs
 
-- **Installation** - How to set up the application
-- **Basic Usage** - Core features and functionality
-- **Advanced Features** - Power user capabilities
-- **Troubleshooting** - Common issues and solutions
+- **Frontend**: Static React site hosted on **GitHub Pages**
+- **Backend**: Flask API hosted on **Render**
+- **Login**: Supabase Auth
+- **Photo files**: Cloudflare R2 (images are fetched directly from storage URLs)
 
-## Features Covered
+## Core workflows
 
-- Photo upload and management
-- Map-based photo browsing
-- Location-based search
-- User account management
-- Mobile app usage
+- **Sign in**: Authenticate via Supabase.
+- **Browse photos**: The frontend requests photo metadata from the API and renders markers on the map; image bytes are loaded from URLs returned by the API (often R2 URLs).
+- **Upload photos**: The frontend uploads files to the backend. The backend validates permissions, extracts EXIF/GPS data, generates thumbnails, stores files in R2, and writes metadata to Supabase.
+- **Download**: Some multi-photo downloads are performed via backend endpoints (e.g., zip downloads) to avoid browser CORS limitations.
 
 ## Support
 
-For additional help, contact support or check the FAQ section.
+If you are missing access to a project or an upload fails due to permissions, you may need to be added as a project member with an appropriate role.

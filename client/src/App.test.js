@@ -23,11 +23,11 @@ const renderWithAuth = (value = {}, initialEntries = ['/login']) => {
   );
 };
 
-test('renders Swallow Skyer title', () => {
+test('renders Skyer by Swallow Robotics title', () => {
   renderWithAuth();
   expect(
     screen.getByRole('heading', {
-      name: /^Swallow Skyer$/i,
+      name: /^Skyer by Swallow Robotics$/i,
     })
   ).toBeInTheDocument();
 });

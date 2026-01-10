@@ -20,6 +20,12 @@ const r2PublicBase =
   '';
 const CACHE_TTL_MS = 0; // disable caching to ensure fresh fetches
 const EARTH_RADIUS_METERS = 6_371_000;
+const toLngLat = (lng, lat) => {
+  const lngNum = Number(lng);
+  const latNum = Number(lat);
+  if (!Number.isFinite(lngNum) || !Number.isFinite(latNum)) return null;
+  return [lngNum, latNum];
+};
 
 const STANDARD_STYLE_URL =
   'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
@@ -43,8 +49,11 @@ const parseCoordinate = value => {
 };
 
 const normalizeLongitude = value => {
+  // Prefer preserving stored longitude as-is.
+  // (Legacy behavior flipped positive longitudes for USA-only assumptions, which can
+  // create inconsistent map positions for real-world data.)
   if (!Number.isFinite(value)) return value;
-  return value > 0 ? -value : value;
+  return value;
 };
 
 const formatTimestamp = iso => {
@@ -116,6 +125,42 @@ const distanceMeters = (a, b) => {
 const FIFTEEN_FEET_METERS = 4.572;
 const zoomToThresholdMeters = () => FIFTEEN_FEET_METERS;
 
+const parsePhotoCapturedAtMs = photo => {
+  const raw =
+    photo?.captured_at ||
+    photo?.capturedAt ||
+    photo?.taken_at ||
+    photo?.takenAt ||
+    photo?.uploaded_at ||
+    photo?.uploadedAt ||
+    photo?.created_at ||
+    photo?.createdAt ||
+    null;
+  if (!raw) return null;
+  try {
+    const ms = new Date(raw).getTime();
+    return Number.isFinite(ms) ? ms : null;
+  } catch {
+    return null;
+  }
+};
+
+const pickOldestPhoto = photos => {
+  if (!photos?.length) return null;
+  let oldest = null;
+  let oldestMs = Number.POSITIVE_INFINITY;
+  for (const photo of photos) {
+    const ms = parsePhotoCapturedAtMs(photo);
+    if (ms === null) continue;
+    if (ms < oldestMs) {
+      oldestMs = ms;
+      oldest = photo;
+    }
+  }
+  // If none have a usable timestamp, fall back to first entry to keep output stable.
+  return oldest || photos[0];
+};
+
 const buildClusters = (photoList, thresholdMeters) => {
   if (!photoList.length) return [];
 
@@ -145,17 +190,24 @@ const buildClusters = (photoList, thresholdMeters) => {
     }
 
     const clusterPhotos = clusterIndices.map(index => photoList[index]);
-    const latitude =
-      clusterPhotos.reduce((sum, photo) => sum + photo.mapLatitude, 0) /
-      clusterPhotos.length;
-    const longitude =
-      clusterPhotos.reduce((sum, photo) => sum + photo.mapLongitude, 0) /
-      clusterPhotos.length;
+    // Anchor cluster marker to the exact coordinates of the oldest photo.
+    // This prevents "walking" when grouping changes or when using averaged positions.
+    const anchor = pickOldestPhoto(clusterPhotos);
+    const latitude = anchor?.mapLatitude;
+    const longitude = anchor?.mapLongitude;
 
     clusters.push({
       latitude,
       longitude,
-      photos: clusterPhotos,
+      // Keep photos sorted oldest -> newest for consistent stacks.
+      photos: [...clusterPhotos].sort((a, b) => {
+        const am = parsePhotoCapturedAtMs(a);
+        const bm = parsePhotoCapturedAtMs(b);
+        if (am === null && bm === null) return 0;
+        if (am === null) return 1;
+        if (bm === null) return -1;
+        return am - bm;
+      }),
     });
   }
 
@@ -222,6 +274,7 @@ const PhotoMapLive = () => {
   const activeProjectId = activeProject?.id || activeProject || null;
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
+  const [isMapReady, setIsMapReady] = useState(false);
   const [photos, setPhotos] = useState([]);
   const [mapZoom, setMapZoom] = useState(3.5);
   const [activeStack, setActiveStack] = useState(null);
@@ -290,17 +343,18 @@ const PhotoMapLive = () => {
   }, [selectedProjectName, projects.length]);
 
   const clearMarkers = useCallback(() => {
-    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current.forEach(marker => {
+      try {
+        marker?.remove?.();
+      } catch {
+        // ignore cleanup failures
+      }
+    });
     markersRef.current = [];
   }, []);
 
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
-    // Continental USA bounds
-    const usaBounds = [
-      [-125.0, 24.0], // SW
-      [-66.5, 49.5], // NE
-    ];
     mapInstance.current = new maplibregl.Map({
       container: mapRef.current,
       style: STANDARD_STYLE_URL,
@@ -331,15 +385,14 @@ const PhotoMapLive = () => {
       });
     };
 
-    const handleMapClick = () => {
-      closeStack();
-      closePhotoPopup();
+    const handleLoad = () => {
+      setIsMapReady(true);
     };
 
     const supportsEvents = typeof mapInstance.current?.on === 'function';
     if (supportsEvents) {
+      mapInstance.current.on('load', handleLoad);
       mapInstance.current.on('zoomend', handleZoom);
-      mapInstance.current.on('click', handleMapClick);
       const setInteracted = () => {
         userInteractedRef.current = true;
       };
@@ -571,9 +624,10 @@ const PhotoMapLive = () => {
     mapInstance.current.addControl(toggleControl, 'top-right');
 
     return () => {
+      setIsMapReady(false);
       if (supportsEvents && typeof mapInstance.current?.off === 'function') {
+        mapInstance.current.off('load', handleLoad);
         mapInstance.current.off('zoomend', handleZoom);
-        mapInstance.current.off('click', handleMapClick);
         if (mapInstance.current.__setInteracted) {
           mapInstance.current.off(
             'dragstart',
@@ -601,6 +655,39 @@ const PhotoMapLive = () => {
       mapInstance.current = null;
     };
   }, [clearMarkers, closeStack, closePhotoPopup]);
+
+  useEffect(() => {
+    // Close popups/stacks only when clicking the map background.
+    // We intentionally do NOT use MapLibre's map 'click' event here because it can fire for
+    // marker DOM clicks in some browsers, causing "open then instantly close" behavior.
+    const mapContainer = mapRef.current;
+    if (!mapContainer) return;
+
+    const handleDocumentClickCapture = evt => {
+      const target = evt?.target;
+      if (!target || typeof target.closest !== 'function') return;
+
+      // Ignore clicks on markers, popups, or MapLibre controls.
+      if (
+        target.closest('.maplibregl-marker') ||
+        target.closest('.maplibregl-popup') ||
+        target.closest('.maplibregl-ctrl')
+      ) {
+        return;
+      }
+
+      // Only react to clicks that occur within the map container.
+      if (!target.closest(`[data-photo-map-live="1"]`)) return;
+
+      closeStack();
+      closePhotoPopup();
+    };
+
+    document.addEventListener('click', handleDocumentClickCapture, true);
+    return () => {
+      document.removeEventListener('click', handleDocumentClickCapture, true);
+    };
+  }, [closePhotoPopup, closeStack]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -677,22 +764,20 @@ const PhotoMapLive = () => {
         if (photo.show_on_photos === false) {
           return null;
         }
-        const latitude = parseCoordinate(photo.latitude);
-        const longitudeRaw = parseCoordinate(photo.longitude);
+        // Prefer canonical coordinates returned by the API.
+        // If missing, fall back to cleaned EXIF gps lat/lon (new shape) and then to
+        // legacy EXIF DMS fields.
+        const exifGps = photo?.exif_data?.gps || {};
+        const exifLat = parseCoordinate(exifGps.lat);
+        const exifLon = parseCoordinate(exifGps.lon);
+
+        const latitude = parseCoordinate(photo.latitude) ?? exifLat;
+        const longitudeRaw = parseCoordinate(photo.longitude) ?? exifLon;
         if (!Number.isFinite(latitude) || !Number.isFinite(longitudeRaw)) {
           return null;
         }
 
-        const hasGpsExif =
-          photo?.exif_data &&
-          photo.exif_data.gps &&
-          photo.exif_data.gps.GPSLatitude &&
-          photo.exif_data.gps.GPSLatitudeRef &&
-          photo.exif_data.gps.GPSLongitude &&
-          photo.exif_data.gps.GPSLongitudeRef;
-        if (!hasGpsExif) {
-          return null;
-        }
+        // Do not require EXIF GPS presence; coordinate fields are sufficient for mapping.
 
         const mapLongitude = normalizeLongitude(longitudeRaw);
         const { primaryUrl, fallbackUrl, resolvedUrl } = resolvePhotoUrl(photo);
@@ -723,9 +808,12 @@ const PhotoMapLive = () => {
   }, [photos]);
 
   const clusters = useMemo(() => {
-    const threshold = zoomToThresholdMeters(mapZoom);
+    // Keep clusters stable while zooming. Re-clustering on every zoom change can
+    // make cluster markers look like they "move" even when the underlying coordinates
+    // are unchanged.
+    const threshold = zoomToThresholdMeters();
     return buildClusters(normalisedPhotos, threshold);
-  }, [normalisedPhotos, mapZoom]);
+  }, [normalisedPhotos]);
 
   useEffect(() => {
     if (!activeStack) return;
@@ -872,26 +960,64 @@ const PhotoMapLive = () => {
   }, []);
 
   useEffect(() => {
-    if (!mapInstance.current) return;
+    if (!mapInstance.current || !isMapReady) return;
 
     clearMarkers();
 
     const bounds = new maplibregl.LngLatBounds();
 
+    const applyMarkerRootStyles = (element, sizePx) => {
+      // Normalize marker DOM without overriding MapLibre's required `.maplibregl-marker`
+      // positioning rules (the CSS class sets `position: absolute`).
+      // IMPORTANT: Do NOT set `position` on the marker root element.
+      element.style.width = `${sizePx}px`;
+      element.style.height = `${sizePx}px`;
+      element.style.boxSizing = 'border-box';
+      element.style.padding = '0';
+      element.style.margin = '0';
+      element.style.display = 'grid';
+      element.style.placeItems = 'center';
+      element.style.userSelect = 'none';
+      element.style.lineHeight = '0';
+      element.style.transition = 'none';
+      element.style.animation = 'none';
+      // Do not set element.style.transform here; MapLibre owns marker transforms.
+    };
+
+    const createMarkerInner = sizePx => {
+      const inner = document.createElement('div');
+      inner.style.width = `${sizePx}px`;
+      inner.style.height = `${sizePx}px`;
+      inner.style.boxSizing = 'border-box';
+      inner.style.position = 'relative';
+      inner.style.display = 'grid';
+      inner.style.placeItems = 'center';
+      inner.style.lineHeight = '0';
+      inner.style.transition = 'none';
+      inner.style.animation = 'none';
+      return inner;
+    };
+
     const createPhotoMarker = photo => {
+      const lngLat = toLngLat(photo.mapLongitude, photo.mapLatitude);
+      if (!lngLat) return null;
+      const [lng, lat] = lngLat;
+
+      // Track bounds using immutable coordinates.
+      bounds.extend(lngLat);
+
       const container = document.createElement('div');
-      container.style.width = '18px';
-      container.style.height = '18px';
-      container.style.borderRadius = '50%';
-      container.style.background = '#61dafb';
-      container.style.border = '1px solid #61dafb';
-      container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
-      container.style.display = 'grid';
-      container.style.placeItems = 'center';
+      applyMarkerRootStyles(container, 18);
+      container.style.cursor = 'pointer';
       container.title = photo.caption || 'View photo';
-      container.addEventListener('click', () => {
-        closeStack();
-      });
+      container.setAttribute('role', 'button');
+      container.setAttribute('tabindex', '0');
+
+      const inner = createMarkerInner(18);
+      inner.style.borderRadius = '50%';
+      inner.style.background = '#61dafb';
+      inner.style.border = '1px solid #61dafb';
+      inner.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
 
       const innerDot = document.createElement('div');
       innerDot.style.width = '6px';
@@ -899,7 +1025,8 @@ const PhotoMapLive = () => {
       innerDot.style.borderRadius = '50%';
       innerDot.style.background = '#2ca7e5';
       innerDot.style.boxShadow = '0 0 0 2px rgba(44,167,229,0.18)';
-      container.appendChild(innerDot);
+      inner.appendChild(innerDot);
+      container.appendChild(inner);
 
       const root = document.createElement('div');
       root.style.position = 'relative';
@@ -925,11 +1052,15 @@ const PhotoMapLive = () => {
       closeBtn.style.width = '22px';
       closeBtn.style.height = '22px';
       closeBtn.style.fontSize = '18px';
-      closeBtn.style.lineHeight = '18px';
-      closeBtn.style.background = '#fff';
-      closeBtn.style.borderRadius = '50%';
-      closeBtn.style.border = '1px solid rgba(0,0,0,0.08)';
-      closeBtn.style.boxShadow = '0 1px 4px rgba(0,0,0,0.15)';
+      closeBtn.style.lineHeight = '1';
+      closeBtn.style.padding = '0';
+      closeBtn.style.display = 'grid';
+      closeBtn.style.placeItems = 'center';
+      // No circle around the close icon (avoid cross-browser font centering quirks).
+      closeBtn.style.background = 'transparent';
+      closeBtn.style.border = 'none';
+      closeBtn.style.boxShadow = 'none';
+      closeBtn.style.color = '#111827';
       closeBtn.style.cursor = 'pointer';
       closeBtn.onclick = evt => {
         evt.stopPropagation();
@@ -1034,12 +1165,32 @@ const PhotoMapLive = () => {
         offset: 24,
         closeButton: false,
         closeOnClick: false,
+        closeOnMove: false,
         maxWidth: '340px',
       }).setDOMContent(root);
 
-      popup.on('open', () => {
+      popup.on('close', () => {
+        if (photoPopupRef.current === popup) {
+          photoPopupRef.current = null;
+        }
+      });
+
+      const marker = new maplibregl.Marker({
+        element: container,
+        anchor: 'center',
+        offset: [0, 0],
+      })
+        .setLngLat(lngLat)
+        .addTo(mapInstance.current);
+
+      const openPopup = evt => {
+        evt?.stopPropagation?.();
+        // Match multi-marker behavior: popup persists until clicking elsewhere or X.
+        closeStack();
         closePhotoPopup();
         photoPopupRef.current = popup;
+        popup.setLngLat(lngLat).addTo(mapInstance.current);
+
         const el = popup.getElement?.();
         if (el) {
           el.style.background = 'transparent';
@@ -1054,40 +1205,42 @@ const PhotoMapLive = () => {
             content.style.padding = '0';
           }
         }
-      });
+      };
 
-      popup.on('close', () => {
-        if (photoPopupRef.current === popup) {
-          photoPopupRef.current = null;
+      container.addEventListener('click', openPopup);
+      container.addEventListener('keydown', evt => {
+        if (evt.key === 'Enter' || evt.key === ' ') {
+          evt.preventDefault();
+          openPopup(evt);
         }
       });
-
-      const marker = new maplibregl.Marker({ element: container })
-        .setLngLat([photo.mapLongitude, photo.mapLatitude])
-        .setPopup(popup)
-        .addTo(mapInstance.current);
 
       return marker;
     };
 
     const createClusterMarker = cluster => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.style.width = '20px';
-      button.style.height = '20px';
-      button.style.borderRadius = '50%';
-      button.style.background = '#282c34';
-      button.style.border = '1px solid #282c34';
-      button.style.boxShadow = '0 2px 6px rgba(0,0,0,0.16)';
-      button.style.cursor = 'pointer';
-      button.style.display = 'grid';
-      button.style.placeItems = 'center';
-      button.style.padding = '0';
-      button.style.position = 'relative';
-      button.setAttribute(
+      const lngLat = toLngLat(cluster.longitude, cluster.latitude);
+      if (!lngLat) return null;
+      const [lng, lat] = lngLat;
+      bounds.extend(lngLat);
+
+      // Use a div marker (not a <button>) to avoid browser default button layout/metrics
+      // interfering with MapLibre's marker anchoring.
+      const container = document.createElement('div');
+      applyMarkerRootStyles(container, 22);
+      container.style.cursor = 'pointer';
+      container.setAttribute('role', 'button');
+      container.setAttribute('tabindex', '0');
+      container.setAttribute(
         'aria-label',
         `${cluster.photos.length} photos at this location`
       );
+
+      const inner = createMarkerInner(22);
+      inner.style.borderRadius = '50%';
+      inner.style.background = '#282c34';
+      inner.style.border = '1px solid #282c34';
+      inner.style.boxShadow = '0 2px 6px rgba(0,0,0,0.16)';
 
       const core = document.createElement('div');
       core.style.width = '6px';
@@ -1095,27 +1248,41 @@ const PhotoMapLive = () => {
       core.style.borderRadius = '50%';
       core.style.background = '#61dafb';
       core.style.boxShadow = '0 0 0 3px rgba(97,218,251,0.16)';
-      button.appendChild(core);
+      inner.appendChild(core);
+      container.appendChild(inner);
 
-      button.addEventListener('click', evt => {
+      const openCluster = evt => {
         evt.stopPropagation();
         closePhotoPopup();
         setActiveStack({
-          latitude: cluster.latitude,
-          longitude: cluster.longitude,
+          latitude: lat,
+          longitude: lng,
           photos: cluster.photos,
         });
         mapInstance.current?.flyTo({
-          center: [cluster.longitude, cluster.latitude],
-          zoom: Math.max(mapZoom, 9),
+          center: [lng, lat],
+          zoom: Math.max(mapInstance.current?.getZoom?.() || mapZoom, 9),
           essential: true,
         });
+      };
+
+      container.addEventListener('click', openCluster);
+      container.addEventListener('keydown', evt => {
+        if (evt.key === 'Enter' || evt.key === ' ') {
+          evt.preventDefault();
+          openCluster(evt);
+        }
       });
 
-      return new maplibregl.Marker({ element: button }).setLngLat([
-        cluster.longitude,
-        cluster.latitude,
-      ]);
+      const marker = new maplibregl.Marker({
+        element: container,
+        anchor: 'center',
+        offset: [0, 0],
+      })
+        .setLngLat(lngLat)
+        .addTo(mapInstance.current);
+
+      return marker;
     };
 
     clusters.forEach(cluster => {
@@ -1126,14 +1293,12 @@ const PhotoMapLive = () => {
         return;
       }
 
-      bounds.extend([cluster.longitude, cluster.latitude]);
-
       if (cluster.photos.length === 1) {
         const marker = createPhotoMarker(cluster.photos[0]);
-        markersRef.current.push(marker);
+        if (marker) markersRef.current.push(marker);
       } else {
-        const marker = createClusterMarker(cluster).addTo(mapInstance.current);
-        markersRef.current.push(marker);
+        const marker = createClusterMarker(cluster);
+        if (marker) markersRef.current.push(marker);
       }
     });
 
@@ -1142,7 +1307,11 @@ const PhotoMapLive = () => {
       bounds.extend([selectedProjectCoord.lon, selectedProjectCoord.lat]);
     }
 
-    if (!bounds.isEmpty() && !hasAutoFitRef.current) {
+    if (
+      !bounds.isEmpty() &&
+      !hasAutoFitRef.current &&
+      !userInteractedRef.current
+    ) {
       if (clusters.length === 0 && selectedProjectCoord) {
         mapInstance.current.flyTo({
           center: [selectedProjectCoord.lon, selectedProjectCoord.lat],
@@ -1152,13 +1321,21 @@ const PhotoMapLive = () => {
       } else {
         mapInstance.current.fitBounds(bounds, {
           padding: 60,
-          maxZoom: 14,
+          // Allow zooming into a single-building cluster (NYC, etc.)
+          maxZoom: 19,
           duration: 800,
         });
       }
       hasAutoFitRef.current = true;
     }
-  }, [clusters, clearMarkers, closePhotoPopup, closeStack, mapZoom, selectedProjectCoord]);
+  }, [
+    clusters,
+    clearMarkers,
+    closePhotoPopup,
+    closeStack,
+    isMapReady,
+    selectedProjectCoord,
+  ]);
 
   useEffect(() => {
     if (stackPopupRef.current) {
@@ -1211,11 +1388,15 @@ const PhotoMapLive = () => {
     closeBtn.style.width = '22px';
     closeBtn.style.height = '22px';
     closeBtn.style.fontSize = '18px';
-    closeBtn.style.lineHeight = '18px';
-    closeBtn.style.background = '#fff';
-    closeBtn.style.borderRadius = '50%';
-    closeBtn.style.border = '1px solid rgba(0,0,0,0.08)';
-    closeBtn.style.boxShadow = '0 1px 4px rgba(0,0,0,0.15)';
+    closeBtn.style.lineHeight = '1';
+    closeBtn.style.padding = '0';
+    closeBtn.style.display = 'grid';
+    closeBtn.style.placeItems = 'center';
+    // No circle around the close icon (avoid cross-browser font centering quirks).
+    closeBtn.style.background = 'transparent';
+    closeBtn.style.border = 'none';
+    closeBtn.style.boxShadow = 'none';
+    closeBtn.style.color = '#111827';
     closeBtn.style.cursor = 'pointer';
     closeBtn.onclick = evt => {
       evt.stopPropagation();
@@ -1230,6 +1411,15 @@ const PhotoMapLive = () => {
     list.style.display = 'flex';
     list.style.flexDirection = 'column';
     list.style.gap = '8px';
+    // Keep all grouped-photo popups the same height as the "2-photo" case by fixing the
+    // scrollable list viewport to exactly two rows tall.
+    // Each row: 120px thumbnail + 10px top/bottom padding = 140px.
+    // Plus one inter-row gap (8px) = 288px total.
+    list.style.height = '288px';
+    list.style.overflowY = 'auto';
+    list.style.paddingRight = '4px';
+    list.style.boxSizing = 'border-box';
+    list.style.overscrollBehavior = 'contain';
 
     activeStack.photos.forEach((photo, index) => {
       const row = document.createElement('div');
@@ -1341,6 +1531,7 @@ const PhotoMapLive = () => {
     const popup = new maplibregl.Popup({
       closeButton: false,
       closeOnClick: false,
+      closeOnMove: false,
       anchor: 'left',
       offset: [16, 0],
       maxWidth: '340px',
@@ -1392,7 +1583,10 @@ const PhotoMapLive = () => {
   };
 
   return (
-    <div style={{ width: '100%', height: '90vh', position: 'relative' }}>
+    <div
+      data-photo-map-live="1"
+      style={{ width: '100%', height: '100%', position: 'relative' }}
+    >
       <div
         style={{
           position: 'absolute',

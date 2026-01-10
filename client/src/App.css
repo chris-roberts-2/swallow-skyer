@@ -31,6 +31,19 @@
   font-size: 2rem;
 }
 
+.App-header__brandPrimary {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-style: normal;
+}
+
+.App-header__brandByline {
+  font-family: 'Lora', serif;
+  font-weight: 400;
+  font-style: italic;
+  font-size: 0.68em;
+}
+
 .App-nav {
   display: flex;
   gap: 16px;
@@ -150,6 +163,15 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  /* Allow pages like Photos/Projects to scroll within the app viewport. */
+  overflow: auto;
+  min-height: 0;
+}
+
+.map-page {
+  flex: 1;
+  min-height: 0;
+  /* Keep the map pinned in place; avoid accidental page scrolling on the map view. */
   overflow: hidden;
 }
 

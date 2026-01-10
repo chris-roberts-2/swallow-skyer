@@ -1,21 +1,58 @@
-# Deployment Documentation
+# Deployment (GitHub Pages + Render)
 
-This directory contains deployment guides and configuration files for different environments.
+Swallow Skyer is deployed as **two separate services**:
 
-## Contents
+- **Frontend**: React static site on **GitHub Pages** (deploy build output only)
+- **Backend**: Flask API on **Render**
 
-- **Development Setup** - Local development environment configuration
-- **Production Deployment** - Production deployment guides
-- **Docker Configuration** - Container deployment options
-- **Environment Variables** - Configuration management
+Images are stored in **Cloudflare R2** and metadata/auth live in **Supabase**.
 
-## Quick Start
+## Frontend (GitHub Pages)
 
-1. Review the appropriate deployment guide for your target environment
-2. Configure environment variables using the provided templates
-3. Follow the step-by-step deployment instructions
-4. Verify the deployment using the provided health check endpoints
+- **Source**: `client/`
+- **Deployable artifact**: `client/build/` (generated)
 
-## Support
+Build command:
 
-For deployment issues, check the troubleshooting section in each guide or create an issue in the repository.
+```bash
+cd client
+npm ci
+npm run build
+```
+
+Environment variables are **build-time** (baked into the static bundle):
+
+- `REACT_APP_SUPABASE_URL`
+- `REACT_APP_SUPABASE_ANON_KEY`
+- Backend base URL (choose one):
+  - `REACT_APP_API_BASE_URL` (preferred): `https://<your-render-host>`
+  - `REACT_APP_API_URL` (legacy): `https://<your-render-host>/api`
+
+## Backend (Render)
+
+- **Source**: `server/`
+- **Start command** (honors Render `PORT`):
+
+```bash
+cd server
+python app.py
+```
+
+Local build/install (Render build step equivalent):
+
+```bash
+cd server
+pip install -r requirements.txt
+```
+
+Required environment variables (Render):
+
+- **App**: `PORT`, `SECRET_KEY`, `FRONTEND_ORIGIN` (GitHub Pages origin for CORS)
+- **Supabase**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (and/or `SUPABASE_ANON_KEY`)
+- **R2**: `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` (or `R2_BUCKET_NAME`)
+  - plus `R2_ACCOUNT_ID` or `R2_ENDPOINT_URL`
+  - optional `R2_PUBLIC_BASE_URL` (for public URLs when available)
+
+## Verify
+
+- Backend health: `GET /api/health`

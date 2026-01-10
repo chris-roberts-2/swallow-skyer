@@ -1,6 +1,8 @@
 # Git Push/Pull Scripts
 
-⚠️ **Important: Do not delete or move these scripts.** They are essential for pushing and pulling the "foundation" branch. Keep this folder intact during any project cleanup or restructuring.
+These scripts are for the repository’s Git workflow (pushing branches). They are not part of the deployed application.
+
+⚠️ **Important: Do not delete or move these scripts** if your workflow relies on them. They are unrelated to the GitHub Pages (frontend) / Render (backend) deployment architecture.
 
 ## Scripts in this folder:
 

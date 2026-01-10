@@ -93,7 +93,9 @@ const ProjectList = ({
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>{project.name}</div>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>
+              {project.name}
+            </div>
             {project.address ? (
               <div style={{ color: '#6b7280', fontSize: 12 }}>{project.address}</div>
             ) : null}

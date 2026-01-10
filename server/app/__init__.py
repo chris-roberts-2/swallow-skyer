@@ -6,14 +6,12 @@ import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-from dotenv import load_dotenv
+from app.env_loader import load_app_environment
 
-# Load environment variables from server/.env.local (preferred) then server/.env
+# Load environment variables early (module import time) so config is available
+# regardless of how the server is started (flask run, python app.py, etc).
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# Load .env files if present, but allow real environment variables to win.
-# This makes local testing predictable (you can override config per-shell).
-load_dotenv(os.path.join(BASE_DIR, ".env.local"), override=False)
-load_dotenv(os.path.join(BASE_DIR, ".env"), override=False)
+load_app_environment()
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -188,6 +186,8 @@ def create_app(config_name=None):
         return {
             "status": "success",
             "message": "Backend connected",
+            "platform": "v1",
+            "exif_mode": "canonical_gps_only",
             "db": app.config["SQLALCHEMY_DATABASE_URI"],
         }
 

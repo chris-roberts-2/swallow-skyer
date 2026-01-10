@@ -393,7 +393,7 @@ const PhotosPage = () => {
           />
         </div>
 
-        {selectionMode && selectedIds.size > 0 ? (
+        {selectionMode ? (
           <div
             style={{
               display: 'flex',
@@ -405,6 +405,20 @@ const PhotosPage = () => {
             <span style={{ fontSize: 13, color: '#374151' }}>
               {selectedIds.size} selected
             </span>
+            <button
+              type="button"
+              className="btn-format-1"
+              style={{ padding: '6px 10px' }}
+              onClick={() => {
+                const allIds = (normalisedPhotos || [])
+                  .map(photo => photo?.id)
+                  .filter(Boolean);
+                setSelectedIds(new Set(allIds));
+              }}
+              disabled={!normalisedPhotos.length}
+            >
+              Select all
+            </button>
             <button
               type="button"
               className="btn-format-1"

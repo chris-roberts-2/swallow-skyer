@@ -1,297 +1,113 @@
 # Swallow Skyer
 
-A platform for storing and managing photos on a map based on their GPS coordinates. Users can upload photos, view them on an interactive map, and stack multiple photos at the same location.
+Swallow Skyer is a photo mapping platform: users upload photos, the backend extracts GPS/EXIF metadata, and the frontend renders photos on an interactive MapLibre map.
 
-## Features
+## Deployment architecture (production)
 
-- 📍 **Map-based Photo Storage**: Upload photos with GPS coordinates
-- 🗺️ **Interactive Map**: Browse photos using MapLibre GL
-- 📚 **Photo Stacking**: Multiple photos at the same location
-- 🔍 **Location-based Search**: Find photos by location
-- 📱 **Responsive Design**: Works on desktop and mobile
-- 🔐 **User Authentication**: Secure user accounts
-- ☁️ **Cloud Storage**: Supabase integration for scalable storage
+- **Frontend**: React static site deployed to **GitHub Pages**. Only the build output is deployed.
+- **Backend**: Flask API deployed to **Render**.
+- **Auth**: Supabase Auth (frontend uses Supabase JS; backend validates Supabase JWTs).
+- **Metadata DB**: Supabase Postgres (backend uses service role credentials to write/read metadata).
+- **File storage**: Cloudflare R2 (S3-compatible) for original images + thumbnails.
+- **Networking**:
+  - Frontend → Backend over **HTTPS** API calls.
+  - Frontend loads image bytes **directly from R2** using URLs returned by the backend (public or presigned URLs).
 
-## Tech Stack
+Frontend and backend are deployed independently.
 
-### Frontend
-- **React 19** - UI framework
-- **MapLibre GL** - Interactive mapping
-- **Supabase** - Backend-as-a-Service
-
-### Backend
-- **Flask** - Python web framework
-- **SQLAlchemy** - ORM
-- **Pillow** - Image processing
-
-### Database
-- **SQLite** (development)
-- **PostgreSQL** (production via Supabase)
-
-## Project Structure
+## Repository layout
 
 ```
-swallow-skyer/
-├── client/                    # React frontend
-│   ├── public/               # Static assets
-│   ├── src/
-│   │   ├── components/       # Reusable UI components
-│   │   │   ├── common/       # Common components
-│   │   │   ├── layout/       # Layout components
-│   │   │   ├── map/          # Map-related components
-│   │   │   └── photo/        # Photo-related components
-│   │   ├── pages/            # Page components
-│   │   ├── services/         # API services
-│   │   ├── hooks/            # Custom React hooks
-│   │   ├── context/          # React Context providers
-│   │   ├── utils/            # Utility functions
-│   │   └── assets/           # Static assets (fonts, icons, images)
-│   ├── env.example           # Frontend environment template (copy to .env.local)
-│   └── package.json
-├── server/                   # Flask backend
-│   ├── app/
-│   │   ├── models/           # Database models
-│   │   ├── routes/           # API routes
-│   │   │   └── v1/           # API versioning
-│   │   ├── services/         # Business logic
-│   │   │   └── storage/      # Storage services (Supabase, R2)
-│   │   ├── utils/            # Utility functions
-│   │   ├── config/           # Configuration files
-│   │   └── middleware/       # Custom middleware
-│   ├── tests/                # Test suite
-│   │   ├── unit/             # Unit tests
-│   │   ├── integration/      # Integration tests
-│   │   └── fixtures/         # Test fixtures
-│   ├── migrations/           # Database migrations
-│   ├── uploads/              # File upload directory
-│   ├── instance/             # Instance-specific files
-│   ├── .env.example          # Backend environment template
-│   └── app.py                # Application entry point
-├── shared/                   # Shared utilities
-│   ├── constants/            # Shared constants
-│   ├── types/                # TypeScript definitions
-│   ├── schemas/              # Data validation schemas
-│   └── validation/           # Validation utilities
-├── docs/                     # Documentation
-│   ├── api/                  # API documentation
-│   ├── architecture/         # System architecture
-│   ├── deployment/           # Deployment guides
-│   └── user-guide/           # User documentation
-├── scripts/                  # Automation scripts
-│   ├── deployment/           # Deployment scripts
-│   └── development/          # Development scripts
-├── docker-compose.yml        # Docker configuration
-├── requirements.txt          # Python dependencies
-└── README.md                 # Project overview
+client/   # React frontend source (build output goes to client/build/)
+server/   # Flask backend source (API, storage clients, auth middleware)
+shared/   # Shared constants/types/schemas used across the repo
+docs/     # Architecture, API, and data-flow docs
+scripts/  # Local automation scripts (setup/tests; not deployment targets)
 ```
 
-## Getting Started
+## Local development
 
-### Quick Setup (Recommended)
+### Prerequisites
 
-Use the automated setup script for the easiest installation:
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd swallow-skyer
-
-# Run the setup script
-./scripts/setup.sh
-
-# Configure your environment files with real credentials
-# Edit .env, server/.env, and client/.env files
-
-# Start the development servers
-source venv/bin/activate && cd server && flask run  # Terminal 1
-cd client && npm start                               # Terminal 2
-```
-
-### Manual Setup
-
-If you prefer manual setup or need to troubleshoot:
-
-#### Prerequisites
 - Node.js 18+
 - Python 3.8+
-- Git
 
-#### Installation Steps
+### 1) Backend (Flask API)
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd swallow-skyer
-   ```
-
-2. **Set up Python virtual environment**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
-
-3. **Install backend dependencies**
-   ```bash
-   cd server
-   pip install -r requirements.txt
-   ```
-
-4. **Install frontend dependencies**
-   ```bash
-   cd ../client
-   npm install
-   ```
-
-5. **Configure environment variables**
-   ```bash
-   # Copy example files
-   cp .env.example .env
-   cp server/.env.example server/.env
-cp client/env.example client/.env.local
-   
-   # Edit the files with your actual credentials:
-   # - Supabase URL and service key
-   # - Cloudflare R2 credentials
-   # - API URLs
-   ```
-
-6. **Initialize database**
-   ```bash
-   cd server
-   flask db init
-   flask db migrate -m "Initial migration"
-   flask db upgrade
-   ```
-
-7. **Start the development servers**
-   ```bash
-   # Terminal 1 - Backend
-   source venv/bin/activate
-   cd server
-   flask run
-   
-   # Terminal 2 - Frontend
-   cd client
-   npm start
-   ```
-
-8. **Access the application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:5000
-
-## Project Status
-
-**Current Stage: 1.7 - Documentation & Setup Scripts**
-
-### Development Branches
-- `foundation` - Current development branch (Stage 1.x)
-- `main` - Production-ready code
-
-### Completed Features
-- ✅ **Stage 1.1-1.4**: Foundational project structure and architecture
-- ✅ **Stage 1.5**: Supabase & Cloudflare R2 integration
-- ✅ **Stage 1.6**: Basic MapLibre integration in frontend
-- ✅ **Stage 1.7**: Documentation & setup scripts
-
-### Architecture Overview
-- **Frontend**: React 19 + MapLibre GL JS with interactive map and photo markers
-- **Backend**: Flask 3+ with Supabase metadata storage and R2 file storage
-- **Database**: SQLite (dev) / PostgreSQL via Supabase (prod)
-- **Storage**: Cloudflare R2 for photo files
-- **Maps**: OpenStreetMap tiles via MapLibre GL
-
-### Key Components
-- **Map Integration**: Interactive MapLibre map with navigation controls
-- **Photo Markers**: Clickable markers with photo stack display
-- **API Integration**: RESTful API with health checks and integration tests
-- **Environment Setup**: Automated setup script with environment configuration
-- **Code Quality**: ESLint/Prettier formatting, comprehensive testing setup
-
-## API Documentation
-
-### Photos
-- `GET /api/photos` - Get all photos
-- `POST /api/photos/upload` - Upload a new photo
-- `GET /api/photos/location` - Get photos by location
-- `GET /api/photos/:id` - Get specific photo
-- `PUT /api/photos/:id` - Update photo
-- `DELETE /api/photos/:id` - Delete photo
-
-### Locations
-- `GET /api/locations` - Get all locations
-- `GET /api/locations/nearby` - Get nearby locations
-
-### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/logout` - User logout
-
-## Development
-
-### Code Style
-- **Frontend**: ESLint + Prettier
-- **Backend**: Black + isort
-- **Naming**: camelCase for variables, PascalCase for components
-
-### Testing
 ```bash
-# Frontend tests
+python3 -m venv venv
+source venv/bin/activate
+
+cd server
+pip install -r requirements.txt
+
+# Configure server environment variables (see server/.env.example)
+# Then start the API:
+python app.py
+```
+
+By default the API listens on `http://localhost:5001` (or `PORT` if set).
+
+### 2) Frontend (React)
+
+```bash
 cd client
-npm test
+npm install
+cp env.example .env.local
 
-# Frontend linting
-npm run lint
-npm run lint:fix
-
-# Backend tests
-cd server
-pytest
-
-# Backend integration test
-curl http://localhost:5000/api/test/supabase-r2
-
-# Health check
-curl http://localhost:5000/api/health
+# Configure client environment variables in client/.env.local (see client/README.md)
+npm start
 ```
 
-### Database Migrations
+Frontend dev server: `http://localhost:3000`
+
+## Production deployment
+
+### Frontend → GitHub Pages (static)
+
+Build the frontend and deploy **only** the generated `client/build/` directory:
+
+```bash
+cd client
+npm ci
+npm run build
+```
+
+`client/` is source code. `client/build/` is the deployable artifact.
+
+### Backend → Render (API)
+
+Deploy the `server/` directory as a Render web service. The repo includes a runnable entry point that honors Render’s `PORT` environment variable:
+
 ```bash
 cd server
-flask db migrate -m "Description of changes"
-flask db upgrade
+python app.py
 ```
 
-## Deployment
+Render must be configured with environment variables for:
 
-### Environment Setup
-1. Set production environment variables
-2. Configure database connection
-3. Set up file storage (Supabase or AWS S3)
-4. Configure CORS for production domain
+- **Supabase**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (and/or `SUPABASE_ANON_KEY` for JWT validation fallback paths)
+- **R2**: `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` (or `R2_BUCKET_NAME`), plus `R2_ACCOUNT_ID` or `R2_ENDPOINT_URL`
+  - Optional: `R2_PUBLIC_BASE_URL` (to return public URLs when available)
+- **App**: `SECRET_KEY`
+  - Optional: `FRONTEND_ORIGIN` (set to your GitHub Pages origin for CORS)
 
-### Build for Production
+## API quick reference
+
+- **Health**: `GET /api/health`
+- **Photos (v1)**:
+  - `GET /api/v1/photos/?project_id=<uuid>`
+  - `POST /api/v1/photos/upload`
+- **Upload (compat)**: `POST /api/photos/upload` (project-scoped upload route)
+
+## Tests
+
 ```bash
 # Frontend
 cd client
-npm run build
+npm test
 
 # Backend
 cd server
-# Deploy using your preferred method (Docker, Heroku, etc.)
+pytest
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support
-
-For support, email support@swallowskyer.com or create an issue in the repository.

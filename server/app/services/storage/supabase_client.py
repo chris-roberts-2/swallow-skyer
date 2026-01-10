@@ -144,8 +144,82 @@ class SupabaseClient:
             next_payload.pop(column, None)
             return next_payload
 
+        def _to_float(value: Any) -> Optional[float]:
+            try:
+                if value is None:
+                    return None
+                return float(value)
+            except Exception:
+                return None
+
+        def _dms_to_decimal(dms: Any, ref: Any) -> Optional[float]:
+            """
+            Convert DMS arrays like [40, 45, 24.43] into decimal degrees.
+            """
+            if not isinstance(dms, (list, tuple)) or len(dms) != 3:
+                return None
+            deg = _to_float(dms[0])
+            minutes = _to_float(dms[1])
+            seconds = _to_float(dms[2])
+            if deg is None or minutes is None or seconds is None:
+                return None
+            decimal = deg + minutes / 60.0 + seconds / 3600.0
+            try:
+                ref_str = str(ref).strip().upper()
+            except Exception:
+                ref_str = ""
+            if ref_str in ("S", "W"):
+                decimal = -decimal
+            return decimal
+
+        def _canonicalize_exif(payload: Dict[str, Any]) -> Dict[str, Any]:
+            """
+            Force a stable, minimal EXIF shape for storage:
+              exif_data = { gps: { lat, lon, alt?, hpe_m? } }
+
+            This prevents non-deterministic/binary-heavy EXIF blobs (e.g. MakerNote)
+            from entering the database and ensures downstream map behavior is stable.
+            """
+            exif = payload.get("exif_data")
+            if not isinstance(exif, dict):
+                return payload
+
+            gps = exif.get("gps") if isinstance(exif.get("gps"), dict) else {}
+
+            lat = _to_float(gps.get("lat"))
+            lon = _to_float(gps.get("lon"))
+            if lat is None or lon is None:
+                # Legacy shape: GPSLatitude/GPSLongitude are DMS arrays + refs.
+                lat = _dms_to_decimal(gps.get("GPSLatitude"), gps.get("GPSLatitudeRef"))
+                lon = _dms_to_decimal(
+                    gps.get("GPSLongitude"), gps.get("GPSLongitudeRef")
+                )
+
+            alt = _to_float(gps.get("alt") if "alt" in gps else gps.get("GPSAltitude"))
+            hpe_m = _to_float(
+                gps.get("hpe_m") if "hpe_m" in gps else gps.get("GPSHPositioningError")
+            )
+
+            canonical_gps: Dict[str, Any] = {}
+            if lat is not None and lon is not None:
+                canonical_gps["lat"] = lat
+                canonical_gps["lon"] = lon
+                if alt is not None:
+                    canonical_gps["alt"] = alt
+                if hpe_m is not None:
+                    canonical_gps["hpe_m"] = hpe_m
+
+                # Also ensure top-level lat/lon columns are populated when missing.
+                if payload.get("latitude") is None:
+                    payload["latitude"] = lat
+                if payload.get("longitude") is None:
+                    payload["longitude"] = lon
+
+            payload["exif_data"] = {"gps": canonical_gps}
+            return payload
+
         last_exc: Optional[Exception] = None
-        payload = dict(photo_data)
+        payload = _canonicalize_exif(dict(photo_data))
         removed_columns = 0
         for attempt in range(3):
             try:
@@ -286,6 +360,68 @@ class SupabaseClient:
 
         # Retry logic with column dropping on PGRST204
         payload = dict(updates)
+        # Keep exif_data stable/minimal on updates as well (do not allow a full EXIF blob).
+        if "exif_data" in payload and isinstance(payload.get("exif_data"), dict):
+            try:
+                exif = payload.get("exif_data") or {}
+                gps = exif.get("gps") if isinstance(exif.get("gps"), dict) else {}
+
+                def _to_float(value: Any) -> Optional[float]:
+                    try:
+                        if value is None:
+                            return None
+                        return float(value)
+                    except Exception:
+                        return None
+
+                def _dms_to_decimal(dms: Any, ref: Any) -> Optional[float]:
+                    if not isinstance(dms, (list, tuple)) or len(dms) != 3:
+                        return None
+                    deg = _to_float(dms[0])
+                    minutes = _to_float(dms[1])
+                    seconds = _to_float(dms[2])
+                    if deg is None or minutes is None or seconds is None:
+                        return None
+                    decimal = deg + minutes / 60.0 + seconds / 3600.0
+                    try:
+                        ref_str = str(ref).strip().upper()
+                    except Exception:
+                        ref_str = ""
+                    if ref_str in ("S", "W"):
+                        decimal = -decimal
+                    return decimal
+
+                lat = _to_float(gps.get("lat"))
+                lon = _to_float(gps.get("lon"))
+                if lat is None or lon is None:
+                    lat = _dms_to_decimal(gps.get("GPSLatitude"), gps.get("GPSLatitudeRef"))
+                    lon = _dms_to_decimal(
+                        gps.get("GPSLongitude"), gps.get("GPSLongitudeRef")
+                    )
+
+                alt = _to_float(gps.get("alt") if "alt" in gps else gps.get("GPSAltitude"))
+                hpe_m = _to_float(
+                    gps.get("hpe_m") if "hpe_m" in gps else gps.get("GPSHPositioningError")
+                )
+
+                canonical_gps: Dict[str, Any] = {}
+                if lat is not None and lon is not None:
+                    canonical_gps["lat"] = lat
+                    canonical_gps["lon"] = lon
+                    if alt is not None:
+                        canonical_gps["alt"] = alt
+                    if hpe_m is not None:
+                        canonical_gps["hpe_m"] = hpe_m
+
+                    if payload.get("latitude") is None:
+                        payload["latitude"] = lat
+                    if payload.get("longitude") is None:
+                        payload["longitude"] = lon
+
+                payload["exif_data"] = {"gps": canonical_gps}
+            except Exception:
+                # If anything goes wrong, fall back to empty gps to avoid bloating rows.
+                payload["exif_data"] = {"gps": {}}
         max_retries = 3
         last_exc: Optional[Exception] = None
         for _ in range(max_retries):

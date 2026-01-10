@@ -1,42 +1,36 @@
 # Scripts
 
-This directory contains automation and setup scripts for the Swallow Skyer project.
+This directory contains **helper scripts for local development and CI-style checks**. These scripts are not part of the deployed frontend (GitHub Pages) or backend (Render) runtime.
 
 ## Structure
 
-- `deployment/` - Production deployment scripts
-- `development/` - Development environment setup scripts
-- `setup.sh` - Main project setup script
+- `development/`: local setup + test runners
+- `deployment/`: placeholder deployment helpers (frontend build + TODO sections)
+- `setup.sh`: one-shot local setup convenience
 
-## Usage
+## Common usage
 
-### Initial Setup
+Initial setup:
+
 ```bash
 ./scripts/setup.sh
 ```
 
-### Development Scripts
-```bash
-# Start development environment
-./scripts/development/start-dev.sh
+Local dev helpers:
 
-# Run tests
+```bash
+./scripts/development/start-dev.sh
 ./scripts/development/run-tests.sh
 ```
 
-### Deployment Scripts
-```bash
-# Deploy to staging
-./scripts/deployment/deploy-staging.sh
+Frontend production build (for GitHub Pages):
 
-# Deploy to production
-./scripts/deployment/deploy-production.sh
+```bash
+cd client
+npm run build
 ```
 
-## Script Permissions
+## Notes
 
-Make scripts executable:
-```bash
-chmod +x scripts/*.sh
-chmod +x scripts/*/*.sh
-```
+- The deployed frontend is the **static build output** (`client/build/`).
+- The deployed backend is the **Flask API** from `server/` (hosted separately on Render).
