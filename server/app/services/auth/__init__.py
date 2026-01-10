@@ -1,3 +1,0 @@
-"""Authentication helpers package."""
-
-
