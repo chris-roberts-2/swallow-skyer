@@ -306,7 +306,9 @@
   cursor: pointer;
   font-weight: 600;
   font-size: 14px;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
 }
 
 .profile-section__edit:hover {
@@ -331,7 +333,9 @@
   cursor: pointer;
   font-weight: 600;
   font-size: 14px;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
 }
 
 .btn-format-1:hover {

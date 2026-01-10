@@ -45,13 +45,11 @@ describe('download actions', () => {
   });
 
   test('successful download opens new tab', async () => {
-    jest
-      .spyOn(global, 'fetch')
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ url: 'https://signed.test/file' }),
-      });
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ url: 'https://signed.test/file' }),
+    });
 
     renderWithRole('viewer');
 
@@ -77,7 +75,9 @@ describe('download actions', () => {
 
     fireEvent.click(screen.getByTestId('download-photo'));
 
-    await waitFor(() => expect(screen.getByTestId('permission-toast')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('permission-toast')).toBeInTheDocument()
+    );
   });
 
   test('download hidden when no role', () => {
@@ -86,4 +86,3 @@ describe('download actions', () => {
     expect(screen.queryByTestId('download-photo')).not.toBeInTheDocument();
   });
 });
-

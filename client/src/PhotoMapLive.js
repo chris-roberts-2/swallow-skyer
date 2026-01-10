@@ -93,7 +93,9 @@ const resolvePhotoUrl = photo => {
   const r2Url = (photo.r2_url || '').trim();
   const primaryUrl = (photo.url || r2Url || '').trim();
   const fallbackUrl =
-    r2PublicBase && r2Path ? `${r2PublicBase.replace(/\/$/, '')}/${r2Path}` : '';
+    r2PublicBase && r2Path
+      ? `${r2PublicBase.replace(/\/$/, '')}/${r2Path}`
+      : '';
   const resolvedUrl = primaryUrl || fallbackUrl;
 
   return { primaryUrl, fallbackUrl, resolvedUrl };
@@ -300,7 +302,9 @@ const PhotoMapLive = () => {
 
   const selectedProjectName = useMemo(() => {
     const current =
-      projects.find(p => p.id === activeProjectId)?.name || projects[0]?.name || '';
+      projects.find(p => p.id === activeProjectId)?.name ||
+      projects[0]?.name ||
+      '';
     return current || '';
   }, [projects, activeProjectId]);
 
@@ -417,9 +421,15 @@ const PhotoMapLive = () => {
         try {
           const style = map.getStyle();
           if (style && Array.isArray(style.layers)) {
-            const backgroundLayer = style.layers.find(l => l.type === 'background');
+            const backgroundLayer = style.layers.find(
+              l => l.type === 'background'
+            );
             if (backgroundLayer) {
-              map.setPaintProperty(backgroundLayer.id, 'background-color', 'rgba(0,0,0,0)');
+              map.setPaintProperty(
+                backgroundLayer.id,
+                'background-color',
+                'rgba(0,0,0,0)'
+              );
             }
           }
           if (!map.getSource('satellite-raster')) {
@@ -457,9 +467,14 @@ const PhotoMapLive = () => {
             const { id, type } = layer;
             if (!id || !type) return;
 
-            if (type === 'fill' || type === 'fill-extrusion' || type === 'background') {
+            if (
+              type === 'fill' ||
+              type === 'fill-extrusion' ||
+              type === 'background'
+            ) {
               try {
-                const prevVisibility = map.getLayoutProperty(id, 'visibility') || 'visible';
+                const prevVisibility =
+                  map.getLayoutProperty(id, 'visibility') || 'visible';
                 map.setLayoutProperty(id, 'visibility', 'none');
                 hidden[id] = prevVisibility;
               } catch {
@@ -470,8 +485,11 @@ const PhotoMapLive = () => {
 
             if (type === 'line') {
               const isRoad =
-                id.includes('road') || id.includes('street') || id.includes('highway');
-              const isBoundary = id.includes('boundary') || id.includes('admin');
+                id.includes('road') ||
+                id.includes('street') ||
+                id.includes('highway');
+              const isBoundary =
+                id.includes('boundary') || id.includes('admin');
 
               if (isBoundary) {
                 return;
@@ -480,8 +498,12 @@ const PhotoMapLive = () => {
               if (isRoad) {
                 try {
                   const prevPaintColor = map.getPaintProperty(id, 'line-color');
-                  const prevPaintOpacity = map.getPaintProperty(id, 'line-opacity');
-                  const prevVisibility = map.getLayoutProperty(id, 'visibility') || 'visible';
+                  const prevPaintOpacity = map.getPaintProperty(
+                    id,
+                    'line-opacity'
+                  );
+                  const prevVisibility =
+                    map.getLayoutProperty(id, 'visibility') || 'visible';
                   styledSymbols[id] = {
                     lineColor: prevPaintColor,
                     lineOpacity: prevPaintOpacity,
@@ -497,7 +519,8 @@ const PhotoMapLive = () => {
               }
 
               try {
-                const prevVisibility = map.getLayoutProperty(id, 'visibility') || 'visible';
+                const prevVisibility =
+                  map.getLayoutProperty(id, 'visibility') || 'visible';
                 map.setLayoutProperty(id, 'visibility', 'none');
                 hidden[id] = prevVisibility;
               } catch {
@@ -508,14 +531,21 @@ const PhotoMapLive = () => {
 
             if (type === 'symbol') {
               try {
-                const prevVisibility = map.getLayoutProperty(id, 'visibility') || 'visible';
+                const prevVisibility =
+                  map.getLayoutProperty(id, 'visibility') || 'visible';
                 if (prevVisibility !== 'visible') {
                   hidden[id] = prevVisibility;
                   map.setLayoutProperty(id, 'visibility', 'visible');
                 }
                 const prevTextColor = map.getPaintProperty(id, 'text-color');
-                const prevTextHaloColor = map.getPaintProperty(id, 'text-halo-color');
-                const prevTextHaloWidth = map.getPaintProperty(id, 'text-halo-width');
+                const prevTextHaloColor = map.getPaintProperty(
+                  id,
+                  'text-halo-color'
+                );
+                const prevTextHaloWidth = map.getPaintProperty(
+                  id,
+                  'text-halo-width'
+                );
                 styledSymbols[id] = {
                   textColor: prevTextColor,
                   textHaloColor: prevTextHaloColor,
@@ -570,19 +600,35 @@ const PhotoMapLive = () => {
               map.setPaintProperty(layerId, 'text-color', prevPaint.textColor);
             }
             if (prevPaint.textHaloColor !== undefined) {
-              map.setPaintProperty(layerId, 'text-halo-color', prevPaint.textHaloColor);
+              map.setPaintProperty(
+                layerId,
+                'text-halo-color',
+                prevPaint.textHaloColor
+              );
             }
             if (prevPaint.textHaloWidth !== undefined) {
-              map.setPaintProperty(layerId, 'text-halo-width', prevPaint.textHaloWidth);
+              map.setPaintProperty(
+                layerId,
+                'text-halo-width',
+                prevPaint.textHaloWidth
+              );
             }
             if (prevPaint.lineColor !== undefined) {
               map.setPaintProperty(layerId, 'line-color', prevPaint.lineColor);
             }
             if (prevPaint.lineOpacity !== undefined) {
-              map.setPaintProperty(layerId, 'line-opacity', prevPaint.lineOpacity);
+              map.setPaintProperty(
+                layerId,
+                'line-opacity',
+                prevPaint.lineOpacity
+              );
             }
             if (prevPaint.visibility !== undefined) {
-              map.setLayoutProperty(layerId, 'visibility', prevPaint.visibility);
+              map.setLayoutProperty(
+                layerId,
+                'visibility',
+                prevPaint.visibility
+              );
             }
           } catch {
             // ignore
@@ -596,9 +642,15 @@ const PhotoMapLive = () => {
         try {
           const style = map.getStyle();
           if (style && Array.isArray(style.layers)) {
-            const backgroundLayer = style.layers.find(l => l.type === 'background');
+            const backgroundLayer = style.layers.find(
+              l => l.type === 'background'
+            );
             if (backgroundLayer) {
-              map.setPaintProperty(backgroundLayer.id, 'background-color', '#f8f9fa');
+              map.setPaintProperty(
+                backgroundLayer.id,
+                'background-color',
+                '#f8f9fa'
+              );
             }
           }
         } catch (err) {
@@ -700,11 +752,9 @@ const PhotoMapLive = () => {
       const cached = cacheRef.current || {};
       const candidates = Array.from(
         new Set(
-          [
-            envApiBase,
-            'http://127.0.0.1:5001',
-            'http://localhost:5001',
-          ].filter(Boolean)
+          [envApiBase, 'http://127.0.0.1:5001', 'http://localhost:5001'].filter(
+            Boolean
+          )
         )
       );
 
@@ -1601,7 +1651,7 @@ const PhotoMapLive = () => {
         <select
           className="btn-format-1"
           ref={projectSelectRef}
-          value={activeProjectId || (projects[0]?.id || '')}
+          value={activeProjectId || projects[0]?.id || ''}
           onChange={e => {
             const nextId = e.target.value;
             setActiveProject(nextId || null);

@@ -20,13 +20,6 @@ const getLocalStorage = () => {
   } catch {
     // ignore
   }
-  try {
-    if (typeof globalThis !== 'undefined' && globalThis.localStorage) {
-      return globalThis.localStorage;
-    }
-  } catch {
-    // ignore
-  }
   return null;
 };
 
@@ -115,8 +108,7 @@ export const AuthContext = createContext(defaultContextValue);
 
 const getInitialAuthState = () => {
   const storedSession = readStoredSession();
-  const storedProject =
-    getLocalStorage()?.getItem('activeProjectId') || null;
+  const storedProject = getLocalStorage()?.getItem('activeProjectId') || null;
   return {
     session: storedSession,
     user: storedSession?.user ?? null,
@@ -298,7 +290,7 @@ export const AuthProvider = ({ children }) => {
     setAuthState(prev => ({
       session: nextSession,
       user: nextSession?.user ?? null,
-      profile: nextSession ? prev?.profile ?? null : null,
+      profile: nextSession ? (prev?.profile ?? null) : null,
       activeProjectId: prev?.activeProjectId ?? null,
       projects: prev?.projects ?? [],
       projectRoles: prev?.projectRoles ?? {},
@@ -382,7 +374,10 @@ export const AuthProvider = ({ children }) => {
 
         // persist for quick render
         try {
-          window.localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(list));
+          window.localStorage.setItem(
+            PROJECTS_STORAGE_KEY,
+            JSON.stringify(list)
+          );
         } catch {
           // ignore
         }

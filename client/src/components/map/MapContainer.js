@@ -17,7 +17,7 @@ const MapContainer = ({ photos, onPhotoSelect, onLocationClick }) => {
   }, []);
 
   return (
-    <div className="map-container">
+    <div className="map-container" data-testid="map-container">
       <div ref={mapRef} className="map" />
     </div>
   );

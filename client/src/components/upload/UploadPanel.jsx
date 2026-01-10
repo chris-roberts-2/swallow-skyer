@@ -40,4 +40,3 @@ const UploadPanel = () => {
 };
 
 export default UploadPanel;
-

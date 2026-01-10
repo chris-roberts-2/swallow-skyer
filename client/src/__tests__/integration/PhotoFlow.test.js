@@ -53,10 +53,7 @@ test('upload form submission -> backend response handled', async () => {
 
   render(<PhotoUpload onUpload={mockOnUpload} location={location} />);
 
-  const fileInput = screen.getByRole('textbox', { hidden: true });
-  // Fallback: query by input[type=file]
-  const fileInputs = document.querySelectorAll('input[type="file"]');
-  const fileEl = fileInputs[0];
+  const fileEl = screen.getByTestId('photo-file-input');
   const testFile = createFile();
 
   // Set caption
@@ -64,8 +61,7 @@ test('upload form submission -> backend response handled', async () => {
   fireEvent.change(captionInput, { target: { value: 'Test caption' } });
 
   // Set file
-  Object.defineProperty(fileEl, 'files', { value: [testFile] });
-  fireEvent.change(fileEl);
+  fireEvent.change(fileEl, { target: { files: [testFile] } });
 
   // Submit
   const submitBtn = screen.getByRole('button', { name: /upload photo/i });

@@ -29,6 +29,8 @@ const PhotoUpload = ({ onUpload, location }) => {
     <form onSubmit={handleSubmit} className="photo-upload">
       <div className="upload-section">
         <input
+          data-testid="photo-file-input"
+          aria-label="Photo file"
           type="file"
           accept="image/*"
           onChange={handleFileChange}

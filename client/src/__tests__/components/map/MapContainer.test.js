@@ -31,8 +31,7 @@ describe('MapContainer', () => {
     );
 
     // Verify the map container div is present
-    const container = document.querySelector('.map-container');
-    expect(container).toBeInTheDocument();
+    expect(screen.getByTestId('map-container')).toBeInTheDocument();
   });
 
   it('handles photo selection', () => {

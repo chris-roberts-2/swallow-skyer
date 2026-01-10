@@ -167,6 +167,7 @@ const BatchUploader = ({ onForbidden, onUploaded, variant = 'full' }) => {
           {isSubmitting ? '…' : '+'}
           <input
             ref={inputRef}
+            data-testid="batch-file-input"
             type="file"
             accept="image/*"
             multiple
@@ -207,6 +208,7 @@ const BatchUploader = ({ onForbidden, onUploaded, variant = 'full' }) => {
           </p>
           <input
             ref={inputRef}
+            data-testid="batch-file-input"
             type="file"
             accept="image/*"
             multiple
@@ -232,4 +234,3 @@ const BatchUploader = ({ onForbidden, onUploaded, variant = 'full' }) => {
 };
 
 export default BatchUploader;
-

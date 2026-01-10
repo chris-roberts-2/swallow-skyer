@@ -15,4 +15,3 @@ class PublicService {
 }
 
 export default new PublicService();
-

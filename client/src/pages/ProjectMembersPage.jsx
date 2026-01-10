@@ -43,7 +43,9 @@ const ProjectMembersPage = () => {
     if (!currentProjectId) return;
     try {
       setError('');
-      const resp = await apiClient.get(`/v1/projects/${currentProjectId}/members`);
+      const resp = await apiClient.get(
+        `/v1/projects/${currentProjectId}/members`
+      );
       setMembers(resp?.members || []);
     } catch (err) {
       setError(
@@ -75,7 +77,9 @@ const ProjectMembersPage = () => {
       await fetchMembers();
     } catch (err) {
       setError(
-        err?.payload?.error || err?.message || 'Unable to add member. Please try again.'
+        err?.payload?.error ||
+          err?.message ||
+          'Unable to add member. Please try again.'
       );
     } finally {
       setIsSubmitting(false);
@@ -162,7 +166,14 @@ const ProjectMembersPage = () => {
             </select>
           </label>
         </div>
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 10,
+          }}
+        >
           {canManageMembers ? (
             <button
               type="button"
@@ -243,8 +254,13 @@ const ProjectMembersPage = () => {
                 .join(' ')
                 .trim();
               return (
-                <tr key={member.user_id} style={{ borderBottom: '1px solid #f1f3f5' }}>
-                  <td style={{ padding: '8px 6px', textAlign: 'left' }}>{name || '—'}</td>
+                <tr
+                  key={member.user_id}
+                  style={{ borderBottom: '1px solid #f1f3f5' }}
+                >
+                  <td style={{ padding: '8px 6px', textAlign: 'left' }}>
+                    {name || '—'}
+                  </td>
                   <td style={{ padding: '8px 6px', textAlign: 'left' }}>
                     {member.company || '—'}
                   </td>
@@ -265,7 +281,10 @@ const ProjectMembersPage = () => {
             })}
             {!members.length ? (
               <tr>
-                <td colSpan={4} style={{ padding: '12px 8px', color: '#6b7280' }}>
+                <td
+                  colSpan={4}
+                  style={{ padding: '12px 8px', color: '#6b7280' }}
+                >
                   No members
                 </td>
               </tr>
@@ -303,7 +322,9 @@ const ProjectMembersPage = () => {
           >
             <h3 style={{ marginTop: 0, marginBottom: 12 }}>Add Member</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label
+                style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+              >
                 <span style={{ fontWeight: 600, fontSize: 14 }}>Email</span>
                 <input
                   type="email"
@@ -321,7 +342,9 @@ const ProjectMembersPage = () => {
                   }}
                 />
               </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label
+                style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+              >
                 <span style={{ fontWeight: 600, fontSize: 14 }}>Role</span>
                 <select
                   value={addForm.role}
@@ -384,4 +407,3 @@ const ProjectMembersPage = () => {
 };
 
 export default ProjectMembersPage;
-

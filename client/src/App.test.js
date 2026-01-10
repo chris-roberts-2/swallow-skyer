@@ -34,8 +34,12 @@ test('renders Skyer by Swallow Robotics title', () => {
 
 test('shows login/register links when signed out', () => {
   renderWithAuth({ user: null }, ['/login']);
-  expect(screen.getAllByRole('link', { name: /login/i }).length).toBeGreaterThan(0);
-  expect(screen.getAllByRole('link', { name: /register/i }).length).toBeGreaterThan(0);
+  expect(
+    screen.getAllByRole('link', { name: /login/i }).length
+  ).toBeGreaterThan(0);
+  expect(
+    screen.getAllByRole('link', { name: /register/i }).length
+  ).toBeGreaterThan(0);
 });
 
 test('shows profile navigation when signed in', () => {

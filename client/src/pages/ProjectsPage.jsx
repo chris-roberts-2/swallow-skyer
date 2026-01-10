@@ -141,7 +141,10 @@ const ProjectsPage = () => {
     [navigate, refreshProjects, setActiveProject]
   );
 
-  const userHasProjects = useMemo(() => (projects || []).length > 0, [projects]);
+  const userHasProjects = useMemo(
+    () => (projects || []).length > 0,
+    [projects]
+  );
 
   return (
     <div
@@ -155,26 +158,33 @@ const ProjectsPage = () => {
       }}
     >
       <div style={{ width: 'min(1200px, 100%)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h2 style={{ margin: 0 }}>Projects</h2>
-        <button
-          type="button"
-          onClick={() => setIsModalOpen(true)}
-          title="Create Project"
+        <div
           style={{
-            borderRadius: '50%',
-            width: 36,
-            height: 36,
-            border: '1px solid #e0e0e0',
-            background: '#f7f9fc',
-            fontSize: 20,
-            fontWeight: 600,
-            lineHeight: '32px',
-            cursor: 'pointer',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 12,
           }}
         >
-          +
-        </button>
+          <h2 style={{ margin: 0 }}>Projects</h2>
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            title="Create Project"
+            style={{
+              borderRadius: '50%',
+              width: 36,
+              height: 36,
+              border: '1px solid #e0e0e0',
+              background: '#f7f9fc',
+              fontSize: 20,
+              fontWeight: 600,
+              lineHeight: '32px',
+              cursor: 'pointer',
+            }}
+          >
+            +
+          </button>
         </div>
         {error && (
           <div

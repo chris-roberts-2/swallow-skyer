@@ -88,4 +88,3 @@ const ProjectDashboard = ({ onProjectUpdated = () => {} }) => {
 };
 
 export default ProjectDashboard;
-

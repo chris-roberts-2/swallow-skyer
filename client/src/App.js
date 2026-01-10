@@ -69,9 +69,10 @@ const RootRedirect = () => {
 
 export function AppRoutes() {
   const location = useLocation();
-  const showHeader =
-    !(location.pathname.startsWith('/public') &&
-      new URLSearchParams(location.search).get('embed') === '1');
+  const showHeader = !(
+    location.pathname.startsWith('/public') &&
+    new URLSearchParams(location.search).get('embed') === '1'
+  );
 
   return (
     <div className="App">

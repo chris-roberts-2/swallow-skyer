@@ -1,8 +1,7 @@
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react';
+import { render, fireEvent, waitFor, screen } from '@testing-library/react';
 import BatchUploader from '../components/upload/BatchUploader';
 import { AuthContext } from '../context/AuthContext';
-import { usePermissionToast } from '../components/common/PermissionToast';
 
 const renderWithAuth = (ui, { projectId = 'proj-123' } = {}) => {
   const value = {
@@ -36,14 +35,14 @@ describe('BatchUploader', () => {
   });
 
   it('submits multiple selected files with project_id', async () => {
-    const { getByText, getByTestId } = renderWithAuth(<BatchUploader />);
-    const input = getByTestId('dropzone').querySelector('input[type="file"]');
+    renderWithAuth(<BatchUploader />);
+    const input = screen.getByTestId('batch-file-input');
 
     const file1 = new File(['a'], 'one.jpg', { type: 'image/jpeg' });
     const file2 = new File(['b'], 'two.jpg', { type: 'image/jpeg' });
 
     fireEvent.change(input, { target: { files: [file1, file2] } });
-    fireEvent.click(getByText('Upload'));
+    fireEvent.click(screen.getByText('Upload'));
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
 
@@ -54,8 +53,8 @@ describe('BatchUploader', () => {
   });
 
   it('handles drag and drop', async () => {
-    const { getByTestId, getByText } = renderWithAuth(<BatchUploader />);
-    const dropzone = getByTestId('dropzone');
+    renderWithAuth(<BatchUploader />);
+    const dropzone = screen.getByTestId('dropzone');
     const file = new File(['x'], 'drag.jpg', { type: 'image/jpeg' });
 
     fireEvent.drop(dropzone, {
@@ -64,16 +63,16 @@ describe('BatchUploader', () => {
       },
     });
 
-    fireEvent.click(getByText('Upload'));
+    fireEvent.click(screen.getByText('Upload'));
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
   });
 
   it('calls API with multipart shape for a single file', async () => {
-    const { getByTestId, getByText } = renderWithAuth(<BatchUploader />);
-    const input = getByTestId('dropzone').querySelector('input[type="file"]');
+    renderWithAuth(<BatchUploader />);
+    const input = screen.getByTestId('batch-file-input');
     const file = new File(['a'], 'only.jpg', { type: 'image/jpeg' });
     fireEvent.change(input, { target: { files: [file] } });
-    fireEvent.click(getByText('Upload'));
+    fireEvent.click(screen.getByText('Upload'));
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     const body = global.fetch.mock.calls[0][1].body;
@@ -88,7 +87,7 @@ describe('BatchUploader', () => {
       json: () => Promise.resolve({ message: 'forbidden' }),
     });
 
-    const { getByTestId, getByText } = render(
+    render(
       <AuthContext.Provider
         value={{
           user: { id: 'user-1' },
@@ -100,12 +99,11 @@ describe('BatchUploader', () => {
         <BatchUploader onForbidden={spyToast} />
       </AuthContext.Provider>
     );
-    const input = getByTestId('dropzone').querySelector('input[type="file"]');
+    const input = screen.getByTestId('batch-file-input');
     const file = new File(['a'], 'only.jpg', { type: 'image/jpeg' });
     fireEvent.change(input, { target: { files: [file] } });
-    fireEvent.click(getByText('Upload'));
+    fireEvent.click(screen.getByText('Upload'));
 
     await waitFor(() => expect(spyToast).toHaveBeenCalled());
   });
 });
-

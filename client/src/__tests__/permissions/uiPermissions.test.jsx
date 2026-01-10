@@ -88,4 +88,3 @@ describe('role-based UI permissions', () => {
     fetchSpy.mockRestore();
   });
 });
-

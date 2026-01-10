@@ -91,13 +91,22 @@ const ProjectList = ({
           e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: 8,
+          }}
+        >
           <div>
             <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>
               {project.name}
             </div>
             {project.address ? (
-              <div style={{ color: '#6b7280', fontSize: 12 }}>{project.address}</div>
+              <div style={{ color: '#6b7280', fontSize: 12 }}>
+                {project.address}
+              </div>
             ) : null}
           </div>
           <div
@@ -109,7 +118,9 @@ const ProjectList = ({
               aria-label="Project actions"
               onClick={e => {
                 e.stopPropagation();
-                setMenuOpenId(prev => (prev === project.id ? null : project.id));
+                setMenuOpenId(prev =>
+                  prev === project.id ? null : project.id
+                );
               }}
               style={{
                 border: '1px solid #e5e7eb',
@@ -230,8 +241,16 @@ const ProjectList = ({
             ) : null}
           </div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 12, color: '#6b7280' }}>{project.role || 'member'}</div>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <div style={{ fontSize: 12, color: '#6b7280' }}>
+            {project.role || 'member'}
+          </div>
           {isActive ? (
             <span style={{ fontSize: 12, color: '#2563eb', fontWeight: 600 }}>
               Active
@@ -243,9 +262,22 @@ const ProjectList = ({
   };
 
   return (
-    <div data-testid="project-list" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div
+      data-testid="project-list"
+      style={{
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+      }}
+    >
       {activeProject ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0, 1fr))' }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(1, minmax(0, 1fr))',
+          }}
+        >
           {renderCard(activeProject, true)}
         </div>
       ) : null}
