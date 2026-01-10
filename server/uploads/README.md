@@ -1,32 +1,19 @@
 # Server Uploads Directory
 
 ## Purpose
-This directory serves as **temporary local storage** for uploaded photos during development and testing.
+This directory contains **development/test assets** (sample uploads). In production, photo files are stored in **Cloudflare R2** and metadata/auth are stored in **Supabase**.
 
 ## Storage Strategy
-- **Development**: Files stored locally in `server/uploads/`
-- **Production**: Files stored in Supabase Storage (cloud)
-- **Processing**: Thumbnails generated locally, then uploaded to Supabase
+- **Development/testing**: sample files may live under `server/uploads/`
+- **Production**: original images + thumbnails are stored in **Cloudflare R2**
+- **Metadata**: stored in **Supabase** (Postgres)
 
 ## File Organization
 ```
 uploads/
-├── photos/              # Original uploaded photos
-│   └── {uuid}.{ext}    # Unique filename format
-├── thumbnails/          # Generated thumbnails
-│   └── thumb_{uuid}.{ext}
-└── temp/               # Temporary processing files
+└── (sample files used for local dev/testing)
 ```
 
 ## Important Notes
-- ⚠️ **Not for production**: This is temporary storage only
-- 🔄 **Sync with Supabase**: Files should be uploaded to Supabase Storage
-- 🗑️ **Cleanup**: Old files should be periodically cleaned up
-- 📁 **Git ignored**: This directory is excluded from version control
-
-## Migration to Supabase
-When moving to production:
-1. Upload files to Supabase Storage
-2. Update database records with Supabase URLs
-3. Remove local files from this directory
-4. Configure Supabase as primary storage
+- Not a deployment artifact for GitHub Pages or Render.
+- The running application does not rely on this directory in production.

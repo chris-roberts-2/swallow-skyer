@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This directory contains all React component and unit tests for the Swallow Skyer frontend.
+This directory contains all React component and unit tests for the Swallow Skyer frontend. These tests run locally/CI and are not deployed to GitHub Pages.
 
 ## Organization
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This directory contains MapLibre-specific node logic for scalable map interaction and photo management.
+This directory contains MapLibre-specific node logic for scalable map interaction and photo management. It is **frontend source code** that is bundled into the static site build (`client/build/`).
 
 ## Components
 

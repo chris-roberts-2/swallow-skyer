@@ -1,6 +1,6 @@
 # Routes Directory
 
-This directory contains route components for the Swallow Skyer application.
+This directory contains **frontend route components** for the Swallow Skyer React app. These files are bundled into the static build output (`client/build/`) and are not deployed separately.
 
 ## Structure
 
@@ -13,7 +13,7 @@ This directory contains route components for the Swallow Skyer application.
 
 Routes are configured in `App.js` using React Router DOM.
 
-## Future Routes
+## Routes
 
 - `/` - Home page
 - `/map` - Interactive map view
