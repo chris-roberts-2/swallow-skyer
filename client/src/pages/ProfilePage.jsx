@@ -2,14 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context';
 
 const ProfilePage = () => {
-  const {
-    user,
-    profile,
-    logout,
-    refreshProfile,
-    updateProfile,
-    updateLogin,
-  } = useAuth();
+  const { user, profile, logout, refreshProfile, updateProfile, updateLogin } =
+    useAuth();
 
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [isEditingLogin, setIsEditingLogin] = useState(false);
@@ -150,11 +144,16 @@ const ProfilePage = () => {
           ) : null}
         </div>
         <div className="profile-section__body">
-          <div className={`profile-card ${isEditingUser ? 'profile-card--edit' : ''}`}>
+          <div
+            className={`profile-card ${isEditingUser ? 'profile-card--edit' : ''}`}
+          >
             <div className="profile-card__row">
               <strong>Name:</strong>
               {isEditingUser ? (
-                <div className="profile-card__inputs" onClick={e => e.stopPropagation()}>
+                <div
+                  className="profile-card__inputs"
+                  onClick={e => e.stopPropagation()}
+                >
                   <input
                     type="text"
                     name="firstName"
@@ -264,7 +263,9 @@ const ProfilePage = () => {
           ) : null}
         </div>
         <div className="profile-section__body">
-          <div className={`profile-card ${isEditingLogin ? 'profile-card--edit' : ''}`}>
+          <div
+            className={`profile-card ${isEditingLogin ? 'profile-card--edit' : ''}`}
+          >
             <div className="profile-card__row">
               <strong>Email:</strong>
               {isEditingLogin ? (

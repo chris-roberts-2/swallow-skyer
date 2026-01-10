@@ -24,7 +24,13 @@ describe('PublicProjectView', () => {
   test('loads project and photos', async () => {
     mockFetch([
       { ok: true, status: 200, body: { project: { id: 'p1', name: 'Demo' } } },
-      { ok: true, status: 200, body: { photos: [{ id: 'photo-1', r2_url: 'u', thumbnail_r2_url: 't' }] } },
+      {
+        ok: true,
+        status: 200,
+        body: {
+          photos: [{ id: 'photo-1', r2_url: 'u', thumbnail_r2_url: 't' }],
+        },
+      },
     ]);
 
     render(
@@ -35,7 +41,9 @@ describe('PublicProjectView', () => {
       </MemoryRouter>
     );
 
-    await waitFor(() => expect(screen.getByTestId('public-view')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('public-view')).toBeInTheDocument()
+    );
     expect(screen.getByText('Demo')).toBeInTheDocument();
   });
 
@@ -50,14 +58,22 @@ describe('PublicProjectView', () => {
       </MemoryRouter>
     );
 
-    await waitFor(() => expect(screen.getByTestId('public-error')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('public-error')).toBeInTheDocument()
+    );
   });
 
   test('download click opens url', async () => {
     const openSpy = jest.spyOn(window, 'open').mockImplementation(() => {});
     mockFetch([
       { ok: true, status: 200, body: { project: { id: 'p1', name: 'Demo' } } },
-      { ok: true, status: 200, body: { photos: [{ id: 'photo-1', r2_url: 'u', thumbnail_r2_url: 't' }] } },
+      {
+        ok: true,
+        status: 200,
+        body: {
+          photos: [{ id: 'photo-1', r2_url: 'u', thumbnail_r2_url: 't' }],
+        },
+      },
       { ok: true, status: 200, body: { url: 'https://signed/file' } },
     ]);
 
@@ -69,12 +85,17 @@ describe('PublicProjectView', () => {
       </MemoryRouter>
     );
 
-    await waitFor(() => expect(screen.getByTestId('public-view')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('public-view')).toBeInTheDocument()
+    );
     fireEvent.click(screen.getByTestId('download-photo-photo-1'));
 
     await waitFor(() =>
-      expect(openSpy).toHaveBeenCalledWith('https://signed/file', '_blank', 'noopener,noreferrer')
+      expect(openSpy).toHaveBeenCalledWith(
+        'https://signed/file',
+        '_blank',
+        'noopener,noreferrer'
+      )
     );
   });
 });
-

@@ -23,7 +23,9 @@ const resolvePhotoUrl = photo => {
   const r2Url = (photo.r2_url || '').trim();
   const primaryUrl = (photo.url || r2Url || '').trim();
   const fallbackUrl =
-    r2PublicBase && r2Path ? `${r2PublicBase.replace(/\/$/, '')}/${r2Path}` : '';
+    r2PublicBase && r2Path
+      ? `${r2PublicBase.replace(/\/$/, '')}/${r2Path}`
+      : '';
   const resolvedUrl = primaryUrl || fallbackUrl;
 
   const thumbPath = (photo.thumbnail_r2_path || '').trim();
@@ -159,7 +161,8 @@ const PhotosPage = () => {
       }
     };
     document.addEventListener('click', handleClickOutside, true);
-    return () => document.removeEventListener('click', handleClickOutside, true);
+    return () =>
+      document.removeEventListener('click', handleClickOutside, true);
   }, [openMenuId]);
 
   const toggleSelect = photoId => {
@@ -431,7 +434,11 @@ const PhotosPage = () => {
             <button
               type="button"
               className="btn-format-1"
-              style={{ padding: '6px 10px', color: '#b91c1c', borderColor: '#fca5a5' }}
+              style={{
+                padding: '6px 10px',
+                color: '#b91c1c',
+                borderColor: '#fca5a5',
+              }}
               onClick={() => deletePhotos([...selectedIds])}
             >
               Delete selected
@@ -507,14 +514,21 @@ const PhotosPage = () => {
                 ) : null}
                 <div
                   className="photo-menu"
-                  style={{ position: 'absolute', top: 10, right: 10, zIndex: 2 }}
+                  style={{
+                    position: 'absolute',
+                    top: 10,
+                    right: 10,
+                    zIndex: 2,
+                  }}
                 >
                   <button
                     type="button"
                     aria-label="Photo actions"
                     onClick={e => {
                       e.stopPropagation();
-                      setOpenMenuId(prev => (prev === photo.id ? null : photo.id));
+                      setOpenMenuId(prev =>
+                        prev === photo.id ? null : photo.id
+                      );
                     }}
                     style={{
                       border: '1px solid #e5e7eb',
@@ -555,7 +569,7 @@ const PhotosPage = () => {
                         }}
                         onClick={() => {
                           setOpenMenuId(null);
-                        downloadPhotos([photo.id], normalisedPhotos);
+                          downloadPhotos([photo.id], normalisedPhotos);
                         }}
                       >
                         Download
@@ -622,7 +636,10 @@ const PhotosPage = () => {
                       display: 'block',
                     }}
                     onError={e => {
-                      if (photo.fallbackUrl && e.target.src !== photo.fallbackUrl) {
+                      if (
+                        photo.fallbackUrl &&
+                        e.target.src !== photo.fallbackUrl
+                      ) {
                         // eslint-disable-next-line no-param-reassign
                         e.target.src = photo.fallbackUrl;
                       } else {

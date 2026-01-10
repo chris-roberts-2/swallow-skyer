@@ -34,7 +34,9 @@ const resolvePhotoUrl = photo => {
   const r2Url = (photo.r2_url || '').trim();
   const primaryUrl = (photo.url || r2Url || '').trim();
   const fallbackUrl =
-    r2PublicBase && r2Path ? `${r2PublicBase.replace(/\/$/, '')}/${r2Path}` : '';
+    r2PublicBase && r2Path
+      ? `${r2PublicBase.replace(/\/$/, '')}/${r2Path}`
+      : '';
   const resolvedUrl = primaryUrl || fallbackUrl;
 
   const thumbPath = (photo.thumbnail_r2_path || '').trim();
@@ -130,12 +132,8 @@ const PhotoOptionsPage = () => {
       photo.capturedAt;
     const projectId = photo.project_id || null;
     const projectName =
-      photo.project_name ||
-      projects?.find(p => p.id === projectId)?.name ||
-      '';
-    const uploadedBy =
-      photo?.uploaded_by?.display ||
-      '';
+      photo.project_name || projects?.find(p => p.id === projectId)?.name || '';
+    const uploadedBy = photo?.uploaded_by?.display || '';
     return {
       ...photo,
       primaryUrl,
@@ -176,7 +174,12 @@ const PhotoOptionsPage = () => {
     mapMarkerRef.current = new maplibregl.Marker({ color: '#1e88e5' })
       .setLngLat([lon, lat])
       .addTo(mapInstance.current);
-  }, [displayPhoto?.latitude, displayPhoto?.longitude, displayPhoto?.mapLatitude, displayPhoto?.mapLongitude]);
+  }, [
+    displayPhoto?.latitude,
+    displayPhoto?.longitude,
+    displayPhoto?.mapLatitude,
+    displayPhoto?.mapLongitude,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -197,7 +200,8 @@ const PhotoOptionsPage = () => {
     try {
       const link = document.createElement('a');
       link.href = displayPhoto.url;
-      link.download = displayPhoto.file_name || displayPhoto.caption || `photo-${id}`;
+      link.download =
+        displayPhoto.file_name || displayPhoto.caption || `photo-${id}`;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
       document.body.appendChild(link);
@@ -258,7 +262,11 @@ const PhotoOptionsPage = () => {
         >
           Back
         </button>
-        {error ? <div style={{ color: '#dc2626' }}>{error}</div> : <div>Loading photo...</div>}
+        {error ? (
+          <div style={{ color: '#dc2626' }}>{error}</div>
+        ) : (
+          <div>Loading photo...</div>
+        )}
       </div>
     );
   }
@@ -345,7 +353,10 @@ const PhotoOptionsPage = () => {
               display: 'block',
             }}
             onError={e => {
-              if (displayPhoto.fallbackUrl && e.target.src !== displayPhoto.fallbackUrl) {
+              if (
+                displayPhoto.fallbackUrl &&
+                e.target.src !== displayPhoto.fallbackUrl
+              ) {
                 // eslint-disable-next-line no-param-reassign
                 e.target.src = displayPhoto.fallbackUrl;
               } else {
@@ -422,31 +433,87 @@ const PhotoOptionsPage = () => {
                   paddingTop: 6,
                 }}
               >
-                <dt style={{ margin: 0, fontSize: 13, color: '#6b7280', fontWeight: 600 }}>
+                <dt
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    color: '#6b7280',
+                    fontWeight: 600,
+                  }}
+                >
                   Date/Time
                 </dt>
-                <dd style={{ margin: 0, fontSize: 13, color: '#374151', textAlign: 'left' }}>
+                <dd
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    color: '#374151',
+                    textAlign: 'left',
+                  }}
+                >
                   {displayPhoto.createdAt || 'Unknown'}
                 </dd>
 
-                <dt style={{ margin: 0, fontSize: 13, color: '#6b7280', fontWeight: 600 }}>
+                <dt
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    color: '#6b7280',
+                    fontWeight: 600,
+                  }}
+                >
                   Project
                 </dt>
-                <dd style={{ margin: 0, fontSize: 13, color: '#374151', textAlign: 'left' }}>
+                <dd
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    color: '#374151',
+                    textAlign: 'left',
+                  }}
+                >
                   {displayPhoto.projectName || 'Unknown'}
                 </dd>
 
-                <dt style={{ margin: 0, fontSize: 13, color: '#6b7280', fontWeight: 600 }}>
+                <dt
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    color: '#6b7280',
+                    fontWeight: 600,
+                  }}
+                >
                   Uploaded By
                 </dt>
-                <dd style={{ margin: 0, fontSize: 13, color: '#374151', textAlign: 'left' }}>
+                <dd
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    color: '#374151',
+                    textAlign: 'left',
+                  }}
+                >
                   {displayPhoto.uploadedBy || 'Unknown'}
                 </dd>
 
-                <dt style={{ margin: 0, fontSize: 13, color: '#6b7280', fontWeight: 600 }}>
+                <dt
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    color: '#6b7280',
+                    fontWeight: 600,
+                  }}
+                >
                   File Size
                 </dt>
-                <dd style={{ margin: 0, fontSize: 13, color: '#374151', textAlign: 'left' }}>
+                <dd
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    color: '#374151',
+                    textAlign: 'left',
+                  }}
+                >
                   {displayPhoto.fileSizeLabel || 'Unknown'}
                 </dd>
               </dl>
@@ -492,7 +559,6 @@ const PhotoOptionsPage = () => {
               />
             </div>
           </div>
-
         </div>
       </div>
     </div>
@@ -500,4 +566,3 @@ const PhotoOptionsPage = () => {
 };
 
 export default PhotoOptionsPage;
-

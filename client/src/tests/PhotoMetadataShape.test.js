@@ -39,4 +39,3 @@ describe('Photo metadata shape', () => {
     expect(photo.location_id).toBe('loc-1');
   });
 });
-

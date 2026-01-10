@@ -55,4 +55,3 @@ const ProjectSwitcher = () => {
 };
 
 export default ProjectSwitcher;
-

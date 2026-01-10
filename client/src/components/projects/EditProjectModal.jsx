@@ -88,4 +88,3 @@ const EditProjectModal = ({ open, onClose, onSubmit, initial }) => {
 };
 
 export default EditProjectModal;
-

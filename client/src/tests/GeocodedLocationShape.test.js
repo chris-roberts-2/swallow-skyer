@@ -37,4 +37,3 @@ describe('Geocoded location shape', () => {
     expect(photo.location_country).toBe('France');
   });
 });
-

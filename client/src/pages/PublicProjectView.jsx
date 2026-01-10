@@ -70,7 +70,9 @@ const PublicProjectView = () => {
       <h2>{project?.name}</h2>
       {project?.description && <p>{project.description}</p>}
       <MapContainer photos={photos} />
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 16 }}>
+      <div
+        style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 16 }}
+      >
         {photos.map(photo => (
           <div
             key={photo.id}
@@ -102,4 +104,3 @@ const PublicProjectView = () => {
 };
 
 export default PublicProjectView;
-

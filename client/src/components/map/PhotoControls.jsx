@@ -11,7 +11,11 @@ const apiBase =
 const buildPhotoUrl = photoId =>
   `${(apiBase || '').replace(/\/$/, '')}/api/v1/photos/${photoId}`;
 
-const PhotoControls = ({ photoId, projectId: projectIdProp, onDeleted = () => {} }) => {
+const PhotoControls = ({
+  photoId,
+  projectId: projectIdProp,
+  onDeleted = () => {},
+}) => {
   const { roleForActiveProject, activeProject } = useAuth();
   const activeProjectId = activeProject?.id || activeProject || null;
   const role = roleForActiveProject ? roleForActiveProject() : null;
@@ -79,7 +83,11 @@ const PhotoControls = ({ photoId, projectId: projectIdProp, onDeleted = () => {}
   return (
     <div data-testid="photo-controls">
       {canDownload && (
-        <button type="button" data-testid="download-photo" onClick={handleDownload}>
+        <button
+          type="button"
+          data-testid="download-photo"
+          onClick={handleDownload}
+        >
           Download
         </button>
       )}
@@ -101,4 +109,3 @@ const PhotoControls = ({ photoId, projectId: projectIdProp, onDeleted = () => {}
 };
 
 export default PhotoControls;
-

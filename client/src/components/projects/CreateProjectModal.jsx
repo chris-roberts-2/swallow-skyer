@@ -49,7 +49,10 @@ const CreateProjectModal = ({ open, onClose, onSubmit }) => {
         }}
       >
         <h3>Create Project</h3>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+        >
           <label>
             Name (required)
             <input

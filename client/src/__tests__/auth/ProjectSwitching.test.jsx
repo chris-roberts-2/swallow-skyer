@@ -32,7 +32,9 @@ describe('AuthContext project switching', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId('active-project').textContent).toBe('project-from-test')
+      expect(screen.getByTestId('active-project').textContent).toBe(
+        'project-from-test'
+      )
     );
     expect(localStorage.getItem('activeProjectId')).toBe('project-from-test');
   });
@@ -53,4 +55,3 @@ describe('AuthContext project switching', () => {
     );
   });
 });
-

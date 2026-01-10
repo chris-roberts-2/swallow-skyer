@@ -108,4 +108,3 @@ describe('BatchUploader', () => {
     await waitFor(() => expect(spyToast).toHaveBeenCalled());
   });
 });
-

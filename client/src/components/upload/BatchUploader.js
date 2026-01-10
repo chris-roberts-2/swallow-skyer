@@ -232,4 +232,3 @@ const BatchUploader = ({ onForbidden, onUploaded, variant = 'full' }) => {
 };
 
 export default BatchUploader;
-

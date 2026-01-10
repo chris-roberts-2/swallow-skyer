@@ -42,4 +42,3 @@ export const usePermissionToast = () => {
 };
 
 export default usePermissionToast;
-

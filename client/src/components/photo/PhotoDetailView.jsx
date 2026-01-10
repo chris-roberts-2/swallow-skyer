@@ -60,4 +60,3 @@ const PhotoDetailView = ({ photo }) => {
 };
 
 export default PhotoDetailView;
-

@@ -79,9 +79,7 @@ const ProfileMenu = () => {
                 {displayName || user.email || 'User'}
               </div>
               {displayName ? (
-                <div className="profile-menu__email">
-                  {user.email}
-                </div>
+                <div className="profile-menu__email">{user.email}</div>
               ) : null}
             </div>
           </div>
