@@ -64,6 +64,22 @@ def update_profile():
         )
         return jsonify({"profile": getattr(resp, "data", None)}), 200
     except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+        message = str(exc)
+        # If Supabase PostgREST schema cache is missing columns (common when migrations
+        # haven't been applied), surface a clear, actionable error.
+        if "PGRST204" in message and "Could not find the" in message:
+            return (
+                jsonify(
+                    {
+                        "error": "Supabase schema is missing required profile columns on public.users",
+                        "code": "SUPABASE_SCHEMA_MISSING_COLUMNS",
+                        "details": message,
+                        "requiredColumns": ["first_name", "last_name", "company"],
+                        "fix": "Apply the migration that adds profile columns (see supabase/migrations/20251216000000_add_user_profile_fields.sql) and refresh PostgREST schema cache.",
+                    }
+                ),
+                500,
+            )
+        return jsonify({"error": message}), 500
 
 
