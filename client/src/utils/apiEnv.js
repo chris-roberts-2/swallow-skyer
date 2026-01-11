@@ -25,5 +25,3 @@ export function getApiCandidates() {
     new Set([origin, 'http://127.0.0.1:5001', 'http://localhost:5001'])
   ).filter(Boolean);
 }
-
-
