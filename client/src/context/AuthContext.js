@@ -207,32 +207,10 @@ export const AuthProvider = ({ children }) => {
       isFetchingProfile.current = true;
 
       try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', sessionUser.id)
-          .maybeSingle();
-
-        let row = data || null;
-        if (error && !(error?.code || '').startsWith('PGRST116')) {
-          throw error;
-        }
-
-        if (!row && ensureExists) {
-          const insertResp = await supabase
-            .from('users')
-            .upsert({
-              id: sessionUser.id,
-              email: sessionUser.email,
-            })
-            .select('*')
-            .single();
-          if (insertResp.error) {
-            throw insertResp.error;
-          }
-          row = insertResp.data || null;
-        }
-
+        // Production: fetch profile via backend (service-role Supabase) so frontend
+        // isn't blocked by RLS policies on public.users.
+        const resp = await apiClient.get('/v1/profile');
+        const row = resp?.profile || null;
         const profile = normalizeProfile(row);
         setProfileState(profile);
         return profile;
@@ -254,7 +232,6 @@ export const AuthProvider = ({ children }) => {
       }
 
       const payload = {
-        id: sessionUser.id,
         email: sessionUser.email,
       };
 
@@ -268,17 +245,8 @@ export const AuthProvider = ({ children }) => {
         payload.company = updates.company.trim();
       }
 
-      const { data, error } = await supabase
-        .from('users')
-        .upsert(payload)
-        .select('*')
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      const profile = normalizeProfile(data);
+      const resp = await apiClient.patch('/v1/profile', payload);
+      const profile = normalizeProfile(resp?.profile || null);
       setProfileState(profile);
       return profile;
     },
@@ -330,18 +298,10 @@ export const AuthProvider = ({ children }) => {
 
       if (payload.email) {
         try {
-          const profileResp = await supabase
-            .from('users')
-            .upsert({
-              id: sessionUser.id,
-              email: payload.email,
-            })
-            .select('*')
-            .single();
-          if (profileResp.error) {
-            throw profileResp.error;
-          }
-          setProfileState(normalizeProfile(profileResp.data));
+          const profileResp = await apiClient.patch('/v1/profile', {
+            email: payload.email,
+          });
+          setProfileState(normalizeProfile(profileResp?.profile || null));
         } catch (profileErr) {
           console.error('Failed to sync profile email', profileErr);
         }
@@ -548,17 +508,12 @@ export const AuthProvider = ({ children }) => {
       // requires an authenticated user).
       if (user?.id && session?.access_token) {
         try {
-          await supabase
-            .from('users')
-            .upsert({
-              id: user.id,
-              email: normalizedEmail,
-              first_name: (firstName || '').trim(),
-              last_name: (lastName || '').trim(),
-              company: (company || '').trim(),
-            })
-            .select('*')
-            .single();
+          await apiClient.patch('/v1/profile', {
+            email: normalizedEmail,
+            first_name: (firstName || '').trim(),
+            last_name: (lastName || '').trim(),
+            company: (company || '').trim(),
+          });
         } catch (profileErr) {
           console.error('Failed to store user profile on signup', profileErr);
         }

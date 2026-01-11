@@ -11,6 +11,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useAuth } from './context';
 import PhotoStack from './components/map/PhotoStack';
 import { getApiCandidates } from './utils/apiEnv';
+import { configureMaplibreWorker } from './utils/maplibreWorker';
 
 const envApiBases = getApiCandidates();
 const r2PublicBase =
@@ -271,6 +272,7 @@ class BasemapToggleControl {
 }
 
 const PhotoMapLive = () => {
+  configureMaplibreWorker();
   const navigate = useNavigate();
   const { activeProject, projects, setActiveProject } = useAuth();
   const activeProjectId = activeProject?.id || activeProject || null;

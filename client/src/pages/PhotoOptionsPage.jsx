@@ -4,6 +4,7 @@ import maplibregl from 'maplibre-gl';
 import { useAuth } from '../context';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { getApiCandidates } from '../utils/apiEnv';
+import { configureMaplibreWorker } from '../utils/maplibreWorker';
 
 const envApiBases = getApiCandidates();
 
@@ -60,6 +61,7 @@ const formatFileSize = value => {
 };
 
 const PhotoOptionsPage = () => {
+  configureMaplibreWorker();
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();

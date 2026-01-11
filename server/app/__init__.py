@@ -184,6 +184,7 @@ def create_app(config_name=None):
     from app.routes.project_members import project_members_bp
     from app.api_routes.auth import bp as auth_bp
     from app.api_routes.v1.photos import bp as photos_v1_bp
+    from app.api_routes.v1.profile import bp as profile_v1_bp
     from app.api_routes.files import bp as files_bp
     from app.api_routes.public_links import bp as public_links_bp
 
@@ -192,6 +193,7 @@ def create_app(config_name=None):
     app.register_blueprint(project_members_bp)
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(photos_v1_bp, url_prefix="/api/v1/photos")
+    app.register_blueprint(profile_v1_bp, url_prefix="/api/v1/profile")
     app.register_blueprint(files_bp)
     app.register_blueprint(public_links_bp)
 

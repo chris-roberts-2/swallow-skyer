@@ -330,8 +330,9 @@ class SupabaseClient:
                 "country": geocode.get("country"),
             }
 
-        # Fallback to JSON column
-        return {"geocode_data": geocode}
+        # No supported columns detected. Avoid writing unknown columns (geocode_data)
+        # because PostgREST will reject the update when schema cache is missing it.
+        return {}
 
     def _detect_location_geocode_columns(self) -> bool:
         if not self.client:
@@ -422,10 +423,15 @@ class SupabaseClient:
             except Exception:
                 # If anything goes wrong, fall back to empty gps to avoid bloating rows.
                 payload["exif_data"] = {"gps": {}}
-        max_retries = 3
+        # We may need multiple update attempts if PostgREST returns PGRST204 for
+        # several unknown columns (e.g. metadata, r2_key, url). Keep enough budget
+        # to remove those columns and still perform one final successful update.
+        max_requests = 8
         last_exc: Optional[Exception] = None
-        for _ in range(max_retries):
+        request_count = 0
+        while request_count < max_requests:
             try:
+                request_count += 1
                 response = (
                     self.client.table("photos").update(payload).eq("id", photo_id).execute()
                 )
@@ -448,7 +454,7 @@ class SupabaseClient:
                         if unknown_col in payload:
                             print(f"Removing unknown column '{unknown_col}' from update payload")
                             del payload[unknown_col]
-                            continue  # Retry without this column
+                            continue  # Retry without this column (does not count as success)
                 # If not handled, raise after loop
                 break
 
