@@ -12,7 +12,7 @@ def _current_user_id() -> str:
     return str(user_id) if user_id else ""
 
 
-@bp.route("/", methods=["GET"])
+@bp.route("", methods=["GET"])
 @jwt_required
 def get_profile():
     """
@@ -37,7 +37,7 @@ def get_profile():
         return jsonify({"error": str(exc)}), 500
 
 
-@bp.route("/", methods=["PATCH"])
+@bp.route("", methods=["PATCH"])
 @jwt_required
 def update_profile():
     user_id = _current_user_id()
