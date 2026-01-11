@@ -55,14 +55,11 @@ def update_profile():
 
     try:
         updates["id"] = user_id
-        resp = (
-            supabase_client.client.table("users")  # type: ignore[union-attr]
-            .upsert(updates)
-            .select("*")
-            .maybe_single()
-            .execute()
-        )
-        return jsonify({"profile": getattr(resp, "data", None)}), 200
+        # supabase-py v2 does not support chaining .select() after .upsert() the way
+        # postgrest-js does. Execute the upsert, then read the row back.
+        supabase_client.client.table("users").upsert(updates).execute()  # type: ignore[union-attr]
+        row = supabase_client.get_user_metadata(user_id)
+        return jsonify({"profile": row}), 200
     except Exception as exc:
         message = str(exc)
         # If Supabase PostgREST schema cache is missing columns (common when migrations

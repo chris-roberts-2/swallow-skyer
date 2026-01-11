@@ -146,6 +146,8 @@ export const AuthProvider = ({ children }) => {
   const isFetchingProjects = useRef(false);
   const lastProjectsFetchAt = useRef(0);
   const isFetchingProfile = useRef(false);
+  const isFlushingPendingProfile = useRef(false);
+  const lastPendingProfileFlushAt = useRef(0);
 
   // If projects cannot be fetched temporarily (backend 500, offline, etc), keep the
   // active project id usable for upload/map flows by falling back to the stored id.
@@ -453,12 +455,24 @@ export const AuthProvider = ({ children }) => {
     if (!authState.session?.user?.id) return;
     const pending = readPendingProfile();
     if (!pending) return;
+    if (isFlushingPendingProfile.current) return;
+    const now = Date.now();
+    if (now - lastPendingProfileFlushAt.current < 30_000) return;
     (async () => {
+      isFlushingPendingProfile.current = true;
+      lastPendingProfileFlushAt.current = Date.now();
       try {
+        // Avoid 401s from token races right after login/confirm.
+        const { data } = await supabase.auth.getSession();
+        if (!data?.session?.access_token) {
+          return;
+        }
         await apiClient.patch('/v1/profile', pending);
       } catch (err) {
         // keep pending; we'll retry next session restore
         return;
+      } finally {
+        isFlushingPendingProfile.current = false;
       }
       persistPendingProfile(null);
       refreshProfile({ ensureExists: true });
