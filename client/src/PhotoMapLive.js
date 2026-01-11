@@ -10,9 +10,9 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useAuth } from './context';
 import PhotoStack from './components/map/PhotoStack';
+import { getApiCandidates } from './utils/apiEnv';
 
-const envApiBase =
-  process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL || '';
+const envApiBases = getApiCandidates();
 const r2PublicBase =
   process.env.REACT_APP_R2_PUBLIC_BASE_URL ||
   process.env.REACT_APP_R2_PUBLIC_URL ||
@@ -750,13 +750,7 @@ const PhotoMapLive = () => {
         return;
       }
       const cached = cacheRef.current || {};
-      const candidates = Array.from(
-        new Set(
-          [envApiBase, 'http://127.0.0.1:5001', 'http://localhost:5001'].filter(
-            Boolean
-          )
-        )
-      );
+      const candidates = envApiBases;
 
       const accessToken = localStorage.getItem('access_token') || '';
 
@@ -931,7 +925,7 @@ const PhotoMapLive = () => {
 
     const accessToken = localStorage.getItem('access_token') || '';
     const tryServerZip = async () => {
-      const apiUrl = envApiBase?.replace(/\/$/, '');
+      const apiUrl = envApiBases?.[0]?.replace(/\/$/, '');
       if (!apiUrl) return false;
       try {
         const payload = {

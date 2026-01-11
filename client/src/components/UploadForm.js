@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context';
+import { getApiOrigin } from '../utils/apiEnv';
 
-const envBase =
-  process.env.REACT_APP_API_BASE_URL ||
-  process.env.REACT_APP_API_URL ||
-  'http://localhost:5001';
+const envBase = getApiOrigin();
 
 const UploadForm = ({ onUploaded }) => {
   const { activeProject } = useAuth();
@@ -42,17 +40,9 @@ const UploadForm = ({ onUploaded }) => {
       formData.append('project_id', activeProjectId);
       if (takenAt) formData.append('timestamp', takenAt);
 
-      // Try preferred API bases in order (favor 5001 to avoid macOS AirPlay on 5000)
-      const candidates = Array.from(
-        new Set(
-          [
-            envBase ? `${envBase.replace(/\/$/, '')}/api/photos/upload` : null,
-            envBase
-              ? `${envBase.replace(/\/$/, '')}/api/v1/photos/upload`
-              : null,
-          ].filter(Boolean)
-        )
-      );
+      const candidates = [
+        `${envBase.replace(/\/$/, '')}/api/photos/upload`,
+      ];
 
       let lastError = new Error('Upload failed');
       for (const base of candidates) {

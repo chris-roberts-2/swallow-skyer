@@ -15,19 +15,30 @@ class AuthError(Exception):
 
 class AuthService:
     def __init__(self):
+        app_env = (
+            os.getenv("APP_ENV") or os.getenv("FLASK_ENV") or "development"
+        ).strip().lower()
+        is_production = app_env == "production"
+
         self.algorithm = os.getenv("AUTH_JWT_ALGORITHM", "HS256")
-        self.access_secret = (
+        access_secret = (
             os.getenv("AUTH_ACCESS_SECRET")
             or os.getenv("AUTH_JWT_SECRET")
             or os.getenv("JWT_SECRET")
             or os.getenv("SECRET_KEY")
-            or "dev-access-secret"
         )
-        self.refresh_secret = (
+        refresh_secret = (
             os.getenv("AUTH_REFRESH_SECRET")
             or os.getenv("AUTH_REFRESH_JWT_SECRET")
-            or self.access_secret
         )
+
+        if is_production and not access_secret:
+            raise AuthError("AUTH_ACCESS_SECRET is required in production")
+        if is_production and not refresh_secret:
+            raise AuthError("AUTH_REFRESH_SECRET is required in production")
+
+        self.access_secret = access_secret or "dev-access-secret"
+        self.refresh_secret = refresh_secret or self.access_secret
         self.access_ttl = int(os.getenv("AUTH_ACCESS_TTL_SECONDS", "900"))
         self.refresh_ttl = int(os.getenv("AUTH_REFRESH_TTL_SECONDS", "1209600"))
 

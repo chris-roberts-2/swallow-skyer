@@ -2,10 +2,9 @@
  * Photos API service for fetching photo data from backend.
  */
 
-const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL ||
-  process.env.REACT_APP_API_URL ||
-  'http://localhost:5001';
+import { getApiOrigin } from '../utils/apiEnv';
+
+const API_ORIGIN = getApiOrigin();
 
 /**
  * Fetch photos from the backend API.
@@ -21,13 +20,18 @@ const API_BASE_URL =
 export const fetchPhotos = async (params = {}) => {
   const queryParams = new URLSearchParams();
 
-  if (params.limit !== undefined) queryParams.append('limit', params.limit);
-  if (params.offset !== undefined) queryParams.append('offset', params.offset);
-  if (params.since) queryParams.append('since', params.since);
-  if (params.bbox) queryParams.append('bbox', params.bbox);
+  // NOTE: Production API is project-scoped under /api/v1/photos.
+  if (!params.project_id) {
+    throw new Error('fetchPhotos requires params.project_id');
+  }
+  queryParams.append('project_id', params.project_id);
+
+  // Optional filters (v1 supports a different shape than legacy /api/photos)
+  if (params.page !== undefined) queryParams.append('page', params.page);
+  if (params.page_size !== undefined) queryParams.append('page_size', params.page_size);
   if (params.user_id) queryParams.append('user_id', params.user_id);
 
-  const url = `${API_BASE_URL}/api/photos?${queryParams.toString()}`;
+  const url = `${API_ORIGIN}/api/v1/photos/?${queryParams.toString()}`;
 
   try {
     const response = await fetch(url, {
@@ -62,6 +66,7 @@ export const fetchPhotos = async (params = {}) => {
  * @returns {Promise<Object>} Response with photos array
  */
 export const fetchPhotosInBounds = async (
+  projectId,
   latMin,
   lngMin,
   latMax,
@@ -69,7 +74,7 @@ export const fetchPhotosInBounds = async (
   limit = 100
 ) => {
   const bbox = `${latMin},${lngMin},${latMax},${lngMax}`;
-  return fetchPhotos({ bbox, limit });
+  return fetchPhotos({ project_id: projectId, bbox, page_size: limit });
 };
 
 /**
@@ -79,6 +84,7 @@ export const fetchPhotosInBounds = async (
  * @param {number} limit - Maximum number of photos
  * @returns {Promise<Object>} Response with photos array
  */
-export const fetchRecentPhotos = async (sinceTimestamp, limit = 50) => {
-  return fetchPhotos({ since: sinceTimestamp, limit });
+export const fetchRecentPhotos = async (projectId, sinceTimestamp, limit = 50) => {
+  // v1 API currently supports paging + date_range; keep helper minimal for now.
+  return fetchPhotos({ project_id: projectId, page_size: limit, since: sinceTimestamp });
 };

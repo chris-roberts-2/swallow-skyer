@@ -3,11 +3,9 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import { useAuth } from '../context';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { getApiCandidates } from '../utils/apiEnv';
 
-const envApiBase =
-  process.env.REACT_APP_API_BASE_URL ||
-  process.env.REACT_APP_API_URL ||
-  'http://localhost:5001';
+const envApiBases = getApiCandidates();
 
 const formatTimestamp = value => {
   if (!value) return '';
@@ -83,9 +81,7 @@ const PhotoOptionsPage = () => {
   const fetchPhoto = async () => {
     setError('');
     const accessToken = localStorage.getItem('access_token') || '';
-    const candidates = Array.from(
-      new Set([envApiBase, 'http://127.0.0.1:5001', 'http://localhost:5001'])
-    ).filter(Boolean);
+    const candidates = envApiBases;
 
     for (const base of candidates) {
       try {
@@ -216,9 +212,7 @@ const PhotoOptionsPage = () => {
     if (!id) return;
     setIsDeleting(true);
     const accessToken = localStorage.getItem('access_token') || '';
-    const candidates = Array.from(
-      new Set([envApiBase, 'http://127.0.0.1:5001', 'http://localhost:5001'])
-    ).filter(Boolean);
+    const candidates = envApiBases;
     for (const base of candidates) {
       try {
         const res = await fetch(`${base}/api/v1/photos/${id}`, {

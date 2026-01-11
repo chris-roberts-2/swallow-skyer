@@ -3,6 +3,7 @@ Flask application factory for Swallow Skyer backend.
 """
 
 import os
+from urllib.parse import urlparse
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -29,10 +30,15 @@ def create_app(config_name=None):
     """
     app = Flask(__name__)
 
+    app_env = (os.environ.get("APP_ENV") or os.environ.get("FLASK_ENV") or "development").strip().lower()
+    is_production = app_env == "production"
+
     # Configuration
-    app.config["SECRET_KEY"] = (
-        os.environ.get("SECRET_KEY") or "dev-secret-key-change-in-production"
-    )
+    secret_key = (os.environ.get("SECRET_KEY") or "").strip()
+    if is_production and not secret_key:
+        raise RuntimeError("SECRET_KEY is required in production")
+    app.config["SECRET_KEY"] = secret_key or "dev-secret-key-change-in-production"
+
     # Database configuration
     # - Prefer DATABASE_URL when set (Postgres/Supabase in production)
     # - Default to a local SQLite file for local development
@@ -71,21 +77,16 @@ def create_app(config_name=None):
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         return f"{prefix}{db_path}"
 
-    if not env_db_url:
-        env_db_url = sqlite_fallback_url()
-    elif env_db_url.startswith("sqlite:///"):
-        env_db_url = normalize_sqlite_url(env_db_url)
-    elif env_db_url.startswith("postgresql"):
-        # If the Postgres driver isn't installed, fall back to SQLite for local dev.
-        # This prevents confusing SQLAlchemy dialect/plugin errors on fresh setups.
-        try:
-            import psycopg2  # noqa: F401
-        except Exception:
-            app.logger.warning(
-                "Postgres DATABASE_URL configured but psycopg2 is not installed; "
-                "falling back to local SQLite. Install psycopg2-binary to use Postgres."
-            )
+    if is_production:
+        if not env_db_url:
+            raise RuntimeError("DATABASE_URL is required in production (Postgres)")
+        if env_db_url.startswith("sqlite"):
+            raise RuntimeError("SQLite DATABASE_URL is not allowed in production")
+    else:
+        if not env_db_url:
             env_db_url = sqlite_fallback_url()
+        elif env_db_url.startswith("sqlite:///"):
+            env_db_url = normalize_sqlite_url(env_db_url)
 
     app.config["SQLALCHEMY_DATABASE_URI"] = env_db_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -101,7 +102,18 @@ def create_app(config_name=None):
     ]
     env_origins = os.environ.get("FRONTEND_ORIGIN")
     if env_origins:
-        origin_list = [o.strip() for o in env_origins.split(",") if o.strip()]
+        raw = [o.strip() for o in env_origins.split(",") if o.strip()]
+        # Ensure we store origins (scheme://host[:port]) rather than full URLs with paths.
+        origin_list = []
+        for item in raw:
+            try:
+                parsed = urlparse(item)
+                if parsed.scheme and parsed.netloc:
+                    origin_list.append(f"{parsed.scheme}://{parsed.netloc}")
+                else:
+                    origin_list.append(item)
+            except Exception:
+                origin_list.append(item)
     else:
         origin_list = default_origins
     CORS(
@@ -115,54 +127,56 @@ def create_app(config_name=None):
     # Import models to ensure they are registered
     from app import models
 
-    # Create database tables
+    # Create database tables (only for the operational DB used by the API server).
+    # We intentionally do NOT auto-migrate/alter tables in production.
     with app.app_context():
         db.create_all()
-        # Best-effort migration for older local SQLite files: add missing columns
-        try:
-            from sqlalchemy import text
+        if not is_production and env_db_url.startswith("sqlite"):
+            # Best-effort migration for older local SQLite files: add missing columns
+            try:
+                from sqlalchemy import text
 
-            def ensure_columns(table_name: str, column_statements: dict[str, str]):
-                result = db.session.execute(
-                    text(f"PRAGMA table_info({table_name})")
-                ).fetchall()
-                existing_cols = {row[1] for row in result}
-                statements = [
-                    ddl
-                    for column, ddl in column_statements.items()
-                    if column not in existing_cols
-                ]
-                for stmt in statements:
-                    try:
-                        db.session.execute(text(stmt))
-                    except Exception:
-                        pass
-                if statements:
-                    db.session.commit()
+                def ensure_columns(table_name: str, column_statements: dict[str, str]):
+                    result = db.session.execute(
+                        text(f"PRAGMA table_info({table_name})")
+                    ).fetchall()
+                    existing_cols = {row[1] for row in result}
+                    statements = [
+                        ddl
+                        for column, ddl in column_statements.items()
+                        if column not in existing_cols
+                    ]
+                    for stmt in statements:
+                        try:
+                            db.session.execute(text(stmt))
+                        except Exception:
+                            pass
+                    if statements:
+                        db.session.commit()
 
-            ensure_columns(
-                "photos",
-                {
-                    "url": "ALTER TABLE photos ADD COLUMN url TEXT",
-                    "r2_key": "ALTER TABLE photos ADD COLUMN r2_key TEXT",
-                    "thumbnail_path": "ALTER TABLE photos ADD COLUMN thumbnail_path TEXT",
-                    "original_filename": "ALTER TABLE photos ADD COLUMN original_filename TEXT",
-                    "altitude": "ALTER TABLE photos ADD COLUMN altitude REAL",
-                    "taken_at": "ALTER TABLE photos ADD COLUMN taken_at DATETIME",
-                    "updated_at": "ALTER TABLE photos ADD COLUMN updated_at DATETIME",
-                },
-            )
+                ensure_columns(
+                    "photos",
+                    {
+                        "url": "ALTER TABLE photos ADD COLUMN url TEXT",
+                        "r2_key": "ALTER TABLE photos ADD COLUMN r2_key TEXT",
+                        "thumbnail_path": "ALTER TABLE photos ADD COLUMN thumbnail_path TEXT",
+                        "original_filename": "ALTER TABLE photos ADD COLUMN original_filename TEXT",
+                        "altitude": "ALTER TABLE photos ADD COLUMN altitude REAL",
+                        "taken_at": "ALTER TABLE photos ADD COLUMN taken_at DATETIME",
+                        "updated_at": "ALTER TABLE photos ADD COLUMN updated_at DATETIME",
+                    },
+                )
 
-            ensure_columns(
-                "users",
-                {
-                    "password_hash": "ALTER TABLE users ADD COLUMN password_hash TEXT",
-                    "token_version": "ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0",
-                },
-            )
-        except Exception:
-            # Non-fatal: if inspection fails, we leave DB as-is; uploads may error until DB is reset
-            pass
+                ensure_columns(
+                    "users",
+                    {
+                        "password_hash": "ALTER TABLE users ADD COLUMN password_hash TEXT",
+                        "token_version": "ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0",
+                    },
+                )
+            except Exception:
+                # Non-fatal in local dev.
+                pass
 
     # Register blueprints
     from app.routes import main_bp

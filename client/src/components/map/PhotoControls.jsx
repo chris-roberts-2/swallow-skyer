@@ -2,11 +2,9 @@ import React, { useCallback } from 'react';
 import { useAuth } from '../../context';
 import { usePermissionToast } from '../common/PermissionToast';
 import fileService from '../../services/fileService';
+import { getApiOrigin } from '../../utils/apiEnv';
 
-const apiBase =
-  process.env.REACT_APP_API_BASE_URL ||
-  process.env.REACT_APP_API_URL ||
-  'http://localhost:5001';
+const apiBase = getApiOrigin();
 
 const buildPhotoUrl = photoId =>
   `${(apiBase || '').replace(/\/$/, '')}/api/v1/photos/${photoId}`;

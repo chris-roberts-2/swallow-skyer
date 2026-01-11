@@ -1,20 +1,13 @@
-const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL ||
-  process.env.REACT_APP_API_URL ||
-  'http://localhost:5001';
+import { getApiOrigin } from '../utils/apiEnv';
 
-const normalizeBaseUrl = baseUrl => {
-  const trimmed = (baseUrl || '').trim().replace(/\/+$/, '');
-  if (!trimmed) return 'http://localhost:5001';
-  // Support both styles:
-  // - REACT_APP_API_BASE_URL=http://localhost:5001        (preferred)
-  // - REACT_APP_API_URL=http://localhost:5001/api         (legacy)
-  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+const normalizeBaseUrl = baseOrigin => {
+  const trimmed = (baseOrigin || '').trim().replace(/\/+$/, '');
+  return `${trimmed}/api`;
 };
 
 class ApiClient {
   constructor() {
-    this.baseURL = normalizeBaseUrl(API_BASE_URL);
+    this.baseURL = normalizeBaseUrl(getApiOrigin());
     this.getAccessToken = () => localStorage.getItem('access_token');
     this.getRefreshToken = () => localStorage.getItem('refresh_token');
     this.refreshPromise = null;

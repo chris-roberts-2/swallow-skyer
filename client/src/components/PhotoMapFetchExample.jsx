@@ -7,6 +7,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { fetchPhotos, fetchPhotosInBounds } from '../api/photos';
+import { useAuth } from '../context';
 
 const PhotoMapFetchExample = () => {
   const mapContainerRef = useRef(null);
@@ -15,6 +16,8 @@ const PhotoMapFetchExample = () => {
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { activeProject } = useAuth();
+  const activeProjectId = activeProject?.id || activeProject || null;
 
   // Initialize map
   useEffect(() => {
@@ -42,8 +45,16 @@ const PhotoMapFetchExample = () => {
         setLoading(true);
         setError(null);
 
-        // Fetch photos with default params (50 most recent)
-        const response = await fetchPhotos({ limit: 50 });
+        if (!activeProjectId) {
+          setPhotos([]);
+          return;
+        }
+
+        // Fetch photos for the active project (v1 API is project-scoped)
+        const response = await fetchPhotos({
+          project_id: activeProjectId,
+          page_size: 50,
+        });
 
         // eslint-disable-next-line no-console
         console.log('Fetched photos:', response);
@@ -58,7 +69,7 @@ const PhotoMapFetchExample = () => {
     };
 
     loadPhotos();
-  }, []);
+  }, [activeProjectId]);
 
   // Add markers to map when photos change
   useEffect(() => {
@@ -135,7 +146,13 @@ const PhotoMapFetchExample = () => {
 
     try {
       setLoading(true);
+      if (!activeProjectId) {
+        setPhotos([]);
+        return;
+      }
+
       const response = await fetchPhotosInBounds(
+        activeProjectId,
         latMin,
         lngMin,
         latMax,

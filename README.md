@@ -15,6 +15,44 @@ Swallow Skyer is a photo mapping platform: users upload photos, the backend extr
 
 Frontend and backend are deployed independently.
 
+## Production configuration (GitHub Pages + Render)
+
+### Frontend (GitHub Pages)
+
+Build-time env vars (baked into the bundle):
+
+- `REACT_APP_API_BASE_URL=https://swallow-skyer-v1.onrender.com`
+- `REACT_APP_SUPABASE_URL=<your supabase url>`
+- `REACT_APP_SUPABASE_ANON_KEY=<your anon key>`
+
+### Backend (Render)
+
+Recommended Render start command:
+
+```bash
+python -m gunicorn "app:create_app()" --bind 0.0.0.0:$PORT
+```
+
+Required env vars:
+
+- `APP_ENV=production`
+- `DATABASE_URL=<render postgres url>` (required; SQLite is disabled in production)
+- `SECRET_KEY=<random>`
+- `FRONTEND_ORIGIN=https://chris-roberts-2.github.io`
+- `SUPABASE_URL=<...>`
+- `SUPABASE_ANON_KEY=<...>` (for JWT validation)
+- `SUPABASE_SERVICE_ROLE_KEY=<...>` (required for server-side Supabase metadata writes)
+- `R2_ACCESS_KEY_ID=<...>`
+- `R2_SECRET_ACCESS_KEY=<...>`
+- `R2_BUCKET=<...>`
+- `R2_ACCOUNT_ID=<...>` (or `R2_ENDPOINT_URL=<...>`)
+- `R2_PUBLIC_BASE_URL=<...>`
+- `AUTH_ACCESS_SECRET=<random>`
+- `AUTH_REFRESH_SECRET=<random>`
+- `AUTH_JWT_ALGORITHM=HS256`
+- `AUTH_ACCESS_TTL_SECONDS=900`
+- `AUTH_REFRESH_TTL_SECONDS=1209600`
+
 ## Repository layout
 
 ```

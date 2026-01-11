@@ -1,11 +1,9 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { useAuth } from '../../context';
 import { appendProjectId, requireProjectId } from '../../services/uploadHelper';
+import { getApiOrigin } from '../../utils/apiEnv';
 
-const apiBase =
-  process.env.REACT_APP_API_BASE_URL ||
-  process.env.REACT_APP_API_URL ||
-  'http://localhost:5001';
+const apiBase = getApiOrigin();
 
 const buildApiUrl = () =>
   `${(apiBase || '').replace(/\/$/, '')}/api/photos/upload`;

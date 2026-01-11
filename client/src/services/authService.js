@@ -1,7 +1,6 @@
-const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL ||
-  process.env.REACT_APP_API_URL ||
-  'http://localhost:5001';
+import { getApiOrigin } from '../utils/apiEnv';
+
+const API_ORIGIN = getApiOrigin();
 
 const jsonHeaders = {
   'Content-Type': 'application/json',
@@ -20,7 +19,7 @@ const handleResponse = async response => {
 
 const authService = {
   async signup({ email, password, name }) {
-    const res = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+    const res = await fetch(`${API_ORIGIN}/api/auth/signup`, {
       method: 'POST',
       headers: jsonHeaders,
       body: JSON.stringify({ email, password, name }),
@@ -29,7 +28,7 @@ const authService = {
   },
 
   async login({ email, password }) {
-    const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    const res = await fetch(`${API_ORIGIN}/api/auth/login`, {
       method: 'POST',
       headers: jsonHeaders,
       body: JSON.stringify({ email, password }),
@@ -38,7 +37,7 @@ const authService = {
   },
 
   async refresh(refreshToken) {
-    const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+    const res = await fetch(`${API_ORIGIN}/api/auth/refresh`, {
       method: 'POST',
       headers: jsonHeaders,
       body: JSON.stringify({ refresh_token: refreshToken }),
@@ -47,7 +46,7 @@ const authService = {
   },
 
   async me(accessToken) {
-    const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    const res = await fetch(`${API_ORIGIN}/api/auth/me`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${accessToken}`,

@@ -8,11 +8,9 @@ import React, {
 import BatchUploader from '../components/upload/BatchUploader';
 import { useAuth } from '../context';
 import { useNavigate } from 'react-router-dom';
+import { getApiCandidates } from '../utils/apiEnv';
 
-const envApiBase =
-  process.env.REACT_APP_API_BASE_URL ||
-  process.env.REACT_APP_API_URL ||
-  'http://localhost:5001';
+const envApiBases = getApiCandidates();
 
 const resolvePhotoUrl = photo => {
   const r2PublicBase =
@@ -104,13 +102,7 @@ const PhotosPage = () => {
       setIsLoading(true);
       setError('');
       const accessToken = localStorage.getItem('access_token') || '';
-      const candidates = Array.from(
-        new Set(
-          [envApiBase, 'http://127.0.0.1:5001', 'http://localhost:5001'].filter(
-            Boolean
-          )
-        )
-      );
+      const candidates = envApiBases;
 
       for (const base of candidates) {
         try {
@@ -255,9 +247,7 @@ const PhotosPage = () => {
   const deletePhotos = async ids => {
     if (!ids?.length) return;
     const accessToken = localStorage.getItem('access_token') || '';
-    const candidates = Array.from(
-      new Set([envApiBase, 'http://127.0.0.1:5001', 'http://localhost:5001'])
-    ).filter(Boolean);
+    const candidates = envApiBases;
 
     for (const id of ids) {
       for (const base of candidates) {
