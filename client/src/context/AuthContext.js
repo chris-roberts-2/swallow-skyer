@@ -10,7 +10,6 @@ import {
 import supabase from '../lib/supabaseClient';
 import apiClient from '../services/api';
 
-const SESSION_STORAGE_KEY = 'supabaseSession';
 const PROJECT_ROLES_STORAGE_KEY = 'projectRoles';
 const getLocalStorage = () => {
   try {
@@ -23,36 +22,15 @@ const getLocalStorage = () => {
   return null;
 };
 
-const readStoredSession = () => {
-  const storage = getLocalStorage();
-  if (!storage) return null;
-  const raw = storage.getItem(SESSION_STORAGE_KEY);
-  if (!raw) {
-    return null;
-  }
-  try {
-    return JSON.parse(raw);
-  } catch {
-    storage.removeItem(SESSION_STORAGE_KEY);
-    return null;
-  }
-};
-
-const persistSession = session => {
+const persistAccessToken = session => {
   const storage = getLocalStorage();
   if (!storage) return;
   if (session) {
-    storage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
     if (session.access_token) {
       storage.setItem('access_token', session.access_token);
     }
-    if (session.refresh_token) {
-      storage.setItem('refresh_token', session.refresh_token);
-    }
   } else {
-    storage.removeItem(SESSION_STORAGE_KEY);
     storage.removeItem('access_token');
-    storage.removeItem('refresh_token');
   }
 };
 
@@ -107,11 +85,10 @@ const defaultContextValue = {
 export const AuthContext = createContext(defaultContextValue);
 
 const getInitialAuthState = () => {
-  const storedSession = readStoredSession();
   const storedProject = getLocalStorage()?.getItem('activeProjectId') || null;
   return {
-    session: storedSession,
-    user: storedSession?.user ?? null,
+    session: null,
+    user: null,
     profile: null,
     activeProjectId: storedProject,
     projects: [],
@@ -254,7 +231,7 @@ export const AuthProvider = ({ children }) => {
   );
 
   const syncSession = useCallback(nextSession => {
-    persistSession(nextSession);
+    persistAccessToken(nextSession);
     setAuthState(prev => ({
       session: nextSession,
       user: nextSession?.user ?? null,

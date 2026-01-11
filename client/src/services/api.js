@@ -1,4 +1,5 @@
 import { getApiOrigin } from '../utils/apiEnv';
+import supabase from '../lib/supabaseClient';
 
 const normalizeBaseUrl = baseOrigin => {
   const trimmed = (baseOrigin || '').trim().replace(/\/+$/, '');
@@ -8,8 +9,14 @@ const normalizeBaseUrl = baseOrigin => {
 class ApiClient {
   constructor() {
     this.baseURL = normalizeBaseUrl(getApiOrigin());
-    this.getAccessToken = () => localStorage.getItem('access_token');
-    this.getRefreshToken = () => localStorage.getItem('refresh_token');
+    this.getAccessToken = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        return data?.session?.access_token || '';
+      } catch {
+        return '';
+      }
+    };
     this.refreshPromise = null;
   }
 
@@ -28,7 +35,7 @@ class ApiClient {
           ...(options.headers || {}),
         };
 
-    const accessToken = this.getAccessToken();
+    const accessToken = await this.getAccessToken();
     if (accessToken) {
       headers.Authorization = `Bearer ${accessToken}`;
     }
