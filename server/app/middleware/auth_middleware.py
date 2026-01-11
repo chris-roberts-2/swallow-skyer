@@ -2,10 +2,7 @@ from functools import wraps
 
 from flask import jsonify, g, request
 
-from app.services.auth_service import AuthError, AuthService
 from app.supabase_client import SupabaseConfigError, verify_supabase_jwt
-
-auth_service = AuthService()
 
 
 def _serialize_user(user):
@@ -55,12 +52,9 @@ def jwt_required(fn):
             g.current_user = _serialize_user(supabase_user)
             return fn(*args, **kwargs)
 
-        try:
-            user = auth_service.verify_access_token(token)
-        except AuthError as exc:
-            return jsonify({"error": str(exc)}), 401
-
-        g.current_user = _serialize_user(user)
-        return fn(*args, **kwargs)
+        # Supabase validation returned no user and did not raise a configuration error.
+        # Treat as unauthorized. We intentionally do NOT fall back to any internal JWT
+        # scheme to keep auth + user identity exclusively Supabase-backed.
+        return jsonify({"error": "Invalid token"}), 401
 
     return wrapper

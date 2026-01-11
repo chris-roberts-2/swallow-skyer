@@ -11,6 +11,7 @@ import supabase from '../lib/supabaseClient';
 import apiClient from '../services/api';
 
 const PROJECT_ROLES_STORAGE_KEY = 'projectRoles';
+const PENDING_PROFILE_KEY = 'pendingProfile';
 const getLocalStorage = () => {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -57,6 +58,35 @@ const persistProjectRoles = roles => {
     storage.setItem(PROJECT_ROLES_STORAGE_KEY, JSON.stringify(roles || {}));
   } catch {
     // ignore storage failures
+  }
+};
+
+const persistPendingProfile = profile => {
+  try {
+    const storage = getLocalStorage();
+    if (!storage) return;
+    if (!profile) {
+      storage.removeItem(PENDING_PROFILE_KEY);
+      return;
+    }
+    storage.setItem(PENDING_PROFILE_KEY, JSON.stringify(profile));
+  } catch {
+    // ignore
+  }
+};
+
+const readPendingProfile = () => {
+  try {
+    const storage = getLocalStorage();
+    if (!storage) return null;
+    const raw = storage.getItem(PENDING_PROFILE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    try {
+      getLocalStorage()?.removeItem(PENDING_PROFILE_KEY);
+    } catch {}
+    return null;
   }
 };
 
@@ -416,6 +446,25 @@ export const AuthProvider = ({ children }) => {
     }
   }, [authState.session, refreshProfile, setProfileState]);
 
+  // If signup required email confirmation, we may have collected first/last/company
+  // before we had a session. Once we have a session, flush that pending profile to
+  // the backend so it lands in Supabase public.users.
+  useEffect(() => {
+    if (!authState.session?.user?.id) return;
+    const pending = readPendingProfile();
+    if (!pending) return;
+    (async () => {
+      try {
+        await apiClient.patch('/v1/profile', pending);
+      } catch (err) {
+        // keep pending; we'll retry next session restore
+        return;
+      }
+      persistPendingProfile(null);
+      refreshProfile({ ensureExists: true });
+    })();
+  }, [authState.session, refreshProfile]);
+
   const login = useCallback(
     async (email, password) => {
       const normalizedEmail = (email || '').trim();
@@ -474,6 +523,14 @@ export const AuthProvider = ({ children }) => {
       // If signup didn't return a session, Supabase is likely configured to require
       // email confirmation. In that case, we cannot log in yet.
       if (!session) {
+        // We don't have a session yet (email confirmation flow). Store the profile
+        // values so we can write them after the user confirms and signs in.
+        persistPendingProfile({
+          email: normalizedEmail,
+          first_name: (firstName || '').trim(),
+          last_name: (lastName || '').trim(),
+          company: (company || '').trim(),
+        });
         return {
           user,
           needsEmailConfirmation: true,

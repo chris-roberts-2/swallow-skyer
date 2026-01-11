@@ -124,13 +124,13 @@ def create_app(config_name=None):
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
 
-    # Import models to ensure they are registered
-    from app import models
-
-    # Create database tables (only for the operational DB used by the API server).
-    # We intentionally do NOT auto-migrate/alter tables in production.
+    # Create database tables only in non-production environments.
+    # Production storage for user/project/photo metadata is Supabase + R2.
     with app.app_context():
-        db.create_all()
+        if not is_production:
+            # Import models only for dev/test local runs.
+            from app import models  # noqa: F401
+            db.create_all()
         if not is_production and env_db_url.startswith("sqlite"):
             # Best-effort migration for older local SQLite files: add missing columns
             try:
@@ -182,7 +182,6 @@ def create_app(config_name=None):
     from app.routes import main_bp
     from app.routes.projects import projects_bp
     from app.routes.project_members import project_members_bp
-    from app.api_routes.auth import bp as auth_bp
     from app.api_routes.v1.photos import bp as photos_v1_bp
     from app.api_routes.v1.profile import bp as profile_v1_bp
     from app.api_routes.files import bp as files_bp
@@ -191,7 +190,6 @@ def create_app(config_name=None):
     app.register_blueprint(main_bp)
     app.register_blueprint(projects_bp)
     app.register_blueprint(project_members_bp)
-    app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(photos_v1_bp, url_prefix="/api/v1/photos")
     app.register_blueprint(profile_v1_bp, url_prefix="/api/v1/profile")
     app.register_blueprint(files_bp)

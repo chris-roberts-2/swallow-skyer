@@ -15,14 +15,10 @@ from app.services.auth.permissions import (
 )
 from app.services.storage.supabase_client import supabase_client
 from app.services.storage.r2_client import r2_client
-from app.models import Photo
-from app.services.photo_service import PhotoService
 from app.utils.validators import validate_photo_data
-from app import db
 from typing import Dict, Any, Optional, Tuple, List, Set
 
 bp = Blueprint("photos_v1", __name__)
-photo_service = PhotoService()
 
 DEFAULT_PAGE_SIZE = 50
 MAX_PAGE_SIZE = 200
@@ -477,67 +473,32 @@ def get_photo(photo_id):
 @jwt_required
 def get_photos_by_location():
     """Get photos by location coordinates - API v1"""
-    try:
-        lat = request.args.get("lat", type=float)
-        lng = request.args.get("lng", type=float)
-        radius = request.args.get("radius", 0.001, type=float)
-
-        if not lat or not lng:
-            return (
-                jsonify(
-                    {"error": "Latitude and longitude are required", "version": "v1"}
-                ),
-                400,
-            )
-
-        photos = photo_service.get_photos_by_location(lat, lng, radius)
-        return jsonify(
-            {"version": "v1", "photos": [photo.to_dict() for photo in photos]}
-        )
-    except Exception as e:
-        return jsonify({"error": str(e), "version": "v1"}), 500
+    return (
+        jsonify(
+            {
+                "error": "gone",
+                "version": "v1",
+                "message": "Use GET /api/v1/photos/?project_id=<uuid> (optionally with bbox filters).",
+            }
+        ),
+        410,
+    )
 
 
 @bp.route("/upload", methods=["POST"])
 @jwt_required
 def upload_photo():
     """Upload a new photo - API v1"""
-    try:
-        project_id = request.form.get("project_id")
-        permission = require_role(project_id, COLLAB_ROLES)
-        if isinstance(permission, tuple):
-            payload, status_code = permission
-            return jsonify(payload), status_code
-
-        if "file" not in request.files:
-            return jsonify({"error": "No file provided", "version": "v1"}), 400
-
-        file = request.files["file"]
-        caption = request.form.get("caption", "")
-        latitude = request.form.get("latitude", type=float)
-        longitude = request.form.get("longitude", type=float)
-
-        if not latitude or not longitude:
-            return (
-                jsonify(
-                    {"error": "Latitude and longitude are required", "version": "v1"}
-                ),
-                400,
-            )
-
-        # Validate photo data
-        validation_result = validate_photo_data(file, latitude, longitude)
-        if not validation_result["valid"]:
-            return jsonify({"error": validation_result["error"], "version": "v1"}), 400
-
-        # Process and save photo
-        photo_data = photo_service.process_upload(
-            file=file, caption=caption, latitude=latitude, longitude=longitude
-        )
-
-        return jsonify({"version": "v1", "photo": photo_data.to_dict()}), 201
-    except Exception as e:
-        return jsonify({"error": str(e), "version": "v1"}), 500
+    return (
+        jsonify(
+            {
+                "error": "gone",
+                "version": "v1",
+                "message": "Use POST /api/photos/upload (Supabase metadata + R2 storage).",
+            }
+        ),
+        410,
+    )
 
 
 @bp.route("/<photo_id>", methods=["PUT"])
@@ -563,14 +524,21 @@ def update_photo(photo_id):
             payload, status_code = permission
             return jsonify(payload), status_code
 
-        photo = Photo.query.get_or_404(photo_id)
         data = request.get_json() or {}
 
+        updates = {}
         if "caption" in data:
-            photo.caption = data["caption"]
+            updates["caption"] = data.get("caption")
+        if not updates:
+            return jsonify({"version": "v1", "photo": _serialize_photo(record, {project_id: {}}, {}, {})})
 
-        db.session.commit()
-        return jsonify({"version": "v1", "photo": photo.to_dict()})
+        updated = supabase_client.update_photo_metadata(photo_id, updates)
+        return jsonify(
+            {
+                "version": "v1",
+                "photo": _serialize_photo(updated or record, {project_id: {}}, {}, {}),
+            }
+        )
     except Exception as e:
         return jsonify({"error": str(e), "version": "v1"}), 500
 
@@ -612,12 +580,6 @@ def delete_photo(photo_id):
                 ),
                 500,
             )
-
-        # Best-effort: if a legacy SQLAlchemy record exists, leave files intact but mark deleted.
-        photo = Photo.query.get(photo_id)
-        if photo:
-            # Keep the row for auditing; do not remove files to allow potential restore.
-            db.session.commit()
 
         return jsonify({"message": "Photo deleted successfully", "version": "v1"})
     except Exception as e:
@@ -668,8 +630,13 @@ def download_zip():
 @jwt_required
 def get_photo_stats():
     """Get photo statistics - API v1"""
-    try:
-        stats = photo_service.get_photo_stats()
-        return jsonify({"version": "v1", "stats": stats})
-    except Exception as e:
-        return jsonify({"error": str(e), "version": "v1"}), 500
+    return (
+        jsonify(
+            {
+                "error": "gone",
+                "version": "v1",
+                "message": "Stats are Supabase-backed; use GET /api/v1/photos/?project_id=<uuid> and count client-side for now.",
+            }
+        ),
+        410,
+    )
