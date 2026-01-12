@@ -479,10 +479,7 @@ const PhotoMapLive = () => {
 
             if (type === 'fill-extrusion') {
               try {
-                const prev = map.getPaintProperty(
-                  id,
-                  'fill-extrusion-opacity'
-                );
+                const prev = map.getPaintProperty(id, 'fill-extrusion-opacity');
                 edits[id] = {
                   ...(edits[id] || {}),
                   fillExtrusionOpacity: prev,
@@ -549,7 +546,11 @@ const PhotoMapLive = () => {
               );
             }
             if (prevPaint.fillOpacity !== undefined) {
-              map.setPaintProperty(layerId, 'fill-opacity', prevPaint.fillOpacity);
+              map.setPaintProperty(
+                layerId,
+                'fill-opacity',
+                prevPaint.fillOpacity
+              );
             }
             if (prevPaint.fillExtrusionOpacity !== undefined) {
               map.setPaintProperty(
