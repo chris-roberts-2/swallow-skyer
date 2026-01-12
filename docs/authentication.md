@@ -17,7 +17,8 @@
 ## Backend request lifecycle
 
 - Every protected request must include `Authorization: Bearer <token>` in the header. The JWT middleware (`jwt_required`) validates the header, returning `401` when the header is missing, the token string empty, or validation fails.
-- Validation first attempts to treat the token as a Supabase JWT by calling `verify_supabase_jwt`. If Supabase validation succeeds, the decoded user payload is written onto `g.current_user`. Otherwise it falls back to the internal Flask `AuthService`.
+- Validation first attempts to treat the token as a Supabase JWT by calling `verify_supabase_jwt`.
+- If Supabase validation succeeds, the middleware **resolves the app user** in `public.users` by using `users.auth_user_id` (and falling back to `users.email` to attach/link when needed). Downstream handlers treat `g.current_user.id` as the **app user id** (`public.users.id`) for FK and permission checks.
 - Routes decorating `@jwt_required` (e.g., `/api/auth/me`, `/api/v1/photos/*`) now rely on that middleware to gate access. Handlers can safely read `g.current_user` without re-validating the header.
 
 ## Data flow diagram
@@ -43,6 +44,8 @@ R2 Storage (uploads) ← Backend upload endpoints only (no front-end keys)
   - Standard RLS ensures authenticated queries see one’s own profile data; service roles (server-only) can bypass that when needed.
 - **Service roles**
   - Service role keys are never shipped to the frontend. Only the backend is authorized to use `SUPABASE_SERVICE_ROLE_KEY`, which appears in server-only env templates. Frontend requests always use the anon key.
+
+Note: The production schema uses `public.users.id` as an app-level UUID. Supabase Auth identity is linked via `public.users.auth_user_id` (unique when present). Any RLS policies that need to bind a row to the authenticated Supabase user should compare against `users.auth_user_id`, not `users.id`.
 
 ## Testing summary
 

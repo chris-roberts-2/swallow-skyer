@@ -15,6 +15,12 @@ Swallow Skyer is a photo mapping platform: users upload photos, the backend extr
 
 Frontend and backend are deployed independently.
 
+## Supabase schema (production-final)
+
+The **authoritative production schema** for Supabase tables is documented in:
+
+- `supabase/README.md`
+
 ## Production configuration (GitHub Pages + Render)
 
 ### Frontend (GitHub Pages)

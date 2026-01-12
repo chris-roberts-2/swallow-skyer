@@ -1,44 +1,45 @@
--- Create photos table
-create table if not exists photos (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id) on delete cascade,
-  r2_key text not null,
-  url text not null,
-  latitude double precision,
-  longitude double precision,
-  taken_at timestamptz,
-  created_at timestamptz default now()
+-- Production-final locations + photos tables.
+--
+-- Note: Projects/users/membership are introduced in later migrations.
+-- We create columns now but defer foreign key constraints + RLS policies to later
+-- migrations once the referenced tables exist and auth mapping is defined.
+
+create table if not exists public.locations (
+  id uuid not null default extensions.uuid_generate_v4(),
+  latitude double precision not null,
+  longitude double precision not null,
+  elevation double precision null,
+  created_at timestamptz null default now(),
+  constraint locations_pkey primary key (id)
 );
 
--- Create index on user_id for faster queries
-create index if not exists idx_photos_user_id on photos(user_id);
+create index if not exists idx_locations_lat_lon
+  on public.locations (latitude, longitude);
 
--- Create index on location for spatial queries
-create index if not exists idx_photos_location on photos(latitude, longitude);
+create table if not exists public.photos (
+  id uuid not null default extensions.uuid_generate_v4(),
+  project_id uuid null,
+  location_id uuid null,
+  user_id uuid null,
+  file_name text not null,
+  file_type text null,
+  file_size integer null,
+  resolution text null,
+  r2_path text null,
+  r2_url text null,
+  exif_data jsonb null,
+  captured_at timestamptz null,
+  uploaded_at timestamptz null default now(),
+  caption text null,
+  latitude double precision null,
+  longitude double precision null,
+  show_on_photos boolean not null default true,
+  constraint photos_pkey primary key (id)
+);
 
--- Create index on taken_at for temporal queries
-create index if not exists idx_photos_taken_at on photos(taken_at);
+create index if not exists idx_photos_project_id
+  on public.photos (project_id);
 
--- Enable Row Level Security
-alter table photos enable row level security;
-
--- Create policy: Users can view their own photos
-create policy "Users can view their own photos"
-  on photos for select
-  using (auth.uid() = user_id);
-
--- Create policy: Users can insert their own photos
-create policy "Users can insert their own photos"
-  on photos for insert
-  with check (auth.uid() = user_id);
-
--- Create policy: Users can update their own photos
-create policy "Users can update their own photos"
-  on photos for update
-  using (auth.uid() = user_id);
-
--- Create policy: Users can delete their own photos
-create policy "Users can delete their own photos"
-  on photos for delete
-  using (auth.uid() = user_id);
+create index if not exists idx_photos_location_id
+  on public.photos (location_id);
 

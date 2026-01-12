@@ -9,8 +9,15 @@
       // If a user refreshes on /login or /map, GitHub Pages returns 404.html.
       // This redirects back to /index.html while preserving the path.
       (function () {
-        var segmentCount = 1; // repo pages: /swallow-skyer/<route>
+        // Support both:
+        // - user pages:  https://<user>.github.io/<route>            (segmentCount = 0)
+        // - project pages: https://<user>.github.io/<repo>/<route>   (segmentCount = 1)
+        //
+        // This repo historically used /swallow-skyer/ as the project pages path.
         var l = window.location;
+        var repoNames = ['swallow-skyer'];
+        var firstSegment = (l.pathname.split('/')[1] || '').trim();
+        var segmentCount = repoNames.includes(firstSegment) ? 1 : 0;
         var redirect =
           l.protocol +
           '//' +

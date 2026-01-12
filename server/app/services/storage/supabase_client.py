@@ -769,12 +769,7 @@ class SupabaseClient:
     ):
         if not self.client:
             raise RuntimeError("Supabase client not initialized")
-        # Best-effort ensure owner exists to satisfy FK constraints (local/dev)
-        try:
-            self.ensure_user_exists(owner_id)
-        except Exception:
-            # Non-fatal: if ensure fails, we still attempt creation and let Supabase error bubble
-            pass
+        # Owner is expected to be an existing app user id (public.users.id).
         payload = {
             "name": name,
             "owner_id": owner_id,
@@ -810,23 +805,74 @@ class SupabaseClient:
             project["show_on_projects"] = show_on_projects
         return project
 
-    def ensure_user_exists(self, user_id: str, email: Optional[str] = None):
+    def get_user_by_auth_user_id(self, auth_user_id: str) -> Optional[Dict[str, Any]]:
         """
-        Ensure a user row exists to satisfy FK constraints on projects.owner_id.
-        Uses a lightweight upsert with a fallback email when not provided.
+        Fetch an app user profile by Supabase Auth user id.
+
+        Note: public.users.id is the app-level key referenced by projects/photos.
+        public.users.auth_user_id links that row to the Supabase Auth identity.
         """
         if not self.client:
             raise RuntimeError("Supabase client not initialized")
-        # If a row already exists, no-op
-        existing = (
-            self.client.table("users").select("id").eq("id", user_id).limit(1).execute()
+        if not auth_user_id:
+            return None
+        response = (
+            self.client.table("users")
+            .select("*")
+            .eq("auth_user_id", str(auth_user_id))
+            .maybe_single()
+            .execute()
         )
-        if existing.data:
-            return existing.data[0]
-        fallback_email = email or f"{user_id}@local.invalid"
-        payload = {"id": user_id, "email": fallback_email}
-        response = self.client.table("users").upsert(payload).execute()
-        return response.data[0] if response.data else payload
+        return response.data if hasattr(response, "data") else None
+
+    def ensure_user_for_auth(
+        self, auth_user_id: str, *, email: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Ensure there is exactly one public.users row for the current Supabase Auth user.
+
+        Strategy:
+        1) If a row exists with auth_user_id == <auth_user_id>, return it.
+        2) Else, if a row exists with email == <email>, attach auth_user_id to it.
+        3) Else, create a new row with (email, auth_user_id).
+
+        This prevents duplicate-email failures while keeping app ids stable for
+        invites (email-known users that may not have an auth account yet).
+        """
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+
+        auth_id = (str(auth_user_id) if auth_user_id else "").strip()
+        if not auth_id:
+            raise ValueError("auth_user_id is required")
+
+        normalized_email = (email or "").strip()
+
+        by_auth = self.get_user_by_auth_user_id(auth_id)
+        if by_auth:
+            return by_auth
+
+        if normalized_email:
+            by_email = self.get_user_by_email(normalized_email)
+            if by_email:
+                existing_auth = by_email.get("auth_user_id")
+                if existing_auth and str(existing_auth) != auth_id:
+                    raise RuntimeError(
+                        "Email is already linked to a different auth user"
+                    )
+                if not existing_auth:
+                    self.client.table("users").update({"auth_user_id": auth_id}).eq(
+                        "id", by_email.get("id")
+                    ).execute()
+                    by_email["auth_user_id"] = auth_id
+                return by_email
+
+        create_email = normalized_email or f"{auth_id}@local.invalid"
+        payload = {"email": create_email, "auth_user_id": auth_id}
+        response = (
+            self.client.table("users").insert(payload).select("*").maybe_single().execute()
+        )
+        return response.data if getattr(response, "data", None) else payload
 
     def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
         """
@@ -849,7 +895,8 @@ class SupabaseClient:
 
     def create_user_with_email(self, email: str) -> Optional[Dict[str, Any]]:
         """
-        Create a user row with the given email. Supabase will generate the ID.
+        Create an app user row with the given email (no auth_user_id yet).
+        This supports invite flows where a user may not have registered yet.
         """
         if not self.client:
             raise RuntimeError("Supabase client not initialized")

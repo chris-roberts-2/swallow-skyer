@@ -362,8 +362,14 @@ export const AuthProvider = ({ children }) => {
 
           const currentId = prev?.activeProjectId;
           const hasCurrent = currentId && list.some(p => p.id === currentId);
-          const nextActiveId =
-            hasCurrent || !list.length ? currentId || null : list[0].id;
+          // If the backend successfully returns an empty list, this is a real
+          // "no projects yet" state. Clear any stale stored project id so we do
+          // not hammer the API with unauthorized /photos calls.
+          const nextActiveId = list.length
+            ? hasCurrent
+              ? currentId || null
+              : list[0].id
+            : null;
 
           return {
             ...prev,
@@ -372,6 +378,16 @@ export const AuthProvider = ({ children }) => {
             projectRoles: nextRoles,
           };
         });
+
+        // Keep localStorage consistent with the in-memory active project choice.
+        // (When list is empty, clear the stored id.)
+        try {
+          if (!list.length) {
+            window.localStorage.removeItem('activeProjectId');
+          }
+        } catch {
+          // ignore
+        }
 
         // Redirect removed to avoid unexpected tab switches; callers can handle UI.
       } catch (err) {

@@ -141,9 +141,11 @@ swallow-skyer-5/
 
 ### Supabase
 - **Purpose:** Photo metadata storage and real-time capabilities
-- **Tables:** `photos`, `users`, `locations`
+- **Tables (production-final):** `users`, `projects`, `project_members`, `photos`, `locations`
 - **Operations:** Insert, query, filter by location/user/time
 - **Features:** Real-time subscriptions, REST API, authentication
+
+See `supabase/README.md` for the authoritative schema definition.
 
 ### Cloudflare R2
 - **Purpose:** Photo file storage (images)

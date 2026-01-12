@@ -8,6 +8,8 @@ export function configureMaplibreWorker() {
   // Pin to the installed major/minor to avoid unexpected breaking changes.
   // Force override to avoid environments where MapLibre defaults to a blob worker
   // (which can crash on GitHub Pages/CSP).
+  const override = (process.env.REACT_APP_MAPLIBRE_WORKER_URL || '').trim();
   maplibregl.workerUrl =
-    'https://unpkg.com/maplibre-gl@5.9.0/dist/maplibre-gl-csp-worker.js';
+    override ||
+    'https://cdn.jsdelivr.net/npm/maplibre-gl@5.9.0/dist/maplibre-gl-csp-worker.js';
 }

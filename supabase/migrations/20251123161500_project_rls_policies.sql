@@ -13,6 +13,7 @@ alter table if exists public.projects        enable row level security;
 alter table if exists public.project_members enable row level security;
 alter table if exists public.photos          enable row level security;
 alter table if exists public.locations       enable row level security;
+alter table if exists public.users           enable row level security;
 
 -- ---------------------------------------------------------------------------
 -- Helper drops so the migration is idempotent
@@ -49,7 +50,12 @@ create policy "projects_select_members"
       select 1
       from public.project_members pm
       where pm.project_id = projects.id
-        and pm.user_id = auth.uid()
+        and exists (
+          select 1
+          from public.users u
+          where u.id = pm.user_id
+            and u.auth_user_id = auth.uid()
+        )
     )
   );
 
@@ -58,7 +64,12 @@ create policy "projects_insert_owner"
   for insert
   with check (
     auth.uid() is not null
-    and owner_id = auth.uid()
+    and owner_id = (
+      select u.id
+      from public.users u
+      where u.auth_user_id = auth.uid()
+      limit 1
+    )
   );
 
 create policy "projects_update_owner_coowner"
@@ -70,7 +81,12 @@ create policy "projects_update_owner_coowner"
       select 1
       from public.project_members pm
       where pm.project_id = projects.id
-        and pm.user_id = auth.uid()
+        and exists (
+          select 1
+          from public.users u
+          where u.id = pm.user_id
+            and u.auth_user_id = auth.uid()
+        )
         and pm.role in ('owner', 'co-owner')
     )
   )
@@ -80,7 +96,12 @@ create policy "projects_update_owner_coowner"
       select 1
       from public.project_members pm
       where pm.project_id = projects.id
-        and pm.user_id = auth.uid()
+        and exists (
+          select 1
+          from public.users u
+          where u.id = pm.user_id
+            and u.auth_user_id = auth.uid()
+        )
         and pm.role in ('owner', 'co-owner')
     )
   );
@@ -94,7 +115,12 @@ create policy "projects_delete_owner_coowner"
       select 1
       from public.project_members pm
       where pm.project_id = projects.id
-        and pm.user_id = auth.uid()
+        and exists (
+          select 1
+          from public.users u
+          where u.id = pm.user_id
+            and u.auth_user_id = auth.uid()
+        )
         and pm.role in ('owner', 'co-owner')
     )
   );
@@ -111,7 +137,12 @@ create policy "project_members_select_members"
       select 1
       from public.project_members pm
       where pm.project_id = project_members.project_id
-        and pm.user_id = auth.uid()
+        and exists (
+          select 1
+          from public.users u
+          where u.id = pm.user_id
+            and u.auth_user_id = auth.uid()
+        )
     )
   );
 
@@ -126,18 +157,33 @@ create policy "project_members_insert_owner_coowner"
         select 1
         from public.project_members pm
         where pm.project_id = project_members.project_id
-          and pm.user_id = auth.uid()
+          and exists (
+            select 1
+            from public.users u
+            where u.id = pm.user_id
+              and u.auth_user_id = auth.uid()
+          )
           and pm.role in ('owner', 'co-owner')
       )
       -- Seed owner membership immediately after project creation
       or (
         project_members.role in ('owner', 'co-owner')
-        and project_members.user_id = auth.uid()
+        and project_members.user_id = (
+          select u.id
+          from public.users u
+          where u.auth_user_id = auth.uid()
+          limit 1
+        )
         and exists (
           select 1
           from public.projects p
           where p.id = project_members.project_id
-            and p.owner_id = auth.uid()
+            and p.owner_id = (
+              select u.id
+              from public.users u
+              where u.auth_user_id = auth.uid()
+              limit 1
+            )
         )
       )
     )
@@ -152,7 +198,12 @@ create policy "project_members_update_owner_coowner"
       select 1
       from public.project_members pm
       where pm.project_id = project_members.project_id
-        and pm.user_id = auth.uid()
+        and exists (
+          select 1
+          from public.users u
+          where u.id = pm.user_id
+            and u.auth_user_id = auth.uid()
+        )
         and pm.role in ('owner', 'co-owner')
     )
   )
@@ -162,7 +213,12 @@ create policy "project_members_update_owner_coowner"
       select 1
       from public.project_members pm
       where pm.project_id = project_members.project_id
-        and pm.user_id = auth.uid()
+        and exists (
+          select 1
+          from public.users u
+          where u.id = pm.user_id
+            and u.auth_user_id = auth.uid()
+        )
         and pm.role in ('owner', 'co-owner')
     )
   );
@@ -176,7 +232,12 @@ create policy "project_members_delete_owner_coowner"
       select 1
       from public.project_members pm
       where pm.project_id = project_members.project_id
-        and pm.user_id = auth.uid()
+        and exists (
+          select 1
+          from public.users u
+          where u.id = pm.user_id
+            and u.auth_user_id = auth.uid()
+        )
         and pm.role in ('owner', 'co-owner')
     )
   );
@@ -194,7 +255,12 @@ create policy "photos_select_members"
       select 1
       from public.project_members pm
       where pm.project_id = photos.project_id
-        and pm.user_id = auth.uid()
+        and exists (
+          select 1
+          from public.users u
+          where u.id = pm.user_id
+            and u.auth_user_id = auth.uid()
+        )
     )
   );
 
@@ -204,12 +270,22 @@ create policy "photos_insert_allowed_roles"
   with check (
     auth.uid() is not null
     and project_id is not null
-    and user_id = auth.uid()
+    and user_id = (
+      select u.id
+      from public.users u
+      where u.auth_user_id = auth.uid()
+      limit 1
+    )
     and exists (
       select 1
       from public.project_members pm
       where pm.project_id = photos.project_id
-        and pm.user_id = auth.uid()
+        and exists (
+          select 1
+          from public.users u
+          where u.id = pm.user_id
+            and u.auth_user_id = auth.uid()
+        )
         and pm.role in ('owner', 'co-owner', 'collaborator')
     )
   );
@@ -225,16 +301,31 @@ create policy "photos_update_collab_or_owner"
         select 1
         from public.project_members pm
         where pm.project_id = photos.project_id
-          and pm.user_id = auth.uid()
+          and exists (
+            select 1
+            from public.users u
+            where u.id = pm.user_id
+              and u.auth_user_id = auth.uid()
+          )
           and pm.role in ('owner', 'co-owner')
       )
       or (
-        photos.user_id = auth.uid()
+        photos.user_id = (
+          select u.id
+          from public.users u
+          where u.auth_user_id = auth.uid()
+          limit 1
+        )
         and exists (
           select 1
           from public.project_members pm
           where pm.project_id = photos.project_id
-            and pm.user_id = auth.uid()
+            and exists (
+              select 1
+              from public.users u
+              where u.id = pm.user_id
+                and u.auth_user_id = auth.uid()
+            )
             and pm.role = 'collaborator'
         )
       )
@@ -248,16 +339,31 @@ create policy "photos_update_collab_or_owner"
         select 1
         from public.project_members pm
         where pm.project_id = photos.project_id
-          and pm.user_id = auth.uid()
+          and exists (
+            select 1
+            from public.users u
+            where u.id = pm.user_id
+              and u.auth_user_id = auth.uid()
+          )
           and pm.role in ('owner', 'co-owner')
       )
       or (
-        photos.user_id = auth.uid()
+        photos.user_id = (
+          select u.id
+          from public.users u
+          where u.auth_user_id = auth.uid()
+          limit 1
+        )
         and exists (
           select 1
           from public.project_members pm
           where pm.project_id = photos.project_id
-            and pm.user_id = auth.uid()
+            and exists (
+              select 1
+              from public.users u
+              where u.id = pm.user_id
+                and u.auth_user_id = auth.uid()
+            )
             and pm.role = 'collaborator'
         )
       )
@@ -274,7 +380,12 @@ create policy "photos_delete_owner_coowner"
       select 1
       from public.project_members pm
       where pm.project_id = photos.project_id
-        and pm.user_id = auth.uid()
+        and exists (
+          select 1
+          from public.users u
+          where u.id = pm.user_id
+            and u.auth_user_id = auth.uid()
+        )
         and pm.role in ('owner', 'co-owner')
     )
   );
@@ -292,7 +403,12 @@ create policy "locations_select_members"
       select 1
       from public.project_members pm
       where pm.project_id = locations.project_id
-        and pm.user_id = auth.uid()
+        and exists (
+          select 1
+          from public.users u
+          where u.id = pm.user_id
+            and u.auth_user_id = auth.uid()
+        )
     )
   );
 
@@ -306,7 +422,12 @@ create policy "locations_insert_allowed_roles"
       select 1
       from public.project_members pm
       where pm.project_id = locations.project_id
-        and pm.user_id = auth.uid()
+        and exists (
+          select 1
+          from public.users u
+          where u.id = pm.user_id
+            and u.auth_user_id = auth.uid()
+        )
         and pm.role in ('owner', 'co-owner', 'collaborator')
     )
   );
@@ -321,7 +442,12 @@ create policy "locations_update_owner_coowner"
       select 1
       from public.project_members pm
       where pm.project_id = locations.project_id
-        and pm.user_id = auth.uid()
+        and exists (
+          select 1
+          from public.users u
+          where u.id = pm.user_id
+            and u.auth_user_id = auth.uid()
+        )
         and pm.role in ('owner', 'co-owner')
     )
   )
@@ -332,7 +458,12 @@ create policy "locations_update_owner_coowner"
       select 1
       from public.project_members pm
       where pm.project_id = locations.project_id
-        and pm.user_id = auth.uid()
+        and exists (
+          select 1
+          from public.users u
+          where u.id = pm.user_id
+            and u.auth_user_id = auth.uid()
+        )
         and pm.role in ('owner', 'co-owner')
     )
   );
@@ -347,7 +478,12 @@ create policy "locations_delete_owner_coowner"
       select 1
       from public.project_members pm
       where pm.project_id = locations.project_id
-        and pm.user_id = auth.uid()
+        and exists (
+          select 1
+          from public.users u
+          where u.id = pm.user_id
+            and u.auth_user_id = auth.uid()
+        )
         and pm.role in ('owner', 'co-owner')
     )
   );

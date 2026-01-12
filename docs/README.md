@@ -17,6 +17,7 @@ This directory contains **documentation only** (not deployed to GitHub Pages or 
 - **Setup**: `docs/setup_guide.md`
 - **Deployment**: `docs/deployment/README.md`
 - **User guide**: `docs/user-guide/README.md`
+- **Supabase schema (production-final)**: `supabase/README.md`
 
 ## Quick commands (local dev)
 

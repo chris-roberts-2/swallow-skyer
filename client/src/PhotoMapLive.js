@@ -290,8 +290,7 @@ const PhotoMapLive = () => {
   const userInteractedRef = useRef(false);
   const [refreshCounter, setRefreshCounter] = useState(0);
   const activeStyleRef = useRef('standard');
-  const satelliteHiddenLayersRef = useRef({});
-  const satelliteStyledSymbolsRef = useRef({});
+  const satelliteLayerEditsRef = useRef({});
   const [projectToggleWidth, setProjectToggleWidth] = useState(180);
   const projectSelectRef = useRef(null);
   const closeStack = useCallback(() => setActiveStack(null), []);
@@ -417,23 +416,9 @@ const PhotoMapLive = () => {
       const bearing = map.getBearing();
       const pitch = map.getPitch();
       activeStyleRef.current = styleKey;
-      const targetStyle = STANDARD_STYLE_URL;
 
       const ensureSatelliteHybrid = () => {
         try {
-          const style = map.getStyle();
-          if (style && Array.isArray(style.layers)) {
-            const backgroundLayer = style.layers.find(
-              l => l.type === 'background'
-            );
-            if (backgroundLayer) {
-              map.setPaintProperty(
-                backgroundLayer.id,
-                'background-color',
-                'rgba(0,0,0,0)'
-              );
-            }
-          }
           if (!map.getSource('satellite-raster')) {
             map.addSource('satellite-raster', SATELLITE_RASTER_SOURCE);
           }
@@ -461,70 +446,48 @@ const PhotoMapLive = () => {
             }
           }
 
-          // Hide landuse/building fills and keep roads/labels/boundaries
+          // Satellite "hybrid": show raster imagery underneath the existing vector style.
+          // Instead of hiding layers by brittle id heuristics, we temporarily set
+          // fills/backgrounds to transparent while preserving boundaries + labels.
           const layers = map.getStyle()?.layers || [];
-          const hidden = {};
-          const styledSymbols = {};
+          const edits = {};
           layers.forEach(layer => {
             const { id, type } = layer;
             if (!id || !type) return;
 
-            if (
-              type === 'fill' ||
-              type === 'fill-extrusion' ||
-              type === 'background'
-            ) {
+            if (type === 'background') {
               try {
-                const prevVisibility =
-                  map.getLayoutProperty(id, 'visibility') || 'visible';
-                map.setLayoutProperty(id, 'visibility', 'none');
-                hidden[id] = prevVisibility;
+                const prev = map.getPaintProperty(id, 'background-color');
+                edits[id] = { ...(edits[id] || {}), backgroundColor: prev };
+                map.setPaintProperty(id, 'background-color', 'rgba(0,0,0,0)');
               } catch {
                 // ignore
               }
               return;
             }
 
-            if (type === 'line') {
-              const isRoad =
-                id.includes('road') ||
-                id.includes('street') ||
-                id.includes('highway');
-              const isBoundary =
-                id.includes('boundary') || id.includes('admin');
-
-              if (isBoundary) {
-                return;
-              }
-
-              if (isRoad) {
-                try {
-                  const prevPaintColor = map.getPaintProperty(id, 'line-color');
-                  const prevPaintOpacity = map.getPaintProperty(
-                    id,
-                    'line-opacity'
-                  );
-                  const prevVisibility =
-                    map.getLayoutProperty(id, 'visibility') || 'visible';
-                  styledSymbols[id] = {
-                    lineColor: prevPaintColor,
-                    lineOpacity: prevPaintOpacity,
-                    visibility: prevVisibility,
-                  };
-                  map.setPaintProperty(id, 'line-color', '#000000');
-                  map.setPaintProperty(id, 'line-opacity', 0.0);
-                  map.setLayoutProperty(id, 'visibility', 'visible');
-                } catch {
-                  // ignore
-                }
-                return;
-              }
-
+            if (type === 'fill') {
               try {
-                const prevVisibility =
-                  map.getLayoutProperty(id, 'visibility') || 'visible';
-                map.setLayoutProperty(id, 'visibility', 'none');
-                hidden[id] = prevVisibility;
+                const prev = map.getPaintProperty(id, 'fill-opacity');
+                edits[id] = { ...(edits[id] || {}), fillOpacity: prev };
+                map.setPaintProperty(id, 'fill-opacity', 0);
+              } catch {
+                // ignore
+              }
+              return;
+            }
+
+            if (type === 'fill-extrusion') {
+              try {
+                const prev = map.getPaintProperty(
+                  id,
+                  'fill-extrusion-opacity'
+                );
+                edits[id] = {
+                  ...(edits[id] || {}),
+                  fillExtrusionOpacity: prev,
+                };
+                map.setPaintProperty(id, 'fill-extrusion-opacity', 0);
               } catch {
                 // ignore
               }
@@ -533,12 +496,6 @@ const PhotoMapLive = () => {
 
             if (type === 'symbol') {
               try {
-                const prevVisibility =
-                  map.getLayoutProperty(id, 'visibility') || 'visible';
-                if (prevVisibility !== 'visible') {
-                  hidden[id] = prevVisibility;
-                  map.setLayoutProperty(id, 'visibility', 'visible');
-                }
                 const prevTextColor = map.getPaintProperty(id, 'text-color');
                 const prevTextHaloColor = map.getPaintProperty(
                   id,
@@ -548,7 +505,8 @@ const PhotoMapLive = () => {
                   id,
                   'text-halo-width'
                 );
-                styledSymbols[id] = {
+                edits[id] = {
+                  ...(edits[id] || {}),
                   textColor: prevTextColor,
                   textHaloColor: prevTextHaloColor,
                   textHaloWidth: prevTextHaloWidth,
@@ -561,8 +519,7 @@ const PhotoMapLive = () => {
               }
             }
           });
-          satelliteHiddenLayersRef.current = hidden;
-          satelliteStyledSymbolsRef.current = styledSymbols;
+          satelliteLayerEditsRef.current = edits;
         } catch (err) {
           // Non-fatal: skip hybrid overlay if anything fails
         }
@@ -580,24 +537,27 @@ const PhotoMapLive = () => {
           // ignore
         }
 
-        // Restore visibilities
-        const hidden = satelliteHiddenLayersRef.current || {};
-        Object.entries(hidden).forEach(([layerId, prevVisibility]) => {
+        // Restore paint edits (opacity + symbol styling).
+        const edits = satelliteLayerEditsRef.current || {};
+        Object.entries(edits).forEach(([layerId, prevPaint]) => {
           try {
-            const current = map.getLayoutProperty(layerId, 'visibility');
-            if (current !== prevVisibility) {
-              map.setLayoutProperty(layerId, 'visibility', prevVisibility);
+            if (prevPaint.backgroundColor !== undefined) {
+              map.setPaintProperty(
+                layerId,
+                'background-color',
+                prevPaint.backgroundColor
+              );
             }
-          } catch {
-            // ignore
-          }
-        });
-        satelliteHiddenLayersRef.current = {};
-
-        // Restore symbol paint
-        const styled = satelliteStyledSymbolsRef.current || {};
-        Object.entries(styled).forEach(([layerId, prevPaint]) => {
-          try {
+            if (prevPaint.fillOpacity !== undefined) {
+              map.setPaintProperty(layerId, 'fill-opacity', prevPaint.fillOpacity);
+            }
+            if (prevPaint.fillExtrusionOpacity !== undefined) {
+              map.setPaintProperty(
+                layerId,
+                'fill-extrusion-opacity',
+                prevPaint.fillExtrusionOpacity
+              );
+            }
             if (prevPaint.textColor !== undefined) {
               map.setPaintProperty(layerId, 'text-color', prevPaint.textColor);
             }
@@ -615,49 +575,15 @@ const PhotoMapLive = () => {
                 prevPaint.textHaloWidth
               );
             }
-            if (prevPaint.lineColor !== undefined) {
-              map.setPaintProperty(layerId, 'line-color', prevPaint.lineColor);
-            }
-            if (prevPaint.lineOpacity !== undefined) {
-              map.setPaintProperty(
-                layerId,
-                'line-opacity',
-                prevPaint.lineOpacity
-              );
-            }
-            if (prevPaint.visibility !== undefined) {
-              map.setLayoutProperty(
-                layerId,
-                'visibility',
-                prevPaint.visibility
-              );
-            }
           } catch {
             // ignore
           }
         });
-        satelliteStyledSymbolsRef.current = {};
+        satelliteLayerEditsRef.current = {};
       };
 
       const applyStandard = () => {
         removeSatelliteHybrid();
-        try {
-          const style = map.getStyle();
-          if (style && Array.isArray(style.layers)) {
-            const backgroundLayer = style.layers.find(
-              l => l.type === 'background'
-            );
-            if (backgroundLayer) {
-              map.setPaintProperty(
-                backgroundLayer.id,
-                'background-color',
-                '#f8f9fa'
-              );
-            }
-          }
-        } catch (err) {
-          // ignore background restore failures
-        }
       };
 
       if (styleKey === 'satellite') {
@@ -769,6 +695,20 @@ const PhotoMapLive = () => {
                 : {}),
             },
           });
+          if (res.status === 401 || res.status === 403) {
+            // Not authorized for this project (often due to stale activeProjectId).
+            // Treat as "no photos" to avoid retry loops and keep the map usable.
+            if (!isCancelled) {
+              setPhotos([]);
+              cacheRef.current = {
+                data: [],
+                fetchedAt: Date.now(),
+                projectId: activeProjectId,
+              };
+            }
+            return;
+          }
+
           const data = await res.json();
           if (!res.ok) {
             // try next candidate

@@ -25,13 +25,10 @@ def get_profile():
     if not user_id:
         return jsonify({"error": "Authentication required"}), 401
 
-    email = (getattr(g, "current_user", None) or {}).get("email")
-
     try:
+        # jwt_required resolves g.current_user.id to the app user id and ensures a
+        # corresponding public.users row exists.
         row = supabase_client.get_user_metadata(user_id) or None
-        if not row:
-            supabase_client.ensure_user_exists(user_id, email=email)
-            row = supabase_client.get_user_metadata(user_id) or None
         return jsonify({"profile": row}), 200
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500

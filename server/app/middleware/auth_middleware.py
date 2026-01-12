@@ -3,6 +3,7 @@ from functools import wraps
 from flask import jsonify, g, request
 
 from app.supabase_client import SupabaseConfigError, verify_supabase_jwt
+from app.services.storage.supabase_client import supabase_client
 
 
 def _serialize_user(user):
@@ -49,7 +50,33 @@ def jwt_required(fn):
             return jsonify({"error": str(exc)}), 401
 
         if supabase_user is not None:
-            g.current_user = _serialize_user(supabase_user)
+            resolved = _serialize_user(supabase_user) or {}
+            auth_user_id = resolved.get("id") or resolved.get("sub")
+            email = resolved.get("email")
+            try:
+                app_user = supabase_client.ensure_user_for_auth(
+                    str(auth_user_id or "").strip(), email=email
+                )
+            except Exception as exc:
+                return (
+                    jsonify(
+                        {
+                            "error": f"Unable to resolve app user: {exc}",
+                            "code": "USER_MAPPING_FAILED",
+                        }
+                    ),
+                    500,
+                )
+
+            # Normalize to app user identity for downstream permissions and FK usage.
+            g.current_user = {
+                **resolved,
+                "auth_user_id": str(auth_user_id or "").strip() or None,
+                "app_user_id": app_user.get("id"),
+                # Backwards-compatible: treat g.current_user.id as the app user id.
+                "id": app_user.get("id"),
+                "email": app_user.get("email") or email,
+            }
             return fn(*args, **kwargs)
 
         # Supabase validation returned no user and did not raise a configuration error.
