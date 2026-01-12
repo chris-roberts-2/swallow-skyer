@@ -27,3 +27,5 @@ Thumbs.db
 # Local credentials (explicitly ignored)
 .git/keys.env
 
+# Git worktrees (e.g. website-v1 branch checkout for GitHub Pages artifacts)
+_worktrees/
