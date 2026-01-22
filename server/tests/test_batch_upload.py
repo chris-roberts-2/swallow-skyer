@@ -11,9 +11,10 @@ def _make_image_bytes():
     return buf.getvalue()
 
 
-def test_batch_upload_multiple_files(client, monkeypatch):
+def test_batch_upload_multiple_files(client, auth_headers, monkeypatch):
     from app.services.storage import r2_client as r2_module
     from app.services.storage import supabase_client as supabase_module
+    import app.routes.upload as upload_module
 
     monkeypatch.setattr(
         r2_module.r2_client, "client", SimpleNamespace(name="mock_r2"), raising=True
@@ -28,6 +29,12 @@ def test_batch_upload_multiple_files(client, monkeypatch):
         supabase_module.supabase_client,
         "supports_thumbnail_columns",
         lambda: True,
+        raising=True,
+    )
+    monkeypatch.setattr(
+        upload_module,
+        "require_role",
+        lambda project_id, roles: {"user_id": "user-1"},
         raising=True,
     )
 
@@ -99,6 +106,7 @@ def test_batch_upload_multiple_files(client, monkeypatch):
             ],
             "project_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         },
+        headers=auth_headers,
         content_type="multipart/form-data",
     )
 

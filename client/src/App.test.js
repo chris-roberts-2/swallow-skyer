@@ -12,6 +12,14 @@ const renderWithAuth = (value = {}, initialEntries = ['/login']) => {
     login: jest.fn(),
     signup: jest.fn(),
     logout: jest.fn(),
+    refreshProfile: jest.fn(),
+    updateProfile: jest.fn(),
+    updateLogin: jest.fn(),
+    projects: [],
+    projectRoles: {},
+    activeProject: null,
+    setActiveProject: jest.fn(),
+    refreshProjects: jest.fn(),
   };
 
   return render(
@@ -44,6 +52,9 @@ test('shows login/register links when signed out', () => {
 
 test('shows profile navigation when signed in', () => {
   renderWithAuth({ user: { email: 'pilot@example.com' } }, ['/map']);
-  expect(screen.getAllByText(/pilot@example.com/i).length).toBeGreaterThan(0);
-  expect(screen.getByRole('link', { name: /photos/i })).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: /open profile menu/i })
+  ).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /projects/i })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /map/i })).toBeInTheDocument();
 });

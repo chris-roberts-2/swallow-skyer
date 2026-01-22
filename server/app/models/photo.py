@@ -22,10 +22,7 @@ class Photo(db.Model):
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
-    user_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=True)
-
-    # Relationships
-    user = db.relationship("User", backref="photos")
+    user_id = db.Column(db.String(36), nullable=True)
 
     def to_dict(self):
         return {

@@ -40,12 +40,12 @@ def test_list_members_success(client, monkeypatch):
     )
     monkeypatch.setattr(
         supabase_module.supabase_client,
-        "list_project_members",
+        "list_project_members_with_profile",
         lambda project_id: [{"user_id": "user-actor", "role": "viewer"}],
     )
     resp = client.get("/api/v1/projects/proj-1/members", headers=AUTH_HEADER)
     assert resp.status_code == 200
-    assert resp.get_json()["success"]
+    assert resp.get_json()["members"][0]["user_id"] == "user-actor"
 
 
 def test_list_members_forbidden(client, monkeypatch):

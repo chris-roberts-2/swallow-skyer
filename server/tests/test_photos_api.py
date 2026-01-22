@@ -66,22 +66,24 @@ def mock_presigned_url():
 class TestPhotosAPI:
     """Test cases for photos API."""
 
+    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="owner")
     @patch("app.api_routes.v1.photos.supabase_client")
     @patch("app.api_routes.v1.photos.r2_client")
     def test_get_photos_default_params(
         self,
         mock_r2,
         mock_supabase,
+        _mock_role,
         client,
         mock_supabase_response,
         auth_headers,
     ):
         """GET /api/v1/photos uses default pagination and membership scope."""
         mock_supabase.client = True
-        mock_supabase.list_projects_for_user.return_value = [
-            {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "role": "owner"}
-        ]
         mock_supabase.fetch_project_photos.return_value = mock_supabase_response
+        mock_supabase.get_project.return_value = {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "name": "Demo"}
+        mock_supabase.get_user_metadata.return_value = {}
+        mock_supabase.get_location.return_value = {}
         mock_supabase.extract_thumbnail_fields.side_effect = (
             lambda record: (
                 record.get("thumbnail_r2_path"),
@@ -90,7 +92,10 @@ class TestPhotosAPI:
         )
         mock_r2.resolve_url.return_value = "https://signed.example/path"
 
-        response = client.get("/api/v1/photos/", headers=auth_headers)
+        response = client.get(
+            "/api/v1/photos/?project_id=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            headers=auth_headers,
+        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -103,22 +108,30 @@ class TestPhotosAPI:
             page_size=50,
             user_id=None,
             date_range=None,
+            bbox=None,
+            city=None,
+            state=None,
+            country=None,
             include_signed_urls=True,
         )
 
+    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="viewer")
     @patch("app.api_routes.v1.photos.supabase_client")
     @patch("app.api_routes.v1.photos.r2_client")
     def test_get_photos_with_pagination(
         self,
         mock_r2,
         mock_supabase,
+        _mock_role,
         client,
         mock_supabase_response,
         auth_headers,
     ):
         mock_supabase.client = True
-        mock_supabase.get_project_role.return_value = "viewer"
         mock_supabase.fetch_project_photos.return_value = mock_supabase_response
+        mock_supabase.get_project.return_value = {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "name": "Demo"}
+        mock_supabase.get_user_metadata.return_value = {}
+        mock_supabase.get_location.return_value = {}
         mock_supabase.extract_thumbnail_fields.side_effect = (
             lambda record: (
                 record.get("thumbnail_r2_path"),
@@ -139,24 +152,30 @@ class TestPhotosAPI:
             page_size=25,
             user_id=None,
             date_range=None,
+            bbox=None,
+            city=None,
+            state=None,
+            country=None,
             include_signed_urls=True,
         )
 
+    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="owner")
     @patch("app.api_routes.v1.photos.supabase_client")
     @patch("app.api_routes.v1.photos.r2_client")
     def test_get_photos_with_filters(
         self,
         mock_r2,
         mock_supabase,
+        _mock_role,
         client,
         mock_supabase_response,
         auth_headers,
     ):
         mock_supabase.client = True
-        mock_supabase.list_projects_for_user.return_value = [
-            {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "role": "owner"}
-        ]
         mock_supabase.fetch_project_photos.return_value = mock_supabase_response
+        mock_supabase.get_project.return_value = {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "name": "Demo"}
+        mock_supabase.get_user_metadata.return_value = {}
+        mock_supabase.get_location.return_value = {}
         mock_supabase.extract_thumbnail_fields.side_effect = (
             lambda record: (
                 record.get("thumbnail_r2_path"),
@@ -166,7 +185,7 @@ class TestPhotosAPI:
         mock_r2.resolve_url.return_value = "https://signed.example/path"
 
         response = client.get(
-            "/api/v1/photos/?user_id=abc&date_range=2024-01-01,2024-02-01",
+            "/api/v1/photos/?project_id=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa&user_id=abc&date_range=2024-01-01,2024-02-01",
             headers=auth_headers,
         )
 
@@ -177,24 +196,30 @@ class TestPhotosAPI:
             page_size=50,
             user_id="abc",
             date_range=("2024-01-01", "2024-02-01"),
+            bbox=None,
+            city=None,
+            state=None,
+            country=None,
             include_signed_urls=True,
         )
 
+    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="owner")
     @patch("app.api_routes.v1.photos.supabase_client")
     @patch("app.api_routes.v1.photos.r2_client")
     def test_get_photos_enforces_page_size_cap(
         self,
         mock_r2,
         mock_supabase,
+        _mock_role,
         client,
         mock_supabase_response,
         auth_headers,
     ):
         mock_supabase.client = True
-        mock_supabase.list_projects_for_user.return_value = [
-            {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "role": "owner"}
-        ]
         mock_supabase.fetch_project_photos.return_value = mock_supabase_response
+        mock_supabase.get_project.return_value = {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "name": "Demo"}
+        mock_supabase.get_user_metadata.return_value = {}
+        mock_supabase.get_location.return_value = {}
         mock_supabase.extract_thumbnail_fields.side_effect = (
             lambda record: (
                 record.get("thumbnail_r2_path"),
@@ -203,7 +228,10 @@ class TestPhotosAPI:
         )
         mock_r2.resolve_url.return_value = "https://signed.example/path"
 
-        response = client.get("/api/v1/photos/?page_size=500", headers=auth_headers)
+        response = client.get(
+            "/api/v1/photos/?project_id=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa&page_size=500",
+            headers=auth_headers,
+        )
         data = response.get_json()
         assert data["pagination"]["page_size"] == 200
         mock_supabase.fetch_project_photos.assert_called_once_with(
@@ -212,24 +240,30 @@ class TestPhotosAPI:
             page_size=200,
             user_id=None,
             date_range=None,
+            bbox=None,
+            city=None,
+            state=None,
+            country=None,
             include_signed_urls=True,
         )
 
+    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="owner")
     @patch("app.api_routes.v1.photos.supabase_client")
     @patch("app.api_routes.v1.photos.r2_client")
     def test_get_photos_generates_presigned_url_when_empty(
         self,
         mock_r2,
         mock_supabase,
+        _mock_role,
         client,
         mock_supabase_response,
         auth_headers,
     ):
         mock_supabase.client = True
-        mock_supabase.list_projects_for_user.return_value = [
-            {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "role": "owner"}
-        ]
         mock_supabase.fetch_project_photos.return_value = mock_supabase_response
+        mock_supabase.get_project.return_value = {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "name": "Demo"}
+        mock_supabase.get_user_metadata.return_value = {}
+        mock_supabase.get_location.return_value = {}
         mock_supabase.extract_thumbnail_fields.side_effect = (
             lambda record: (
                 record.get("thumbnail_r2_path"),
@@ -241,7 +275,10 @@ class TestPhotosAPI:
             "https://signed.example/thumb",
         ]
 
-        response = client.get("/api/v1/photos/", headers=auth_headers)
+        response = client.get(
+            "/api/v1/photos/?project_id=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            headers=auth_headers,
+        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -249,39 +286,41 @@ class TestPhotosAPI:
         assert data["photos"][1]["thumbnail_url"] == "https://signed.example/thumb"
         assert mock_r2.resolve_url.call_count == 2
 
+    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="owner")
     @patch("app.api_routes.v1.photos.supabase_client")
     def test_get_photos_handles_errors(
-        self, mock_supabase, client, auth_headers
+        self, mock_supabase, _mock_role, client, auth_headers
     ):
         mock_supabase.client = True
-        mock_supabase.list_projects_for_user.return_value = [
-            {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "role": "owner"}
-        ]
         mock_supabase.fetch_project_photos.side_effect = Exception("boom")
         mock_supabase.extract_thumbnail_fields.side_effect = (
             lambda record: (record.get("thumbnail_r2_path"), record.get("thumbnail_r2_url"))
         )
 
-        response = client.get("/api/v1/photos/", headers=auth_headers)
+        response = client.get(
+            "/api/v1/photos/?project_id=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            headers=auth_headers,
+        )
 
         assert response.status_code == 500
         assert "error" in response.get_json()
 
+    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="owner")
     @patch("app.api_routes.v1.photos.supabase_client")
     @patch("app.api_routes.v1.photos.r2_client")
     def test_get_photos_empty_result(
-        self, mock_r2, mock_supabase, client, auth_headers
+        self, mock_r2, mock_supabase, _mock_role, client, auth_headers
     ):
         mock_supabase.client = True
-        mock_supabase.list_projects_for_user.return_value = [
-            {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "role": "owner"}
-        ]
         mock_supabase.fetch_project_photos.return_value = {"data": [], "count": 0}
         mock_supabase.extract_thumbnail_fields.side_effect = (
             lambda record: (record.get("thumbnail_r2_path"), record.get("thumbnail_r2_url"))
         )
 
-        response = client.get("/api/v1/photos/", headers=auth_headers)
+        response = client.get(
+            "/api/v1/photos/?project_id=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            headers=auth_headers,
+        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -315,6 +354,7 @@ class TestSupabaseClientGetPhotos:
         client = SupabaseClient()
         client.client = mock_client
         client._thumbnail_columns_supported = True
+        client._show_on_photos_supported = False
 
         client.fetch_project_photos(
             project_ids=["proj-1"],
@@ -329,7 +369,7 @@ class TestSupabaseClientGetPhotos:
         mock_query.eq.assert_called_with("user_id", "user-99")
         mock_query.gte.assert_any_call("created_at", "2024-01-01")
         mock_query.lte.assert_any_call("created_at", "2024-01-31")
-        mock_query.order.assert_called_once_with("created_at", desc=True)
+        mock_query.order.assert_called_once_with("uploaded_at", desc=True)
         mock_query.limit.assert_called_once_with(25)
         mock_query.offset.assert_called_once_with(25)
 

@@ -14,7 +14,7 @@ def test_require_role_forbidden(monkeypatch):
         "app.services.auth.permissions.supabase_client.get_project_role",
         lambda project_id, user_id: None,
     )
-    payload, status = require_role("proj-1", {"owner"})
+    payload, status = require_role("proj-1", {"owner"}, user_id="user-1")
     assert status == 403
     assert payload["error"] == "forbidden"
 
@@ -25,7 +25,11 @@ def test_require_role_allows_roles(monkeypatch, role):
         "app.services.auth.permissions.supabase_client.get_project_role",
         lambda project_id, user_id: role,
     )
-    result = require_role("proj-1", {"owner", "co-owner", "collaborator", "viewer"})
+    result = require_role(
+        "proj-1",
+        {"owner", "co-owner", "collaborator", "viewer"},
+        user_id="user-1",
+    )
     assert isinstance(result, dict)
     assert result["role"] == role
 

@@ -9,9 +9,9 @@ import {
 } from 'react';
 import supabase from '../lib/supabaseClient';
 import apiClient from '../services/api';
+import { getApiOrigin } from '../utils/apiEnv';
 
 const PROJECT_ROLES_STORAGE_KEY = 'projectRoles';
-const PENDING_PROFILE_KEY = 'pendingProfile';
 const getLocalStorage = () => {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -58,35 +58,6 @@ const persistProjectRoles = roles => {
     storage.setItem(PROJECT_ROLES_STORAGE_KEY, JSON.stringify(roles || {}));
   } catch {
     // ignore storage failures
-  }
-};
-
-const persistPendingProfile = profile => {
-  try {
-    const storage = getLocalStorage();
-    if (!storage) return;
-    if (!profile) {
-      storage.removeItem(PENDING_PROFILE_KEY);
-      return;
-    }
-    storage.setItem(PENDING_PROFILE_KEY, JSON.stringify(profile));
-  } catch {
-    // ignore
-  }
-};
-
-const readPendingProfile = () => {
-  try {
-    const storage = getLocalStorage();
-    if (!storage) return null;
-    const raw = storage.getItem(PENDING_PROFILE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    try {
-      getLocalStorage()?.removeItem(PENDING_PROFILE_KEY);
-    } catch {}
-    return null;
   }
 };
 
@@ -146,8 +117,6 @@ export const AuthProvider = ({ children }) => {
   const isFetchingProjects = useRef(false);
   const lastProjectsFetchAt = useRef(0);
   const isFetchingProfile = useRef(false);
-  const isFlushingPendingProfile = useRef(false);
-  const lastPendingProfileFlushAt = useRef(0);
 
   // If projects cannot be fetched temporarily (backend 500, offline, etc), keep the
   // active project id usable for upload/map flows by falling back to the stored id.
@@ -451,33 +420,29 @@ export const AuthProvider = ({ children }) => {
   // If signup required email confirmation, we may have collected first/last/company
   // before we had a session. Once we have a session, flush that pending profile to
   // the backend so it lands in Supabase public.users.
-  useEffect(() => {
-    if (!authState.session?.user?.id) return;
-    const pending = readPendingProfile();
-    if (!pending) return;
-    if (isFlushingPendingProfile.current) return;
-    const now = Date.now();
-    if (now - lastPendingProfileFlushAt.current < 30_000) return;
-    (async () => {
-      isFlushingPendingProfile.current = true;
-      lastPendingProfileFlushAt.current = Date.now();
-      try {
-        // Avoid 401s from token races right after login/confirm.
-        const { data } = await supabase.auth.getSession();
-        if (!data?.session?.access_token) {
-          return;
-        }
-        await apiClient.patch('/v1/profile', pending);
-      } catch (err) {
-        // keep pending; we'll retry next session restore
-        return;
-      } finally {
-        isFlushingPendingProfile.current = false;
+  const registerProfileMetadata = useCallback(
+    async ({ userId, email, firstName, lastName, company }) => {
+      const payload = {
+        userId,
+        email: (email || '').trim(),
+        first_name: (firstName || '').trim(),
+        last_name: (lastName || '').trim(),
+        company: (company || '').trim(),
+      };
+      const baseUrl = `${getApiOrigin().replace(/\/+$/, '')}/api/v1/profile/register`;
+      const response = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.error || 'Unable to store user profile');
       }
-      persistPendingProfile(null);
-      refreshProfile({ ensureExists: true });
-    })();
-  }, [authState.session, refreshProfile]);
+      return response.json();
+    },
+    []
+  );
 
   const login = useCallback(
     async (email, password) => {
@@ -534,17 +499,21 @@ export const AuthProvider = ({ children }) => {
       let user = data?.user ?? null;
       let session = data?.session ?? null;
 
+      if (user?.id) {
+        await registerProfileMetadata({
+          userId: user.id,
+          email: normalizedEmail,
+          firstName,
+          lastName,
+          company,
+        });
+      } else {
+        throw new Error('Unable to register profile metadata');
+      }
+
       // If signup didn't return a session, Supabase is likely configured to require
       // email confirmation. In that case, we cannot log in yet.
       if (!session) {
-        // We don't have a session yet (email confirmation flow). Store the profile
-        // values so we can write them after the user confirms and signs in.
-        persistPendingProfile({
-          email: normalizedEmail,
-          first_name: (firstName || '').trim(),
-          last_name: (lastName || '').trim(),
-          company: (company || '').trim(),
-        });
         return {
           user,
           needsEmailConfirmation: true,
@@ -552,26 +521,11 @@ export const AuthProvider = ({ children }) => {
         };
       }
 
-      // Only write the profile when we have an authenticated session (RLS typically
-      // requires an authenticated user).
-      if (user?.id && session?.access_token) {
-        try {
-          await apiClient.patch('/v1/profile', {
-            email: normalizedEmail,
-            first_name: (firstName || '').trim(),
-            last_name: (lastName || '').trim(),
-            company: (company || '').trim(),
-          });
-        } catch (profileErr) {
-          console.error('Failed to store user profile on signup', profileErr);
-        }
-      }
-
       syncSession(session);
       await refreshProfile({ ensureExists: true, userOverride: user });
       return { user, needsEmailConfirmation: false, email: normalizedEmail };
     },
-    [refreshProfile, syncSession]
+    [refreshProfile, registerProfileMetadata, syncSession]
   );
 
   const logout = useCallback(async () => {

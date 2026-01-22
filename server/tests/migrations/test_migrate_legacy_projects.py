@@ -19,7 +19,8 @@ class FakeTable:
         self.payload = None
 
     def select(self, *fields, **kwargs):
-        self.operation = "select"
+        if self.operation != "insert":
+            self.operation = "select"
         return self
 
     def eq(self, key, value):

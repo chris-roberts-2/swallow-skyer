@@ -51,6 +51,7 @@ def test_upload_save_retrieve_flow(client, monkeypatch, auth_headers):
 
     from app.services.storage import r2_client as r2_module
     from app.services.storage import supabase_client as supabase_module
+    import app.routes.upload as upload_module
 
     # Ensure clients appear initialized even without real credentials
     monkeypatch.setattr(
@@ -66,6 +67,12 @@ def test_upload_save_retrieve_flow(client, monkeypatch, auth_headers):
         supabase_module.supabase_client,
         "supports_thumbnail_columns",
         lambda: True,
+        raising=True,
+    )
+    monkeypatch.setattr(
+        upload_module,
+        "require_role",
+        lambda project_id, roles: {"user_id": "user-42"},
         raising=True,
     )
 
@@ -163,6 +170,12 @@ def test_upload_save_retrieve_flow(client, monkeypatch, auth_headers):
     )
     monkeypatch.setattr(
         supabase_module.supabase_client,
+        "get_project_role",
+        lambda project_id, user_id: "owner",
+        raising=True,
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
         "fetch_project_photos",
         mock_fetch_project_photos,
         raising=True,
@@ -182,6 +195,7 @@ def test_upload_save_retrieve_flow(client, monkeypatch, auth_headers):
     upload_resp = client.post(
         "/api/photos/upload",
         data=data,
+        headers=auth_headers,
         content_type="multipart/form-data",
     )
 
@@ -219,7 +233,7 @@ def test_upload_save_retrieve_flow(client, monkeypatch, auth_headers):
 
     # Act: retrieve photos
     list_resp = client.get(
-        "/api/photos",
+        f"/api/v1/photos/?project_id={project_uuid}",
         headers=auth_headers,
     )
     assert list_resp.status_code == 200, list_resp.data
@@ -257,7 +271,7 @@ def test_photo_listing_enforces_project_membership(client, monkeypatch, auth_hea
     )
 
     resp = client.get(
-        "/api/photos?project_id=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        "/api/v1/photos/?project_id=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         headers=auth_headers,
     )
 

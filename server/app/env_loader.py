@@ -81,7 +81,11 @@ def load_app_environment() -> List[str]:
     for env_path in candidates:
         if not env_path.exists():
             continue
-        load_dotenv(env_path, override=False)
+        try:
+            load_dotenv(env_path, override=False)
+        except PermissionError:
+            # Skip env files that aren't readable in locked-down environments.
+            continue
         loaded.append(str(env_path))
 
     return loaded

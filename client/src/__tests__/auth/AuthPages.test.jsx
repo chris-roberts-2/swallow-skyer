@@ -13,6 +13,14 @@ const renderWithAuth = (ui, value) =>
         login: jest.fn(),
         signup: jest.fn(),
         logout: jest.fn(),
+        refreshProfile: jest.fn(),
+        updateProfile: jest.fn(),
+        updateLogin: jest.fn(),
+        projects: [],
+        projectRoles: {},
+        activeProject: null,
+        setActiveProject: jest.fn(),
+        refreshProjects: jest.fn(),
         user: null,
         session: null,
         ...value,
@@ -44,6 +52,12 @@ test('RegisterPage submits credentials via AuthContext', async () => {
   const signup = jest.fn().mockResolvedValue({});
   renderWithAuth(<RegisterPage />, { signup });
 
+  fireEvent.change(screen.getByLabelText(/First name/i), {
+    target: { value: 'Test' },
+  });
+  fireEvent.change(screen.getByLabelText(/Last name/i), {
+    target: { value: 'Pilot' },
+  });
   fireEvent.change(screen.getByLabelText(/Email/i), {
     target: { value: 'new@example.com' },
   });
@@ -54,29 +68,32 @@ test('RegisterPage submits credentials via AuthContext', async () => {
   fireEvent.click(screen.getByRole('button', { name: /register/i }));
 
   await waitFor(() =>
-    expect(signup).toHaveBeenCalledWith('new@example.com', 'Secret123!')
+    expect(signup).toHaveBeenCalledWith('new@example.com', 'Secret123!', {
+      company: '',
+      firstName: 'Test',
+      lastName: 'Pilot',
+    })
   );
 });
 
 test('ProfilePage shows metadata and handles logout', async () => {
   const logout = jest.fn().mockResolvedValue({});
-  const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-  const createdAt = '2025-01-01T00:00:00.000Z';
 
   renderWithAuth(<ProfilePage />, {
     logout,
     user: { email: 'pilot@example.com', id: 'user-123' },
-    session: { expires_at: expiresAt, created_at: createdAt },
+    session: {},
+    profile: {
+      email: 'pilot@example.com',
+      firstName: 'Test',
+      lastName: 'Pilot',
+      company: 'Swallow',
+    },
   });
 
-  expect(screen.getByText('pilot@example.com')).toBeInTheDocument();
-  expect(screen.getByText('user-123')).toBeInTheDocument();
-  expect(
-    screen.getByText(new Date(expiresAt * 1000).toLocaleString())
-  ).toBeInTheDocument();
-  expect(
-    screen.getByText(new Date(createdAt).toLocaleString())
-  ).toBeInTheDocument();
+  expect(screen.getAllByText('pilot@example.com').length).toBeGreaterThan(0);
+  expect(screen.getByText('Test Pilot')).toBeInTheDocument();
+  expect(screen.getByText('Swallow')).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: /logout/i }));
 

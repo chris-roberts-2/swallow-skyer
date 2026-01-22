@@ -5,6 +5,7 @@ import '@testing-library/jest-dom';
 // We'll test against PhotoUpload and the map fetching example
 import PhotoUpload from '../../components/photo/PhotoUpload';
 import PhotoMapFetchExample from '../../components/PhotoMapFetchExample';
+import { AuthContext } from '../../context/AuthContext';
 
 // Mock fetch globally for backend API calls
 const originalFetch = global.fetch;
@@ -96,7 +97,28 @@ test('map component fetch -> photos render at coordinates', async () => {
     }),
   });
 
-  render(<PhotoMapFetchExample />);
+  const authValue = {
+    user: { id: 'user-123', email: 'pilot@example.com' },
+    session: { user: { id: 'user-123', email: 'pilot@example.com' } },
+    isLoading: false,
+    login: jest.fn(),
+    signup: jest.fn(),
+    logout: jest.fn(),
+    refreshProfile: jest.fn(),
+    updateProfile: jest.fn(),
+    updateLogin: jest.fn(),
+    projects: [{ id: 'project-1', name: 'Test Project' }],
+    projectRoles: {},
+    activeProject: { id: 'project-1', name: 'Test Project' },
+    setActiveProject: jest.fn(),
+    refreshProjects: jest.fn(),
+  };
+
+  render(
+    <AuthContext.Provider value={authValue}>
+      <PhotoMapFetchExample />
+    </AuthContext.Provider>
+  );
 
   // Wait for fetch to complete and markers to be added (we can't inspect maplibre canvas directly)
   await waitFor(() => expect(global.fetch).toHaveBeenCalled());

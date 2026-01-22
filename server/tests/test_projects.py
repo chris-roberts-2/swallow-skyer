@@ -37,11 +37,12 @@ def test_create_project_success(client, monkeypatch):
     created = {"id": "proj-1", "name": "Demo", "description": "test"}
     calls = {}
 
-    def fake_create_project(name, owner_id, description=None):
+    def fake_create_project(name, owner_id, description=None, address=None):
         calls["create"] = {
             "name": name,
             "owner_id": owner_id,
             "description": description,
+            "address": address,
         }
         return created
 
@@ -118,10 +119,11 @@ def test_update_project_success(client, monkeypatch):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "update_project",
-        lambda project_id, name=None, description=None: {
+        lambda project_id, name=None, address=None, show_on_projects=None: {
             "id": project_id,
             "name": name or "Demo",
-            "description": description,
+            "address": address,
+            "show_on_projects": show_on_projects,
         },
     )
     resp = client.patch(
@@ -169,12 +171,15 @@ def test_delete_project_success(client, monkeypatch):
     )
     monkeypatch.setattr(
         supabase_module.supabase_client,
-        "delete_project",
-        lambda project_id: True,
+        "update_project",
+        lambda project_id, name=None, address=None, show_on_projects=None: {
+            "id": project_id,
+            "show_on_projects": show_on_projects,
+        },
     )
     resp = client.delete("/api/v1/projects/proj-1", headers=AUTH_HEADER)
     assert resp.status_code == 200
-    assert resp.get_json()["status"] == "deleted"
+    assert resp.get_json()["status"] == "hidden"
 
 
 def test_delete_project_not_found(client, monkeypatch):
@@ -185,8 +190,8 @@ def test_delete_project_not_found(client, monkeypatch):
     )
     monkeypatch.setattr(
         supabase_module.supabase_client,
-        "delete_project",
-        lambda project_id: False,
+        "update_project",
+        lambda project_id, name=None, address=None, show_on_projects=None: None,
     )
     resp = client.delete("/api/v1/projects/proj-1", headers=AUTH_HEADER)
     assert resp.status_code == 404

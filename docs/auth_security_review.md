@@ -9,10 +9,9 @@
 
 ## Auth middleware hardening
 
-- Confirm middleware strictly checks `Authorization` headers matching `Bearer <token>` before falling back to `AuthService`.
+- Confirm middleware strictly checks `Authorization` headers matching `Bearer <token>` and rejects invalid Supabase JWTs.
 - Reject malformed, empty, expired, rotated, or invalid tokens with `401` and zero payload exposure.
-- Wrap **all protected routes** (photo API, `/api/auth/me`, etc.) with `@jwt_required` so every entry point triggers validation.
-- Keep `AuthService` token rotation logic (token_version) in sync with stored user state.
+- Wrap **all protected routes** (photo API, `/api/v1/profile`, etc.) with `@jwt_required` so every entry point triggers validation.
 
 ## Frontend session safety
 

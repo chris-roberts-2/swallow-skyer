@@ -42,7 +42,10 @@ def _load_link_by_token(token: str) -> Optional[Dict]:
         .maybe_single()
         .execute()
     )
-    return response.data if hasattr(response, "data") else None
+    data = response.data if hasattr(response, "data") else None
+    if isinstance(data, list):
+        return data[0] if data else None
+    return data
 
 
 def _load_link_by_id(link_id: str) -> Optional[Dict]:
@@ -55,7 +58,10 @@ def _load_link_by_id(link_id: str) -> Optional[Dict]:
         .maybe_single()
         .execute()
     )
-    return response.data if hasattr(response, "data") else None
+    data = response.data if hasattr(response, "data") else None
+    if isinstance(data, list):
+        return data[0] if data else None
+    return data
 
 
 def _is_expired(record: Dict) -> bool:
@@ -124,6 +130,8 @@ def create_public_link(project_id: str):
         .execute()
     )
     record = response.data if hasattr(response, "data") else None
+    if isinstance(record, list):
+        record = record[0] if record else None
     if not record:
         return jsonify({"error": "failed", "message": "Could not create link"}), 500
 

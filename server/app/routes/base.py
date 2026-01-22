@@ -7,7 +7,6 @@ from sqlalchemy import text
 import os
 from datetime import datetime
 from app import db
-from app.models import User, Photo, Location
 from app.services.storage.supabase_client import supabase_client
 from app.services.storage.r2_client import r2_client
 from .upload import registerUploadRoutes

@@ -21,7 +21,8 @@ class FakeTable:
         self._op = "select"
 
     def select(self, *_args, **_kwargs):
-        self._op = "select"
+        if self._op != "insert":
+            self._op = "select"
         return self
 
     def eq(self, key, value):

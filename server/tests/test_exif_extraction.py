@@ -11,7 +11,7 @@ def _make_image_with_exif():
     return buffer.getvalue()
 
 
-def test_exif_parsing_and_location_creation(client, monkeypatch):
+def test_exif_parsing_and_location_creation(client, auth_headers, monkeypatch):
     from app.services.storage import r2_client as r2_module
     from app.services.storage import supabase_client as supabase_module
     import app.routes.upload as upload_module
@@ -29,6 +29,12 @@ def test_exif_parsing_and_location_creation(client, monkeypatch):
         supabase_module.supabase_client,
         "supports_thumbnail_columns",
         lambda: True,
+        raising=True,
+    )
+    monkeypatch.setattr(
+        upload_module,
+        "require_role",
+        lambda project_id, roles: {"user_id": "user-1"},
         raising=True,
     )
 
@@ -104,6 +110,7 @@ def test_exif_parsing_and_location_creation(client, monkeypatch):
             "file": (io.BytesIO(_make_image_with_exif()), "exif.jpg", "image/jpeg"),
             "project_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         },
+        headers=auth_headers,
         content_type="multipart/form-data",
     )
 
@@ -114,7 +121,7 @@ def test_exif_parsing_and_location_creation(client, monkeypatch):
     assert calls["stores"][0]["captured_at"] == "2024-01-01T00:00:00Z"
 
 
-def test_batch_upload_uses_exif_and_locations(client, monkeypatch):
+def test_batch_upload_uses_exif_and_locations(client, auth_headers, monkeypatch):
     from app.services.storage import r2_client as r2_module
     from app.services.storage import supabase_client as supabase_module
     import app.routes.upload as upload_module
@@ -132,6 +139,12 @@ def test_batch_upload_uses_exif_and_locations(client, monkeypatch):
         supabase_module.supabase_client,
         "supports_thumbnail_columns",
         lambda: True,
+        raising=True,
+    )
+    monkeypatch.setattr(
+        upload_module,
+        "require_role",
+        lambda project_id, roles: {"user_id": "user-1"},
         raising=True,
     )
 
@@ -210,6 +223,7 @@ def test_batch_upload_uses_exif_and_locations(client, monkeypatch):
             ],
             "project_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         },
+        headers=auth_headers,
         content_type="multipart/form-data",
     )
 
@@ -219,7 +233,7 @@ def test_batch_upload_uses_exif_and_locations(client, monkeypatch):
     assert all(call[0] == 1.0 for call in location_calls)
 
 
-def test_exif_reuses_location(client, monkeypatch):
+def test_exif_reuses_location(client, auth_headers, monkeypatch):
     from app.services.storage import r2_client as r2_module
     from app.services.storage import supabase_client as supabase_module
     import app.routes.upload as upload_module
@@ -237,6 +251,12 @@ def test_exif_reuses_location(client, monkeypatch):
         supabase_module.supabase_client,
         "supports_thumbnail_columns",
         lambda: True,
+        raising=True,
+    )
+    monkeypatch.setattr(
+        upload_module,
+        "require_role",
+        lambda project_id, roles: {"user_id": "user-1"},
         raising=True,
     )
 
@@ -299,6 +319,7 @@ def test_exif_reuses_location(client, monkeypatch):
           "file": (io.BytesIO(_make_image_with_exif()), "one.jpg", "image/jpeg"),
           "project_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         },
+        headers=auth_headers,
         content_type="multipart/form-data",
     )
     assert resp.status_code == 201

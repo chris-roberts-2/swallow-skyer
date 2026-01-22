@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 def _load_policy_sql():
-    path = Path("server/migrations/202512080100_rls_project_policies.sql")
+    path = Path("migrations/202512080100_rls_project_policies.sql")
     return path.read_text()
 
 

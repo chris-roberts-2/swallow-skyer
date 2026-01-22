@@ -12,6 +12,14 @@ def _current_user_id() -> str:
     return str(user_id) if user_id else ""
 
 
+def _clean_text(value: str) -> str:
+    return (value or "").strip()
+
+
+def _normalize_email(value: str) -> str:
+    return _clean_text(value).lower()
+
+
 @bp.route("", methods=["GET"])
 @jwt_required
 def get_profile():
@@ -32,6 +40,46 @@ def get_profile():
         if not row:
             supabase_client.ensure_user_exists(user_id, email=email)
             row = supabase_client.get_user_metadata(user_id) or None
+        return jsonify({"profile": row}), 200
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@bp.route("/register", methods=["POST"])
+def register_profile():
+    """
+    Store user metadata in Supabase public.users immediately after signup.
+
+    This endpoint is intentionally unauthenticated because Supabase may require
+    email confirmation before a session exists.
+    """
+    payload = request.get_json(silent=True) or {}
+    user_id = _clean_text(payload.get("userId") or payload.get("id") or "")
+    email = _normalize_email(payload.get("email") or "")
+    if not user_id:
+        return jsonify({"error": "userId is required"}), 400
+    if not email:
+        return jsonify({"error": "email is required"}), 400
+
+    first_name = _clean_text(payload.get("first_name") or payload.get("firstName") or "")
+    last_name = _clean_text(payload.get("last_name") or payload.get("lastName") or "")
+    company = _clean_text(payload.get("company") or "")
+
+    try:
+        auth_user = supabase_client.get_auth_user_by_id(user_id)
+        auth_email = _normalize_email(auth_user.get("email") or "")
+        if auth_email and auth_email != email:
+            return jsonify({"error": "Email does not match Supabase auth user"}), 400
+
+        updates = {
+            "id": user_id,
+            "email": auth_email or email,
+            "first_name": first_name or None,
+            "last_name": last_name or None,
+            "company": company or None,
+        }
+        supabase_client.client.table("users").upsert(updates).execute()  # type: ignore[union-attr]
+        row = supabase_client.get_user_metadata(user_id)
         return jsonify({"profile": row}), 200
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500

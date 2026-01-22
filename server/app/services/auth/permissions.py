@@ -4,7 +4,7 @@ Project-level permission utilities.
 
 from typing import Iterable, Optional, Set, Tuple, Union
 
-from flask import g
+from flask import g, has_request_context
 
 from app.services.storage.supabase_client import supabase_client
 
@@ -16,6 +16,8 @@ DEFAULT_DENIED_MESSAGE = "You do not have permission for this action."
 
 
 def _current_user_id() -> Optional[str]:
+    if not has_request_context():
+        return None
     user = getattr(g, "current_user", None)
     if isinstance(user, dict):
         return user.get("id") or user.get("user_id") or user.get("sub")

@@ -12,6 +12,14 @@ const renderWithAuth = (value = {}, initialEntries = ['/login']) => {
     login: jest.fn(),
     signup: jest.fn(),
     logout: jest.fn(),
+    refreshProfile: jest.fn(),
+    updateProfile: jest.fn(),
+    updateLogin: jest.fn(),
+    projects: [],
+    projectRoles: {},
+    activeProject: null,
+    setActiveProject: jest.fn(),
+    refreshProjects: jest.fn(),
   };
 
   return render(

@@ -847,6 +847,32 @@ class SupabaseClient:
         )
         return response.data if hasattr(response, "data") else None
 
+    def get_auth_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch a Supabase Auth user by id using the admin API.
+        """
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        if not user_id:
+            raise ValueError("user_id is required")
+        auth = getattr(self.client, "auth", None)
+        admin = getattr(auth, "admin", None) if auth else None
+        if not admin or not hasattr(admin, "get_user_by_id"):
+            raise RuntimeError("Supabase admin API not available on client")
+        response = admin.get_user_by_id(user_id)
+        user = getattr(response, "user", None) if response else None
+        if user is None and isinstance(response, dict):
+            user = response.get("user")
+        if user is None:
+            raise RuntimeError("Supabase auth user not found")
+        if hasattr(user, "model_dump"):
+            return user.model_dump()  # type: ignore[attr-defined]
+        if hasattr(user, "dict"):
+            return user.dict()  # type: ignore[attr-defined]
+        if isinstance(user, dict):
+            return user
+        return {"user": user}
+
     def create_user_with_email(self, email: str) -> Optional[Dict[str, Any]]:
         """
         Create a user row with the given email. Supabase will generate the ID.

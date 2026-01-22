@@ -30,9 +30,10 @@ def _make_image_bytes():
     return buffer.getvalue()
 
 
-def test_upload_stores_project_prefixed_key_and_updates_supabase(client, monkeypatch):
+def test_upload_stores_project_prefixed_key_and_updates_supabase(client, auth_headers, monkeypatch):
     from app.services.storage import r2_client as r2_module
     from app.services.storage import supabase_client as supabase_module
+    import app.routes.upload as upload_module
 
     monkeypatch.setattr(
         r2_module.r2_client, "client", SimpleNamespace(name="mock_r2"), raising=True
@@ -114,6 +115,12 @@ def test_upload_stores_project_prefixed_key_and_updates_supabase(client, monkeyp
         lambda: True,
         raising=True,
     )
+    monkeypatch.setattr(
+        upload_module,
+        "require_role",
+        lambda project_id, roles: {"user_id": "user-99"},
+        raising=True,
+    )
 
     project_id = "11111111-1111-1111-1111-111111111111"
     img_bytes = _make_image_bytes()
@@ -126,6 +133,7 @@ def test_upload_stores_project_prefixed_key_and_updates_supabase(client, monkeyp
             "longitude": "-71.55",
             "project_id": project_id,
         },
+        headers=auth_headers,
         content_type="multipart/form-data",
     )
 
@@ -149,9 +157,10 @@ def test_upload_stores_project_prefixed_key_and_updates_supabase(client, monkeyp
     assert captured["update"]["updates"]["thumbnail_r2_url"].endswith("_thumb.jpg")
 
 
-def test_thumbnail_upload_failure_triggers_cleanup(client, monkeypatch):
+def test_thumbnail_upload_failure_triggers_cleanup(client, auth_headers, monkeypatch):
     from app.services.storage import r2_client as r2_module
     from app.services.storage import supabase_client as supabase_module
+    import app.routes.upload as upload_module
 
     monkeypatch.setattr(
         r2_module.r2_client, "client", SimpleNamespace(name="mock_r2"), raising=True
@@ -176,6 +185,12 @@ def test_thumbnail_upload_failure_triggers_cleanup(client, monkeypatch):
         supabase_module.supabase_client,
         "supports_thumbnail_columns",
         lambda: True,
+        raising=True,
+    )
+    monkeypatch.setattr(
+        upload_module,
+        "require_role",
+        lambda project_id, roles: {"user_id": "user-42"},
         raising=True,
     )
 
@@ -232,6 +247,7 @@ def test_thumbnail_upload_failure_triggers_cleanup(client, monkeypatch):
             "longitude": "2.0",
             "project_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         },
+        headers=auth_headers,
         content_type="multipart/form-data",
     )
 
@@ -241,9 +257,10 @@ def test_thumbnail_upload_failure_triggers_cleanup(client, monkeypatch):
         assert set(deleted_keys) == set(upload_keys)
 
 
-def test_update_failure_cleans_original_and_thumbnail(client, monkeypatch):
+def test_update_failure_cleans_original_and_thumbnail(client, auth_headers, monkeypatch):
     from app.services.storage import r2_client as r2_module
     from app.services.storage import supabase_client as supabase_module
+    import app.routes.upload as upload_module
 
     monkeypatch.setattr(
         r2_module.r2_client, "client", SimpleNamespace(name="mock_r2"), raising=True
@@ -267,6 +284,12 @@ def test_update_failure_cleans_original_and_thumbnail(client, monkeypatch):
         supabase_module.supabase_client,
         "supports_thumbnail_columns",
         lambda: True,
+        raising=True,
+    )
+    monkeypatch.setattr(
+        upload_module,
+        "require_role",
+        lambda project_id, roles: {"user_id": "user-42"},
         raising=True,
     )
     monkeypatch.setattr(
@@ -322,6 +345,7 @@ def test_update_failure_cleans_original_and_thumbnail(client, monkeypatch):
             "longitude": "2.0",
             "project_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         },
+        headers=auth_headers,
         content_type="multipart/form-data",
     )
 

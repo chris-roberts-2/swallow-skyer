@@ -13,12 +13,13 @@
 - Authenticated screens rely on `AuthGuard` to gate access before rendering. Once inside, data fetchers (e.g., `apiClient`) read the stored `access_token` and inject `Authorization: Bearer <token>` before dispatching any backend request.
 - Session-aware components (map/upload/profile) consume `useAuth()` and trigger logout/redirect if the context loses its user, resulting from expiration or manual sign-out.
 - Login/registration forms call `login`/`signup`, then navigate to `/map` (or the protected referrer) if authentication succeeds.
+- Registration also calls `/api/v1/profile/register` (unauthenticated) to persist user metadata in `public.users` immediately after signup, even before email confirmation.
 
 ## Backend request lifecycle
 
 - Every protected request must include `Authorization: Bearer <token>` in the header. The JWT middleware (`jwt_required`) validates the header, returning `401` when the header is missing, the token string empty, or validation fails.
-- Validation first attempts to treat the token as a Supabase JWT by calling `verify_supabase_jwt`. If Supabase validation succeeds, the decoded user payload is written onto `g.current_user`. Otherwise it falls back to the internal Flask `AuthService`.
-- Routes decorating `@jwt_required` (e.g., `/api/auth/me`, `/api/v1/photos/*`) now rely on that middleware to gate access. Handlers can safely read `g.current_user` without re-validating the header.
+- Validation treats the token as a Supabase JWT by calling `verify_supabase_jwt`. If Supabase validation succeeds, the decoded user payload is written onto `g.current_user`.
+- Routes decorating `@jwt_required` (e.g., `/api/v1/photos/*`, `/api/v1/profile`) rely on that middleware to gate access. Handlers can safely read `g.current_user` without re-validating the header.
 
 ## Data flow diagram
 
@@ -47,4 +48,4 @@ R2 Storage (uploads) ← Backend upload endpoints only (no front-end keys)
 ## Testing summary
 
 - **Frontend (Jest/RTL)**: AuthContext covers session restoration, login/signup/logout flows, and reacts to `onAuthStateChange`. AuthGuard tests validate redirects for unauthenticated contexts, and App-level tests cover route-level protections plus nav/profile UI. Login/Register/Profile pages each have forms/content asserted via AuthContext fakes.
-- **Backend (pytest)**: Auth-focused suites validate JWT rejection for missing/malformed tokens, Supabase session routing that feeds `/api/auth/me`, and photo routes that enforce authentication for upload/list queries while honoring valid Supabase tokens. Upload tests mock R2 workflows so the route logic still exercises middleware without touching the network.
+- **Backend (pytest)**: Auth-focused suites validate JWT rejection for missing/malformed tokens and photo routes that enforce authentication for upload/list queries while honoring valid Supabase tokens. Upload tests mock R2 workflows so the route logic still exercises middleware without touching the network.

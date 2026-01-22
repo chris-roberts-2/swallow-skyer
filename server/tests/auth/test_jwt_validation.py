@@ -4,8 +4,29 @@ def test_protected_route_requires_auth(client):
     assert "Authorization" in response.get_json()["error"]
 
 
-def test_protected_route_accepts_valid_supabase_token(client, auth_headers):
-    response = client.get("/api/v1/photos/", headers=auth_headers)
+def test_protected_route_accepts_valid_supabase_token(client, auth_headers, monkeypatch):
+    from app.services.storage import supabase_client as supabase_module
+
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "get_project_role",
+        lambda project_id, user_id: "viewer",
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "fetch_project_photos",
+        lambda **kwargs: {"data": [], "count": 0},
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "extract_thumbnail_fields",
+        lambda record: (None, None),
+    )
+
+    response = client.get(
+        "/api/v1/photos/?project_id=11111111-1111-1111-1111-111111111111",
+        headers=auth_headers,
+    )
     assert response.status_code == 200
 
 
@@ -17,9 +38,3 @@ def test_invalid_supabase_token_is_rejected(client, mock_supabase_verify):
     assert "Supabase" in response.get_json()["error"]
 
 
-def test_me_endpoint_returns_supabase_user(client, auth_headers):
-    response = client.get("/api/auth/me", headers=auth_headers)
-    assert response.status_code == 200
-    payload = response.get_json()["user"]
-    assert payload["email"] == "pilot@example.com"
-    assert payload["id"] == "user-123"

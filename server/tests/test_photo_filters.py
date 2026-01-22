@@ -29,12 +29,18 @@ def test_date_filter(monkeypatch, client, auth_headers):
         }
 
     def mock_list_projects_for_user(user_id):
-        return [{"id": "proj-1", "role": "owner"}]
+        return [{"id": "11111111-1111-1111-1111-111111111111", "role": "owner"}]
 
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "list_projects_for_user",
         mock_list_projects_for_user,
+        raising=True,
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "get_project_role",
+        lambda project_id, user_id: "owner",
         raising=True,
     )
     monkeypatch.setattr(
@@ -45,7 +51,7 @@ def test_date_filter(monkeypatch, client, auth_headers):
     )
 
     resp = client.get(
-        "/api/v1/photos/?start_date=2024-01-01&end_date=2024-01-31",
+        "/api/v1/photos/?project_id=11111111-1111-1111-1111-111111111111&start_date=2024-01-01&end_date=2024-01-31",
         headers=auth_headers,
     )
     assert resp.status_code == 200
@@ -70,12 +76,18 @@ def test_bbox_filter(monkeypatch, client, auth_headers):
         return {"data": [], "count": 0}
 
     def mock_list_projects_for_user(user_id):
-        return [{"id": "proj-1", "role": "owner"}]
+        return [{"id": "11111111-1111-1111-1111-111111111111", "role": "owner"}]
 
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "list_projects_for_user",
         mock_list_projects_for_user,
+        raising=True,
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "get_project_role",
+        lambda project_id, user_id: "owner",
         raising=True,
     )
     monkeypatch.setattr(
@@ -86,7 +98,7 @@ def test_bbox_filter(monkeypatch, client, auth_headers):
     )
 
     resp = client.get(
-        "/api/v1/photos/?min_lat=10&max_lat=20&min_lon=-50&max_lon=-40",
+        "/api/v1/photos/?project_id=11111111-1111-1111-1111-111111111111&min_lat=10&max_lat=20&min_lon=-50&max_lon=-40",
         headers=auth_headers,
     )
     assert resp.status_code == 200
@@ -109,12 +121,18 @@ def test_geocode_filter(monkeypatch, client, auth_headers):
         return {"data": [], "count": 0}
 
     def mock_list_projects_for_user(user_id):
-        return [{"id": "proj-1", "role": "owner"}]
+        return [{"id": "11111111-1111-1111-1111-111111111111", "role": "owner"}]
 
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "list_projects_for_user",
         mock_list_projects_for_user,
+        raising=True,
+    )
+    monkeypatch.setattr(
+        supabase_module.supabase_client,
+        "get_project_role",
+        lambda project_id, user_id: "owner",
         raising=True,
     )
     monkeypatch.setattr(
@@ -125,7 +143,7 @@ def test_geocode_filter(monkeypatch, client, auth_headers):
     )
 
     resp = client.get(
-        "/api/v1/photos/?city=Paris&state=Ile&country=France",
+        "/api/v1/photos/?project_id=11111111-1111-1111-1111-111111111111&city=Paris&state=Ile&country=France",
         headers=auth_headers,
     )
     assert resp.status_code == 200

@@ -167,13 +167,6 @@ def create_app(config_name=None):
                     },
                 )
 
-                ensure_columns(
-                    "users",
-                    {
-                        "password_hash": "ALTER TABLE users ADD COLUMN password_hash TEXT",
-                        "token_version": "ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0",
-                    },
-                )
             except Exception:
                 # Non-fatal in local dev.
                 pass

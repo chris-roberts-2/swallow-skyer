@@ -19,8 +19,8 @@ def test_photo_listing_returns_signed_urls_and_pagination(auth_client, monkeypat
     )
     monkeypatch.setattr(
         supabase_module.supabase_client,
-        "list_projects_for_user",
-        lambda user_id: [{"id": "proj-1", "role": "owner"}],
+        "get_project_role",
+        lambda project_id, user_id: "owner",
         raising=True,
     )
 
@@ -32,7 +32,7 @@ def test_photo_listing_returns_signed_urls_and_pagination(auth_client, monkeypat
             "data": [
                 {
                     "id": "p1",
-                    "project_id": "proj-1",
+                    "project_id": "11111111-1111-1111-1111-111111111111",
                     "user_id": "user-123",
                     "file_name": "one.jpg",
                     "caption": None,
@@ -40,9 +40,9 @@ def test_photo_listing_returns_signed_urls_and_pagination(auth_client, monkeypat
                     "longitude": 20.0,
                     "created_at": "2024-01-01T00:00:00Z",
                     "captured_at": "2023-12-31T23:59:59Z",
-                    "r2_path": "projects/proj-1/photos/p1.jpg",
+                    "r2_path": "projects/11111111-1111-1111-1111-111111111111/photos/p1.jpg",
                     "r2_url": "",
-                    "thumbnail_r2_path": "projects/proj-1/photos/p1_thumb.jpg",
+                    "thumbnail_r2_path": "projects/11111111-1111-1111-1111-111111111111/photos/p1_thumb.jpg",
                     "thumbnail_r2_url": "",
                 }
             ],
@@ -64,7 +64,7 @@ def test_photo_listing_returns_signed_urls_and_pagination(auth_client, monkeypat
     )
 
     resp = client.get(
-        "/api/v1/photos/?page=2&page_size=5",
+        "/api/v1/photos/?project_id=11111111-1111-1111-1111-111111111111&page=2&page_size=5",
         headers=headers,
     )
 
@@ -73,16 +73,24 @@ def test_photo_listing_returns_signed_urls_and_pagination(auth_client, monkeypat
     assert data["pagination"]["page"] == 2
     assert data["pagination"]["page_size"] == 5
     assert data["pagination"]["total"] == 42
-    assert captured_args["project_ids"] == ["proj-1"]
+    assert captured_args["project_ids"] == ["11111111-1111-1111-1111-111111111111"]
     assert captured_args["page"] == 2
     assert captured_args["page_size"] == 5
 
     photo = data["photos"][0]
-    assert photo["url"].startswith("https://signed.example/projects/proj-1/photos/p1.jpg")
-    assert photo["r2_path"] == "projects/proj-1/photos/p1.jpg"
-    assert photo["thumbnail_r2_path"] == "projects/proj-1/photos/p1_thumb.jpg"
+    assert photo["url"].startswith(
+        "https://signed.example/projects/11111111-1111-1111-1111-111111111111/photos/p1.jpg"
+    )
+    assert (
+        photo["r2_path"]
+        == "projects/11111111-1111-1111-1111-111111111111/photos/p1.jpg"
+    )
+    assert (
+        photo["thumbnail_r2_path"]
+        == "projects/11111111-1111-1111-1111-111111111111/photos/p1_thumb.jpg"
+    )
     assert photo["thumbnail_url"].startswith(
-        "https://signed.example/projects/proj-1/photos/p1_thumb.jpg"
+        "https://signed.example/projects/11111111-1111-1111-1111-111111111111/photos/p1_thumb.jpg"
     )
     assert photo["project_role"] == "owner"
 
@@ -109,7 +117,7 @@ def test_photo_listing_requires_membership_for_requested_project(
     )
 
     assert resp.status_code == 403
-    assert "access" in resp.get_json().get("error", "").lower()
+    assert resp.get_json().get("error") == "forbidden"
 
 
 def test_photo_listing_filters_user_and_date_range(auth_client, monkeypatch):
@@ -121,8 +129,8 @@ def test_photo_listing_filters_user_and_date_range(auth_client, monkeypatch):
     )
     monkeypatch.setattr(
         supabase_module.supabase_client,
-        "list_projects_for_user",
-        lambda user_id: [{"id": "proj-1", "role": "owner"}],
+        "get_project_role",
+        lambda project_id, user_id: "owner",
         raising=True,
     )
 
@@ -158,7 +166,7 @@ def test_photo_listing_filters_user_and_date_range(auth_client, monkeypatch):
     )
 
     resp = client.get(
-        "/api/v1/photos/?user_id=user-999&date_range=2024-01-01,2024-02-01",
+        "/api/v1/photos/?project_id=11111111-1111-1111-1111-111111111111&user_id=user-999&date_range=2024-01-01,2024-02-01",
         headers=headers,
     )
 
