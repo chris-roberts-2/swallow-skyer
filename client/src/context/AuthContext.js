@@ -421,6 +421,8 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (!authState.session || !authState.activeProjectId) return;
     const projectId = authState.activeProjectId;
+    const hasProject = (authState.projects || []).some(p => p.id === projectId);
+    if (!hasProject) return;
     const now = Date.now();
     const last = lastAccessedProject.current;
     if (last.projectId === projectId && now - last.at < 1000) {
@@ -428,7 +430,7 @@ export const AuthProvider = ({ children }) => {
     }
     lastAccessedProject.current = { projectId, at: now };
     apiClient.post(`/v1/projects/${projectId}/access`).catch(() => {});
-  }, [authState.activeProjectId, authState.session]);
+  }, [authState.activeProjectId, authState.projects, authState.session]);
 
   // If signup required email confirmation, we may have collected first/last/company
   // before we had a session. Once we have a session, flush that pending profile to

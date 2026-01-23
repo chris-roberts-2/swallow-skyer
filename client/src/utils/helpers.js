@@ -1,4 +1,5 @@
 import { PHOTO_CONFIG } from './constants';
+import { formatLocalDateTime } from './dateTime';
 
 // File validation helpers
 export const validateFile = file => {
@@ -72,7 +73,7 @@ export const generateThumbnail = (file, size = PHOTO_CONFIG.THUMBNAIL_SIZE) => {
 
 // Date helpers
 export const formatDate = date => {
-  return new Date(date).toLocaleDateString('en-US', {
+  return formatLocalDateTime(date, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

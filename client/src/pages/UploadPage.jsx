@@ -9,6 +9,7 @@ import BatchUploader from '../components/upload/BatchUploader';
 import { useAuth } from '../context';
 import { useNavigate } from 'react-router-dom';
 import { getApiCandidates } from '../utils/apiEnv';
+import { formatLocalDateTime } from '../utils/dateTime';
 
 const envApiBases = getApiCandidates();
 
@@ -37,21 +38,7 @@ const resolvePhotoUrl = photo => {
   return { primaryUrl, fallbackUrl, resolvedUrl, resolvedThumb };
 };
 
-const formatTimestamp = value => {
-  if (!value) return '';
-  try {
-    return new Date(value).toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-  } catch (e) {
-    return '';
-  }
-};
+const formatTimestamp = value => formatLocalDateTime(value);
 
 const menuItemStyle = {
   width: '100%',

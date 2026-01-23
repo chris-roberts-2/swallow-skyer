@@ -11,6 +11,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useAuth } from './context';
 import PhotoStack from './components/map/PhotoStack';
 import { getApiCandidates } from './utils/apiEnv';
+import { formatLocalDateTime, formatLocalDateTimeParts } from './utils/dateTime';
 import { configureMaplibreWorker } from './utils/maplibreWorker';
 
 const envApiBases = getApiCandidates();
@@ -57,37 +58,8 @@ const normalizeLongitude = value => {
   return value;
 };
 
-const formatTimestamp = iso => {
-  if (!iso) return '';
-  try {
-    return new Date(iso).toLocaleString();
-  } catch (error) {
-    return String(iso);
-  }
-};
-
-const formatDateTimeParts = iso => {
-  if (!iso) return { dateLabel: '', timeLabel: '' };
-  try {
-    const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) {
-      return { dateLabel: String(iso), timeLabel: '' };
-    }
-    return {
-      dateLabel: date.toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      }),
-      timeLabel: date.toLocaleTimeString(undefined, {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-    };
-  } catch (error) {
-    return { dateLabel: String(iso), timeLabel: '' };
-  }
-};
+const formatTimestamp = iso => formatLocalDateTime(iso);
+const formatDateTimeParts = iso => formatLocalDateTimeParts(iso);
 
 const resolvePhotoUrl = photo => {
   const r2Path = photo.r2_path || photo.r2Path || photo.r2_key || photo.r2Key;

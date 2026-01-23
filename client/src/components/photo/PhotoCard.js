@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatLocalDateTime } from '../../utils/dateTime';
 
 const PhotoCard = ({ photo, onClick, stackIndex = 0 }) => {
   return (
@@ -14,7 +15,14 @@ const PhotoCard = ({ photo, onClick, stackIndex = 0 }) => {
       />
       <div className="photo-info">
         <p className="photo-caption">{photo.caption}</p>
-        <span className="photo-date">{photo.createdAt}</span>
+        <span className="photo-date">
+          {formatLocalDateTime(
+            photo.createdAt ||
+              photo.created_at ||
+              photo.uploaded_at ||
+              photo.captured_at
+          )}
+        </span>
       </div>
     </div>
   );

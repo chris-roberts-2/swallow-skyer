@@ -4,25 +4,12 @@ import maplibregl from 'maplibre-gl';
 import { useAuth } from '../context';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { getApiCandidates } from '../utils/apiEnv';
+import { formatLocalDateTime } from '../utils/dateTime';
 import { configureMaplibreWorker } from '../utils/maplibreWorker';
 
 const envApiBases = getApiCandidates();
 
-const formatTimestamp = value => {
-  if (!value) return '';
-  try {
-    return new Date(value).toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-  } catch (e) {
-    return '';
-  }
-};
+const formatTimestamp = value => formatLocalDateTime(value);
 
 const resolvePhotoUrl = photo => {
   const r2PublicBase =

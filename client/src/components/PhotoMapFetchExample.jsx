@@ -8,6 +8,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { fetchPhotos, fetchPhotosInBounds } from '../api/photos';
 import { useAuth } from '../context';
+import { formatLocalDate } from '../utils/dateTime';
 
 const PhotoMapFetchExample = () => {
   const mapContainerRef = useRef(null);
@@ -105,7 +106,7 @@ const PhotoMapFetchExample = () => {
           />
           <p style="display: none; color: #666;">Image unavailable</p>
           <p style="margin: 0; font-size: 12px; color: #666;">
-            <strong>Taken:</strong> ${new Date(photo.taken_at).toLocaleDateString()}
+            <strong>Taken:</strong> ${formatLocalDate(photo.taken_at)}
           </p>
           <p style="margin: 4px 0 0 0; font-size: 11px; color: #999;">
             ${photo.latitude.toFixed(5)}, ${photo.longitude.toFixed(5)}

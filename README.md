@@ -148,6 +148,9 @@ git push origin main
 
 ### Frontend update → GitHub Pages (website-v1 branch)
 
+This method avoids worktrees and submodules. It uses a temporary folder
+so the `website-v1` branch contains only static build files.
+
 1) Build the static frontend:
 
 ```bash
@@ -157,21 +160,34 @@ npm run build
 cd ..
 ```
 
-2) Copy the build output into the `website-v1` worktree.
-If you already have a worktree at `_worktrees/website-v1`, use it directly:
+2) Copy the build output to a temp folder (run from repo root):
 
 ```bash
-rm -rf "_worktrees/website-v1"/*
-cp -R client/build/* "_worktrees/website-v1/"
+rm -rf /tmp/swallow-build
+mkdir -p /tmp/swallow-build
+cp -R "client/build/." /tmp/swallow-build/
 ```
 
-3) Commit and push the static build:
+3) Switch to `website-v1`, clear the branch, and replace contents:
 
 ```bash
-cd "_worktrees/website-v1"
+git checkout website-v1
+rm -rf ./*
+cp -R /tmp/swallow-build/. .
+```
+
+4) Commit and push the static build:
+
+```bash
 git add -A
 git commit -m "Deploy frontend build"
 git push origin website-v1
+```
+
+5) Return to `main` when done:
+
+```bash
+git checkout main
 ```
 
 ## API quick reference
