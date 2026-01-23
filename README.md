@@ -130,6 +130,50 @@ Render must be configured with environment variables for:
 - **App**: `SECRET_KEY`
   - Optional: `FRONTEND_ORIGIN` (set to your GitHub Pages origin for CORS)
 
+## Deployment workflow (main + website-v1)
+
+This repo deploys the backend from `main` (Render) and the frontend from
+`website-v1` (GitHub Pages). The `website-v1` branch should contain **only**
+the static build output (`client/build`), not the source tree.
+
+### Backend update → Render (main branch)
+
+```bash
+git checkout main
+git status
+git add client/src/context/AuthContext.js client/src/pages/ProjectsPage.jsx
+git commit -m "Record project access on activation"
+git push origin main
+```
+
+### Frontend update → GitHub Pages (website-v1 branch)
+
+1) Build the static frontend:
+
+```bash
+cd client
+npm ci
+npm run build
+cd ..
+```
+
+2) Copy the build output into the `website-v1` worktree.
+If you already have a worktree at `_worktrees/website-v1`, use it directly:
+
+```bash
+rm -rf "_worktrees/website-v1"/*
+cp -R client/build/* "_worktrees/website-v1/"
+```
+
+3) Commit and push the static build:
+
+```bash
+cd "_worktrees/website-v1"
+git add -A
+git commit -m "Deploy frontend build"
+git push origin website-v1
+```
+
 ## API quick reference
 
 - **Health**: `GET /api/health`
