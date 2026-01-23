@@ -117,6 +117,7 @@ export const AuthProvider = ({ children }) => {
   const isFetchingProjects = useRef(false);
   const lastProjectsFetchAt = useRef(0);
   const isFetchingProfile = useRef(false);
+  const lastAccessedProject = useRef({ projectId: null, at: 0 });
 
   // If projects cannot be fetched temporarily (backend 500, offline, etc), keep the
   // active project id usable for upload/map flows by falling back to the stored id.
@@ -416,6 +417,18 @@ export const AuthProvider = ({ children }) => {
       setProfileState(null);
     }
   }, [authState.session, refreshProfile, setProfileState]);
+
+  useEffect(() => {
+    if (!authState.session || !authState.activeProjectId) return;
+    const projectId = authState.activeProjectId;
+    const now = Date.now();
+    const last = lastAccessedProject.current;
+    if (last.projectId === projectId && now - last.at < 1000) {
+      return;
+    }
+    lastAccessedProject.current = { projectId, at: now };
+    apiClient.post(`/v1/projects/${projectId}/access`).catch(() => {});
+  }, [authState.activeProjectId, authState.session]);
 
   // If signup required email confirmation, we may have collected first/last/company
   // before we had a session. Once we have a session, flush that pending profile to

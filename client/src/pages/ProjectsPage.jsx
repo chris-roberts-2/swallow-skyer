@@ -29,20 +29,10 @@ const ProjectsPage = () => {
   const handleActivate = useCallback(
     project => {
       setActiveProject(project);
-      if (project?.id) {
-        apiClient.post(`/v1/projects/${project.id}/access`).catch(() => {});
-      }
       navigate('/map');
     },
     [navigate, setActiveProject]
   );
-
-  // Ensure active project access timestamp is recorded on page load
-  useEffect(() => {
-    if (activeProject?.id) {
-      apiClient.post(`/v1/projects/${activeProject.id}/access`).catch(() => {});
-    }
-  }, [activeProject]);
 
   const handleEdit = useCallback(project => {
     setEditingProject(project);
