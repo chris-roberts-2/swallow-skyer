@@ -11,7 +11,10 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useAuth } from './context';
 import PhotoStack from './components/map/PhotoStack';
 import { getApiCandidates } from './utils/apiEnv';
-import { formatLocalDateTime, formatLocalDateTimeParts } from './utils/dateTime';
+import {
+  formatLocalDateTime,
+  formatLocalDateTimeParts,
+} from './utils/dateTime';
 import { configureMaplibreWorker } from './utils/maplibreWorker';
 
 const envApiBases = getApiCandidates();
