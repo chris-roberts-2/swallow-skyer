@@ -311,7 +311,7 @@ export const AuthProvider = ({ children }) => {
 
       // Throttle to avoid hammering backend/Supabase (multiple consumers + retries).
       const now = Date.now();
-      if (now - lastProjectsFetchAt.current < 10_000) {
+      if (now - lastProjectsFetchAt.current < 300_000) {
         return;
       }
       lastProjectsFetchAt.current = now;

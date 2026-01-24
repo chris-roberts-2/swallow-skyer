@@ -136,31 +136,36 @@ This repo deploys the backend from `main` (Render) and the frontend from
 `website-v1` (GitHub Pages). The `website-v1` branch should contain **only**
 the static build output (`client/build`), not the source tree.
 
-### Backend update → Render (main branch)
+### Redeploy workflow (frontend + backend)
 
-```bash
-git checkout main
-git status
-git add client/src/context/AuthContext.js client/src/pages/ProjectsPage.jsx
-git commit -m "Record project access on activation"
-git push origin main
-```
+Use this full workflow to rebuild and redeploy both services. Reminder: `npm run build`
+will fail on Prettier errors, so fix formatting issues before committing.
 
-### Frontend update → GitHub Pages (website-v1 branch)
-
-This method avoids worktrees and submodules. It uses a temporary folder
-so the `website-v1` branch contains only static build files.
-
-1) Build the static frontend:
+1) Rebuild `/client/build` (updated frontend):
 
 ```bash
 cd client
 npm ci
 npm run build
-cd ..
 ```
 
-2) Copy the build output to a temp folder (run from repo root):
+Build output is in `client/build/`.
+
+2) Redeploy backend to Render (commit/push to `main`):
+
+```bash
+git checkout main
+git status
+git add <files you want to deploy>
+git commit -m "<message>"
+git push origin main
+```
+
+Render will deploy from `main` automatically.
+
+3) Redeploy frontend to GitHub Pages (commit/push to `website-v1`):
+
+Build first (step 1). From repo root:
 
 ```bash
 rm -rf /tmp/swallow-build
@@ -168,7 +173,7 @@ mkdir -p /tmp/swallow-build
 cp -R "client/build/." /tmp/swallow-build/
 ```
 
-3) Switch to `website-v1`, clear the branch, and replace contents:
+Switch branch and replace contents:
 
 ```bash
 git checkout website-v1
@@ -176,7 +181,7 @@ rm -rf ./*
 cp -R /tmp/swallow-build/. .
 ```
 
-4) Commit and push the static build:
+Commit + push:
 
 ```bash
 git add -A
@@ -184,7 +189,7 @@ git commit -m "Deploy frontend build"
 git push origin website-v1
 ```
 
-5) Return to `main` when done:
+Return to `main`:
 
 ```bash
 git checkout main

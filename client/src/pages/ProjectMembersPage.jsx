@@ -267,13 +267,20 @@ const ProjectMembersPage = () => {
       {error ? (
         <div style={{ color: 'red', marginBottom: 12 }}>{error}</div>
       ) : null}
-      <div style={{ overflowX: 'auto' }}>
+      <div
+        style={{
+          overflowX: 'auto',
+          overflowY: 'visible',
+          position: 'relative',
+        }}
+      >
         <table
           style={{
             width: '100%',
             borderCollapse: 'collapse',
             minWidth: 640,
             tableLayout: 'fixed',
+            overflow: 'visible',
           }}
         >
           <colgroup>
@@ -328,7 +335,7 @@ const ProjectMembersPage = () => {
                   textAlign: 'left',
                 }}
               >
-                Actions
+                &nbsp;
               </th>
             </tr>
           </thead>
@@ -347,7 +354,14 @@ const ProjectMembersPage = () => {
                   key={member.user_id}
                   style={{ borderBottom: '1px solid #f1f3f5' }}
                 >
-                  <td style={{ padding: '8px 6px', textAlign: 'left' }}>
+                  <td
+                    style={{
+                      padding: '8px 6px',
+                      textAlign: 'left',
+                      position: 'relative',
+                      overflow: 'visible',
+                    }}
+                  >
                     {name || ''}
                   </td>
                   <td style={{ padding: '8px 6px', textAlign: 'left' }}>
