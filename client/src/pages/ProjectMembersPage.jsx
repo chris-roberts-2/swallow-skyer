@@ -397,7 +397,8 @@ const ProjectMembersPage = () => {
                           aria-label="Member actions"
                           onClick={e => {
                             e.stopPropagation();
-                            const rect = e.currentTarget.getBoundingClientRect();
+                            const rect =
+                              e.currentTarget.getBoundingClientRect();
                             const menuWidth = 160;
                             const padding = 8;
                             const left = Math.min(
