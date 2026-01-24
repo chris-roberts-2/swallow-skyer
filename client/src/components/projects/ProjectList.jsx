@@ -19,7 +19,9 @@ const ProjectList = ({
   onMembers,
   onDelete,
   onUnjoin,
+  onUnarchive,
   currentUserId,
+  isArchivedView = false,
 }) => {
   const safeProjects = Array.isArray(projects) ? projects : [];
   const [menuOpenId, setMenuOpenId] = useState(null);
@@ -153,7 +155,26 @@ const ProjectList = ({
                 }}
                 onClick={e => e.stopPropagation()}
               >
-                {canManageProject ? (
+                {isArchivedView ? (
+                  <>
+                    <button
+                      type="button"
+                      style={menuItemStyle}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = '#f5f7fb';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                      onClick={() => {
+                        closeMenu();
+                        onUnarchive(project);
+                      }}
+                    >
+                      Unarchive
+                    </button>
+                  </>
+                ) : canManageProject ? (
                   <>
                     <button
                       type="button"

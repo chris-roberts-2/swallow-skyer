@@ -45,7 +45,7 @@ const ProjectsPage = () => {
       try {
         await apiClient.patch(`/v1/projects/${editingProject.id}`, values);
         setEditingProject(null);
-        await refreshProjects({ redirectWhenEmpty: false });
+        await refreshProjects({ redirectWhenEmpty: false, force: true });
       } catch (err) {
         setError(
           err?.payload?.error ||

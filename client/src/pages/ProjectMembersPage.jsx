@@ -19,6 +19,8 @@ const ProjectMembersPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addForm, setAddForm] = useState({ email: '', role: 'Viewer' });
   const [menuOpenId, setMenuOpenId] = useState(null);
+  const [menuContextMember, setMenuContextMember] = useState(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [editingMember, setEditingMember] = useState(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({ role: 'Viewer' });
@@ -74,6 +76,7 @@ const ProjectMembersPage = () => {
     const handler = event => {
       if (!event.target.closest('.member-row-menu')) {
         setMenuOpenId(null);
+        setMenuContextMember(null);
       }
     };
     document.addEventListener('click', handler);
@@ -114,6 +117,7 @@ const ProjectMembersPage = () => {
     setEditForm({ role: member.role || 'Viewer' });
     setIsEditOpen(true);
     setMenuOpenId(null);
+    setMenuContextMember(null);
   };
 
   const handleUpdateMember = async () => {
@@ -393,9 +397,26 @@ const ProjectMembersPage = () => {
                           aria-label="Member actions"
                           onClick={e => {
                             e.stopPropagation();
-                            setMenuOpenId(prev =>
-                              prev === member.user_id ? null : member.user_id
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const menuWidth = 160;
+                            const padding = 8;
+                            const left = Math.min(
+                              rect.left,
+                              window.innerWidth - menuWidth - padding
                             );
+                            setMenuPosition({
+                              top: rect.bottom + 6,
+                              left: Math.max(padding, left),
+                            });
+                            setMenuContextMember(member);
+                            setMenuOpenId(prev => {
+                              const next =
+                                prev === member.user_id ? null : member.user_id;
+                              if (!next) {
+                                setMenuContextMember(null);
+                              }
+                              return next;
+                            });
                           }}
                           style={{
                             border: '1px solid #e5e7eb',
@@ -409,59 +430,6 @@ const ProjectMembersPage = () => {
                         >
                           ⋮
                         </button>
-                        {menuOpenId === member.user_id ? (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: 32,
-                              right: 0,
-                              background: '#fff',
-                              border: '1px solid #e5e7eb',
-                              borderRadius: 8,
-                              boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                              zIndex: 70,
-                              minWidth: 140,
-                              padding: '6px 0',
-                            }}
-                            onClick={e => e.stopPropagation()}
-                          >
-                            <button
-                              type="button"
-                              style={{
-                                width: '100%',
-                                textAlign: 'left',
-                                padding: '8px 12px',
-                                background: 'transparent',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: 14,
-                              }}
-                              onClick={() => handleEditMember(member)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              style={{
-                                width: '100%',
-                                textAlign: 'left',
-                                padding: '8px 12px',
-                                background: 'transparent',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: 14,
-                                color: '#dc2626',
-                              }}
-                              onClick={() => {
-                                setDeletingMember(member);
-                                setIsDeleteOpen(true);
-                                setMenuOpenId(null);
-                              }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        ) : null}
                       </div>
                     ) : null}
                   </td>
@@ -771,6 +739,61 @@ const ProjectMembersPage = () => {
               </button>
             </div>
           </div>
+        </div>
+      ) : null}
+
+      {menuOpenId && menuContextMember ? (
+        <div
+          style={{
+            position: 'fixed',
+            top: menuPosition.top,
+            left: menuPosition.left,
+            background: '#fff',
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+            zIndex: 2000,
+            minWidth: 160,
+            padding: '6px 0',
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            style={{
+              width: '100%',
+              textAlign: 'left',
+              padding: '8px 12px',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 14,
+            }}
+            onClick={() => handleEditMember(menuContextMember)}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            style={{
+              width: '100%',
+              textAlign: 'left',
+              padding: '8px 12px',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 14,
+              color: '#dc2626',
+            }}
+            onClick={() => {
+              setDeletingMember(menuContextMember);
+              setIsDeleteOpen(true);
+              setMenuOpenId(null);
+              setMenuContextMember(null);
+            }}
+          >
+            Delete
+          </button>
         </div>
       ) : null}
     </div>

@@ -5,7 +5,7 @@ import apiClient from '../services/api';
 import ProjectList from '../components/projects/ProjectList';
 
 const ArchivedProjectsPage = () => {
-  const { activeProject, setActiveProject, user } = useAuth();
+  const { activeProject, setActiveProject, user, refreshProjects } = useAuth();
   const [projects, setProjects] = useState([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -72,25 +72,28 @@ const ArchivedProjectsPage = () => {
     [activeProjectId, fetchArchived, setActiveProject]
   );
 
-  const handleArchive = useCallback(
+  const handleUnarchive = useCallback(
     async project => {
       if (!project?.id) return;
       setError('');
       try {
-        await apiClient.delete(`/v1/projects/${project.id}`);
+        await apiClient.patch(`/v1/projects/${project.id}`, {
+          show_on_projects: true,
+        });
         if (activeProjectId === project.id) {
           setActiveProject(null);
         }
         await fetchArchived();
+        await refreshProjects({ redirectWhenEmpty: false, force: true });
       } catch (err) {
         setError(
           err?.payload?.error ||
             err?.message ||
-            'Unable to archive project. Please try again.'
+            'Unable to unarchive project. Please try again.'
         );
       }
     },
-    [activeProjectId, fetchArchived, setActiveProject]
+    [activeProjectId, fetchArchived, refreshProjects, setActiveProject]
   );
 
   const hasProjects = useMemo(() => projects.length > 0, [projects]);
@@ -136,9 +139,11 @@ const ArchivedProjectsPage = () => {
             onActivate={handleActivate}
             onEdit={() => {}}
             onMembers={handleMembers}
-            onDelete={handleArchive}
+            onDelete={() => {}}
             onUnjoin={handleUnjoin}
+            onUnarchive={handleUnarchive}
             currentUserId={user?.id || null}
+            isArchivedView
           />
         )}
         {!hasProjects && !isLoading ? (

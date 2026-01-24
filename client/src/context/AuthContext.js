@@ -189,7 +189,7 @@ export const AuthProvider = ({ children }) => {
         return authState.profile;
       }
       const now = Date.now();
-      if (!force && now - lastProfileFetchAt.current < 30_000) {
+      if (!force && now - lastProfileFetchAt.current < 300_000) {
         return authState.profile;
       }
       isFetchingProfile.current = true;
@@ -302,7 +302,7 @@ export const AuthProvider = ({ children }) => {
   );
 
   const refreshProjects = useCallback(
-    async ({ redirectWhenEmpty = false } = {}) => {
+    async ({ redirectWhenEmpty = false, force = false } = {}) => {
       if (isFetchingProjects.current) return;
       if (!authState.session) {
         setAuthState(prev => ({ ...prev, projects: [] }));
@@ -311,7 +311,7 @@ export const AuthProvider = ({ children }) => {
 
       // Throttle to avoid hammering backend/Supabase (multiple consumers + retries).
       const now = Date.now();
-      if (now - lastProjectsFetchAt.current < 300_000) {
+      if (!force && now - lastProjectsFetchAt.current < 300_000) {
         return;
       }
       lastProjectsFetchAt.current = now;
@@ -435,7 +435,7 @@ export const AuthProvider = ({ children }) => {
     if (!hasProject) return;
     const now = Date.now();
     const last = lastAccessedProject.current;
-    if (last.projectId === projectId && now - last.at < 30_000) {
+    if (last.projectId === projectId && now - last.at < 300_000) {
       return;
     }
     lastAccessedProject.current = { projectId, at: now };
