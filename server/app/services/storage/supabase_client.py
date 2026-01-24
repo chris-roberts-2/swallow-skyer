@@ -882,10 +882,10 @@ class SupabaseClient:
         if not email:
             raise ValueError("Email is required to create a user")
         payload = {"email": email.strip()}
-        response = (
-            self.client.table("users").insert(payload).select("*").maybe_single().execute()
-        )
-        return response.data if hasattr(response, "data") else None
+        response = self.client.table("users").insert(payload).execute()
+        if hasattr(response, "data") and response.data:
+            return response.data[0] if isinstance(response.data, list) else response.data
+        return self.get_user_by_email(email)
 
     def add_project_member(self, project_id: str, user_id: str, role: str):
         if not self.client:

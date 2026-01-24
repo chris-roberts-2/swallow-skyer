@@ -117,6 +117,7 @@ export const AuthProvider = ({ children }) => {
   const isFetchingProjects = useRef(false);
   const lastProjectsFetchAt = useRef(0);
   const isFetchingProfile = useRef(false);
+  const lastProfileFetchAt = useRef(0);
   const lastAccessedProject = useRef({ projectId: null, at: 0 });
 
   // If projects cannot be fetched temporarily (backend 500, offline, etc), keep the
@@ -174,7 +175,11 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const refreshProfile = useCallback(
-    async ({ ensureExists = false, userOverride = null } = {}) => {
+    async ({
+      ensureExists = false,
+      userOverride = null,
+      force = false,
+    } = {}) => {
       const sessionUser = userOverride || authState.session?.user;
       if (!sessionUser?.id) {
         setProfileState(null);
@@ -183,7 +188,12 @@ export const AuthProvider = ({ children }) => {
       if (isFetchingProfile.current) {
         return authState.profile;
       }
+      const now = Date.now();
+      if (!force && now - lastProfileFetchAt.current < 30_000) {
+        return authState.profile;
+      }
       isFetchingProfile.current = true;
+      lastProfileFetchAt.current = now;
 
       try {
         // Production: fetch profile via backend (service-role Supabase) so frontend
@@ -425,7 +435,7 @@ export const AuthProvider = ({ children }) => {
     if (!hasProject) return;
     const now = Date.now();
     const last = lastAccessedProject.current;
-    if (last.projectId === projectId && now - last.at < 1000) {
+    if (last.projectId === projectId && now - last.at < 30_000) {
       return;
     }
     lastAccessedProject.current = { projectId, at: now };
