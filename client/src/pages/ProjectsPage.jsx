@@ -80,7 +80,7 @@ const ProjectsPage = () => {
         setError(
           err?.payload?.error ||
             err?.message ||
-            'Unable to delete project. Please try again.'
+            'Unable to archive project. Please try again.'
         );
       }
     },
@@ -135,6 +135,10 @@ const ProjectsPage = () => {
     () => (projects || []).length > 0,
     [projects]
   );
+
+  const handleArchived = useCallback(() => {
+    navigate('/projects/archived');
+  }, [navigate]);
 
   return (
     <div
@@ -197,6 +201,7 @@ const ProjectsPage = () => {
             onMembers={handleMembers}
             onDelete={handleDelete}
             onUnjoin={handleUnjoin}
+            currentUserId={user?.id || null}
           />
         )}
         {!userHasProjects && (
@@ -205,6 +210,17 @@ const ProjectsPage = () => {
             photos.
           </p>
         )}
+        <div
+          style={{ marginTop: 16, display: 'flex', justifyContent: 'center' }}
+        >
+          <button
+            type="button"
+            onClick={handleArchived}
+            className="btn-format-1"
+          >
+            Archived Projects
+          </button>
+        </div>
         <CreateProjectModal
           open={isModalOpen}
           onClose={() => setIsModalOpen(false)}

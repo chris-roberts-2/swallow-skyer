@@ -132,8 +132,8 @@ def test_upload_save_retrieve_flow(client, monkeypatch, auth_headers):
         updated["id"] = photo_id
         return updated
 
-    def mock_list_projects_for_user(user_id):
-        return [{"id": project_uuid, "role": "owner"}]
+    def mock_list_projects_for_user(user_id, show_on_projects=True):
+        return [{"id": project_uuid, "role": "Owner"}]
 
     def mock_fetch_project_photos(**kwargs):
         stored_calls["supabase_fetch"].append(kwargs)
@@ -171,7 +171,7 @@ def test_upload_save_retrieve_flow(client, monkeypatch, auth_headers):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "owner",
+        lambda project_id, user_id: "Owner",
         raising=True,
     )
     monkeypatch.setattr(

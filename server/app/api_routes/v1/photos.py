@@ -23,8 +23,7 @@ bp = Blueprint("photos_v1", __name__)
 DEFAULT_PAGE_SIZE = 50
 MAX_PAGE_SIZE = 200
 VIEW_ROLES: Set[str] = set(ROLE_ORDER)
-COLLAB_ROLES: Set[str] = {"collaborator", "co-owner", "owner"}
-OWNER_ROLES: Set[str] = {"co-owner", "owner"}
+MANAGE_PHOTO_ROLES: Set[str] = {"Owner", "Administrator", "Editor"}
 
 
 def _parse_page_args() -> Tuple[int, int]:
@@ -519,7 +518,7 @@ def update_photo(photo_id):
             return jsonify({"error": "Photo not found", "version": "v1"}), 404
 
         project_id = record.get("project_id")
-        permission = require_role(project_id, OWNER_ROLES, user_id=current_user_id)
+        permission = require_role(project_id, MANAGE_PHOTO_ROLES, user_id=current_user_id)
         if isinstance(permission, tuple):
             payload, status_code = permission
             return jsonify(payload), status_code
@@ -561,7 +560,7 @@ def delete_photo(photo_id):
             return jsonify({"error": "Photo not found", "version": "v1"}), 404
 
         project_id = record.get("project_id")
-        permission = require_role(project_id, OWNER_ROLES, user_id=current_user_id)
+        permission = require_role(project_id, MANAGE_PHOTO_ROLES, user_id=current_user_id)
         if isinstance(permission, tuple):
             payload, status_code = permission
             return jsonify(payload), status_code

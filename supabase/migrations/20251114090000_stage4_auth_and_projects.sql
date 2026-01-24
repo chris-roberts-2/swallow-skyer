@@ -37,10 +37,10 @@ create index if not exists projects_owner_idx on public.projects (owner_id);
 create table if not exists public.project_users (
   project_id uuid not null references public.projects (id) on delete cascade,
   user_id uuid not null references public.users (id) on delete cascade,
-  role text not null default 'viewer',
+  role text not null default 'Viewer',
   created_at timestamptz not null default timezone('UTC', now()),
   primary key (project_id, user_id),
-  check (role in ('owner', 'editor', 'viewer'))
+  check (role in ('Owner', 'Administrator', 'Editor', 'Viewer'))
 );
 
 create index if not exists project_users_user_idx on public.project_users (user_id);
@@ -58,7 +58,7 @@ returns trigger as
 $$
 begin
   insert into public.project_users (project_id, user_id, role)
-  values (new.id, new.owner_id, 'owner')
+  values (new.id, new.owner_id, 'Owner')
   on conflict (project_id, user_id) do update
     set role = excluded.role;
   return new;
@@ -109,7 +109,7 @@ create policy "Owners manage their projects"
       from public.project_users pu
       where pu.project_id = projects.id
         and pu.user_id = auth.uid()
-        and pu.role in ('owner', 'editor')
+        and pu.role in ('Owner', 'Administrator')
     )
   )
   with check (
@@ -119,7 +119,7 @@ create policy "Owners manage their projects"
       from public.project_users pu
       where pu.project_id = projects.id
         and pu.user_id = auth.uid()
-        and pu.role in ('owner', 'editor')
+        and pu.role in ('Owner', 'Administrator')
     )
   );
 
@@ -133,7 +133,7 @@ create policy "Owners can delete projects"
       from public.project_users pu
       where pu.project_id = projects.id
         and pu.user_id = auth.uid()
-        and pu.role = 'owner'
+        and pu.role = 'Owner'
     )
   );
 
@@ -169,7 +169,7 @@ create policy "Owners manage project users"
       from public.project_users my_membership
       where my_membership.project_id = project_users.project_id
         and my_membership.user_id = auth.uid()
-        and my_membership.role = 'owner'
+        and my_membership.role in ('Owner', 'Administrator')
     )
   )
   with check (
@@ -179,7 +179,7 @@ create policy "Owners manage project users"
       from public.project_users my_membership
       where my_membership.project_id = project_users.project_id
         and my_membership.user_id = auth.uid()
-        and my_membership.role = 'owner'
+        and my_membership.role in ('Owner', 'Administrator')
     )
   );
 

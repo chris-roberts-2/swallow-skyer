@@ -19,6 +19,7 @@ const ProjectList = ({
   onMembers,
   onDelete,
   onUnjoin,
+  currentUserId,
 }) => {
   const safeProjects = Array.isArray(projects) ? projects : [];
   const [menuOpenId, setMenuOpenId] = useState(null);
@@ -61,7 +62,9 @@ const ProjectList = ({
 
   const renderCard = (project, isActive = false) => {
     const role = (project.role || '').toLowerCase();
-    const isOwner = role === 'owner' || role === 'co-owner';
+    const canManageProject = role === 'owner' || role === 'administrator';
+    const isOwner = role === 'owner';
+    const isCreator = project.owner_id && currentUserId === project.owner_id;
 
     const isMenuOpen = menuOpenId === project.id;
 
@@ -150,7 +153,7 @@ const ProjectList = ({
                 }}
                 onClick={e => e.stopPropagation()}
               >
-                {isOwner ? (
+                {canManageProject ? (
                   <>
                     <button
                       type="button"
@@ -184,22 +187,42 @@ const ProjectList = ({
                     >
                       Project Members
                     </button>
-                    <button
-                      type="button"
-                      style={{ ...menuItemStyle, color: '#dc2626' }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = '#fef2f2';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                      onClick={() => {
-                        closeMenu();
-                        onDelete(project);
-                      }}
-                    >
-                      Delete
-                    </button>
+                    {isOwner ? (
+                      <button
+                        type="button"
+                        style={{ ...menuItemStyle, color: '#dc2626' }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = '#fef2f2';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                        onClick={() => {
+                          closeMenu();
+                          onDelete(project);
+                        }}
+                      >
+                        Archive
+                      </button>
+                    ) : null}
+                    {!isCreator ? (
+                      <button
+                        type="button"
+                        style={menuItemStyle}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = '#f5f7fb';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                        onClick={() => {
+                          closeMenu();
+                          onUnjoin(project);
+                        }}
+                      >
+                        Unjoin
+                      </button>
+                    ) : null}
                   </>
                 ) : (
                   <>
@@ -219,22 +242,24 @@ const ProjectList = ({
                     >
                       Project Members
                     </button>
-                    <button
-                      type="button"
-                      style={menuItemStyle}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = '#f5f7fb';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                      onClick={() => {
-                        closeMenu();
-                        onUnjoin(project);
-                      }}
-                    >
-                      Unjoin
-                    </button>
+                    {!isCreator ? (
+                      <button
+                        type="button"
+                        style={menuItemStyle}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = '#f5f7fb';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                        onClick={() => {
+                          closeMenu();
+                          onUnjoin(project);
+                        }}
+                      >
+                        Unjoin
+                      </button>
+                    ) : null}
                   </>
                 )}
               </div>
@@ -249,7 +274,7 @@ const ProjectList = ({
           }}
         >
           <div style={{ fontSize: 12, color: '#6b7280' }}>
-            {project.role || 'member'}
+            {project.role || 'Viewer'}
           </div>
           {isActive ? (
             <span style={{ fontSize: 12, color: '#2563eb', fontWeight: 600 }}>

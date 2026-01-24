@@ -6,9 +6,9 @@ ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
 
 -- Helper comments:
 -- Role hierarchy (project_members.role):
---   owner / co-owner : full control
---   collaborator     : read + insert photos
---   viewer           : read-only
+--   Owner / Administrator : full control
+--   Editor                : read + insert photos
+--   Viewer                : read-only
 
 -- PROJECTS -------------------------------------------------------------------
 DROP POLICY IF EXISTS projects_select_members ON public.projects;
@@ -19,19 +19,31 @@ USING (
     SELECT 1 FROM public.project_members pm
     WHERE pm.project_id = projects.id
       AND pm.user_id = auth.uid()
-      AND pm.role IN ('owner','co-owner','collaborator','viewer')
+      AND pm.role IN ('Owner','Administrator','Editor','Viewer')
   )
 );
 
 DROP POLICY IF EXISTS projects_modify_owner ON public.projects;
-CREATE POLICY projects_modify_owner ON public.projects
-FOR UPDATE, DELETE
+DROP POLICY IF EXISTS projects_update_manage ON public.projects;
+DROP POLICY IF EXISTS projects_delete_owner ON public.projects;
+CREATE POLICY projects_update_manage ON public.projects
+FOR UPDATE
 USING (
   EXISTS (
     SELECT 1 FROM public.project_members pm
     WHERE pm.project_id = projects.id
       AND pm.user_id = auth.uid()
-      AND pm.role IN ('owner','co-owner')
+      AND pm.role IN ('Owner','Administrator')
+  )
+);
+CREATE POLICY projects_delete_owner ON public.projects
+FOR DELETE
+USING (
+  EXISTS (
+    SELECT 1 FROM public.project_members pm
+    WHERE pm.project_id = projects.id
+      AND pm.user_id = auth.uid()
+      AND pm.role IN ('Owner')
   )
 );
 
@@ -46,7 +58,7 @@ USING (
     SELECT 1 FROM public.project_members pm
     WHERE pm.project_id = project_members.project_id
       AND pm.user_id = auth.uid()
-      AND pm.role IN ('owner','co-owner','collaborator','viewer')
+      AND pm.role IN ('Owner','Administrator','Editor','Viewer')
   )
 );
 
@@ -58,7 +70,7 @@ USING (
     SELECT 1 FROM public.project_members pm
     WHERE pm.project_id = project_members.project_id
       AND pm.user_id = auth.uid()
-      AND pm.role IN ('owner','co-owner')
+      AND pm.role IN ('Owner','Administrator')
   )
 );
 
@@ -71,7 +83,7 @@ USING (
     SELECT 1 FROM public.project_members pm
     WHERE pm.project_id = photos.project_id
       AND pm.user_id = auth.uid()
-      AND pm.role IN ('owner','co-owner','collaborator','viewer')
+      AND pm.role IN ('Owner','Administrator','Editor','Viewer')
   )
 );
 
@@ -83,7 +95,7 @@ WITH CHECK (
     SELECT 1 FROM public.project_members pm
     WHERE pm.project_id = photos.project_id
       AND pm.user_id = auth.uid()
-      AND pm.role IN ('owner','co-owner','collaborator')
+      AND pm.role IN ('Owner','Administrator','Editor')
   )
 );
 
@@ -95,13 +107,13 @@ USING (
     SELECT 1 FROM public.project_members pm
     WHERE pm.project_id = photos.project_id
       AND pm.user_id = auth.uid()
-      AND pm.role IN ('owner','co-owner')
+      AND pm.role IN ('Owner','Administrator','Editor')
   )
 );
 
 -- LOCATIONS ------------------------------------------------------------------
 -- Access to locations is allowed only if the user has membership in a project
--- that references the location via photos. Insert allowed for collaborators+
+-- that references the location via photos. Insert allowed for editors+
 -- so uploads can create locations.
 
 DROP POLICY IF EXISTS locations_select_members ON public.locations;
@@ -114,7 +126,7 @@ USING (
     JOIN public.project_members pm ON pm.project_id = p.project_id
     WHERE p.location_id = locations.id
       AND pm.user_id = auth.uid()
-      AND pm.role IN ('owner','co-owner','collaborator','viewer')
+      AND pm.role IN ('Owner','Administrator','Editor','Viewer')
   )
 );
 
@@ -125,7 +137,7 @@ WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.project_members pm
     WHERE pm.user_id = auth.uid()
-      AND pm.role IN ('owner','co-owner','collaborator')
+      AND pm.role IN ('Owner','Administrator','Editor')
   )
 );
 
@@ -139,7 +151,7 @@ USING (
     JOIN public.project_members pm ON pm.project_id = p.project_id
     WHERE p.location_id = locations.id
       AND pm.user_id = auth.uid()
-      AND pm.role IN ('owner','co-owner')
+      AND pm.role IN ('Owner','Administrator')
   )
 );
 

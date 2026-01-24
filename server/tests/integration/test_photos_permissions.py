@@ -7,7 +7,7 @@ def test_project_scoped_photo_listing(monkeypatch, client, auth_headers):
 
     monkeypatch.setattr(
         "app.api_routes.v1.photos.supabase_client.get_project_role",
-        lambda project_id, user_id: "viewer",
+        lambda project_id, user_id: "Viewer",
     )
     def mock_fetch_project_photos(project_ids, **kwargs):
         called["project_ids"] = project_ids

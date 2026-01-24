@@ -20,7 +20,7 @@ def test_photo_listing_returns_signed_urls_and_pagination(auth_client, monkeypat
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "owner",
+        lambda project_id, user_id: "Owner",
         raising=True,
     )
 
@@ -92,7 +92,7 @@ def test_photo_listing_returns_signed_urls_and_pagination(auth_client, monkeypat
     assert photo["thumbnail_url"].startswith(
         "https://signed.example/projects/11111111-1111-1111-1111-111111111111/photos/p1_thumb.jpg"
     )
-    assert photo["project_role"] == "owner"
+    assert photo["project_role"] == "Owner"
 
 
 def test_photo_listing_requires_membership_for_requested_project(
@@ -130,7 +130,7 @@ def test_photo_listing_filters_user_and_date_range(auth_client, monkeypatch):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "owner",
+        lambda project_id, user_id: "Owner",
         raising=True,
     )
 

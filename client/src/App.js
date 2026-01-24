@@ -19,6 +19,7 @@ import {
   PhotosPage,
   ProfilePage,
   ProjectsPage,
+  ArchivedProjectsPage,
   ProjectMembersPage,
 } from './pages';
 import PhotoOptionsPage from './pages/PhotoOptionsPage';
@@ -132,6 +133,14 @@ export function AppRoutes() {
             element={
               <AuthGuard>
                 <ProjectsPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/projects/archived"
+            element={
+              <AuthGuard>
+                <ArchivedProjectsPage />
               </AuthGuard>
             }
           />

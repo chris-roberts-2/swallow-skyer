@@ -11,7 +11,7 @@ from app.services.storage.supabase_client import supabase_client
 JsonResponse = Tuple[dict, int]
 PermissionResult = Union[JsonResponse, dict]
 
-ROLE_ORDER = ["viewer", "collaborator", "co-owner", "owner"]
+ROLE_ORDER = ["Viewer", "Editor", "Administrator", "Owner"]
 DEFAULT_DENIED_MESSAGE = "You do not have permission for this action."
 
 

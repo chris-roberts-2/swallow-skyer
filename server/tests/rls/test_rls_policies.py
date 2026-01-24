@@ -16,21 +16,21 @@ def test_policy_files_exist():
 
 def test_role_hierarchy_present():
     sql = _load_policy_sql()
-    for role in ["owner", "co-owner", "collaborator", "viewer"]:
+    for role in ["Owner", "Administrator", "Editor", "Viewer"]:
         assert role in sql
 
 
-def test_photos_insert_requires_collaborator_plus():
+def test_photos_insert_requires_editor_plus():
     sql = _load_policy_sql()
-    # Ensure insert policy mentions collaborator
+    # Ensure insert policy mentions editor+
     assert "photos_insert_collab" in sql
-    assert "role IN ('owner','co-owner','collaborator')" in sql
+    assert "role IN ('Owner','Administrator','Editor')" in sql
 
 
 def test_photos_update_requires_owner():
     sql = _load_policy_sql()
     assert "photos_update_owner" in sql
-    assert "role IN ('owner','co-owner')" in sql
+    assert "role IN ('Owner','Administrator','Editor')" in sql
 
 
 def test_locations_policy_joins_photos():

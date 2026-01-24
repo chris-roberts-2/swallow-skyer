@@ -11,7 +11,7 @@ from app.services.storage.r2_client import r2_client
 
 bp = Blueprint("public_links", __name__)
 
-OWNER_ROLES = {"owner", "co-owner"}
+OWNER_ROLES = {"Owner"}
 PUBLIC_TOKEN_TABLE = "project_public_links"
 DEFAULT_DENIED_MESSAGE = "You do not have permission for this action."
 

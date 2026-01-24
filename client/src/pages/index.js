@@ -4,5 +4,6 @@ export { default as MapPage } from './MapPage';
 export { default as PhotosPage } from './UploadPage';
 export { default as ProfilePage } from './ProfilePage';
 export { default as ProjectsPage } from './ProjectsPage';
+export { default as ArchivedProjectsPage } from './ArchivedProjectsPage';
 export { default as ProjectMembersPage } from './ProjectMembersPage';
 export { default as PhotoOptionsPage } from './PhotoOptionsPage';

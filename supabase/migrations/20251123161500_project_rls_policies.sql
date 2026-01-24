@@ -3,9 +3,9 @@
 -- This migration enables row-level security and defines the access policies
 -- for the collaborative project workflow across projects, project_members,
 -- photos, and locations.  Roles are enforced according to the following rules:
---   • owners & co-owners … full read/write/delete inside their project
---   • collaborators … read, insert photos/locations, update only their photos
---   • viewers … read-only
+--   • Owners & Administrators … full read/write/delete inside their project
+--   • Editors … read, insert photos/locations, update only their photos
+--   • Viewers … read-only
 --   • non-members … no access
 
 -- Ensure RLS is enabled on all participating tables
@@ -71,7 +71,7 @@ create policy "projects_update_owner_coowner"
       from public.project_members pm
       where pm.project_id = projects.id
         and pm.user_id = auth.uid()
-        and pm.role in ('owner', 'co-owner')
+        and pm.role in ('Owner', 'Administrator')
     )
   )
   with check (
@@ -81,7 +81,7 @@ create policy "projects_update_owner_coowner"
       from public.project_members pm
       where pm.project_id = projects.id
         and pm.user_id = auth.uid()
-        and pm.role in ('owner', 'co-owner')
+        and pm.role in ('Owner', 'Administrator')
     )
   );
 
@@ -95,7 +95,7 @@ create policy "projects_delete_owner_coowner"
       from public.project_members pm
       where pm.project_id = projects.id
         and pm.user_id = auth.uid()
-        and pm.role in ('owner', 'co-owner')
+        and pm.role in ('Owner', 'Administrator')
     )
   );
 
@@ -121,17 +121,17 @@ create policy "project_members_insert_owner_coowner"
   with check (
     auth.uid() is not null
     and (
-      -- Existing owner/co-owner managing membership
+      -- Existing owner/administrator managing membership
       exists (
         select 1
         from public.project_members pm
         where pm.project_id = project_members.project_id
           and pm.user_id = auth.uid()
-          and pm.role in ('owner', 'co-owner')
+          and pm.role in ('Owner', 'Administrator')
       )
       -- Seed owner membership immediately after project creation
       or (
-        project_members.role in ('owner', 'co-owner')
+        project_members.role in ('Owner', 'Administrator')
         and project_members.user_id = auth.uid()
         and exists (
           select 1
@@ -153,7 +153,7 @@ create policy "project_members_update_owner_coowner"
       from public.project_members pm
       where pm.project_id = project_members.project_id
         and pm.user_id = auth.uid()
-        and pm.role in ('owner', 'co-owner')
+        and pm.role in ('Owner')
     )
   )
   with check (
@@ -163,7 +163,7 @@ create policy "project_members_update_owner_coowner"
       from public.project_members pm
       where pm.project_id = project_members.project_id
         and pm.user_id = auth.uid()
-        and pm.role in ('owner', 'co-owner')
+        and pm.role in ('Owner', 'Administrator')
     )
   );
 
@@ -177,7 +177,7 @@ create policy "project_members_delete_owner_coowner"
       from public.project_members pm
       where pm.project_id = project_members.project_id
         and pm.user_id = auth.uid()
-        and pm.role in ('owner', 'co-owner')
+        and pm.role in ('Owner', 'Administrator')
     )
   );
 
@@ -210,7 +210,7 @@ create policy "photos_insert_allowed_roles"
       from public.project_members pm
       where pm.project_id = photos.project_id
         and pm.user_id = auth.uid()
-        and pm.role in ('owner', 'co-owner', 'collaborator')
+        and pm.role in ('Owner', 'Administrator', 'Editor')
     )
   );
 
@@ -226,7 +226,7 @@ create policy "photos_update_collab_or_owner"
         from public.project_members pm
         where pm.project_id = photos.project_id
           and pm.user_id = auth.uid()
-          and pm.role in ('owner', 'co-owner')
+          and pm.role in ('Owner', 'Administrator', 'Editor')
       )
       or (
         photos.user_id = auth.uid()
@@ -235,7 +235,7 @@ create policy "photos_update_collab_or_owner"
           from public.project_members pm
           where pm.project_id = photos.project_id
             and pm.user_id = auth.uid()
-            and pm.role = 'collaborator'
+            and pm.role = 'Editor'
         )
       )
     )
@@ -249,7 +249,7 @@ create policy "photos_update_collab_or_owner"
         from public.project_members pm
         where pm.project_id = photos.project_id
           and pm.user_id = auth.uid()
-          and pm.role in ('owner', 'co-owner')
+          and pm.role in ('Owner', 'Administrator', 'Editor')
       )
       or (
         photos.user_id = auth.uid()
@@ -258,7 +258,7 @@ create policy "photos_update_collab_or_owner"
           from public.project_members pm
           where pm.project_id = photos.project_id
             and pm.user_id = auth.uid()
-            and pm.role = 'collaborator'
+            and pm.role = 'Editor'
         )
       )
     )
@@ -275,7 +275,7 @@ create policy "photos_delete_owner_coowner"
       from public.project_members pm
       where pm.project_id = photos.project_id
         and pm.user_id = auth.uid()
-        and pm.role in ('owner', 'co-owner')
+        and pm.role in ('Owner', 'Administrator')
     )
   );
 
@@ -307,7 +307,7 @@ create policy "locations_insert_allowed_roles"
       from public.project_members pm
       where pm.project_id = locations.project_id
         and pm.user_id = auth.uid()
-        and pm.role in ('owner', 'co-owner', 'collaborator')
+        and pm.role in ('Owner', 'Administrator', 'Editor')
     )
   );
 
@@ -322,7 +322,7 @@ create policy "locations_update_owner_coowner"
       from public.project_members pm
       where pm.project_id = locations.project_id
         and pm.user_id = auth.uid()
-        and pm.role in ('owner', 'co-owner')
+        and pm.role in ('Owner', 'Administrator', 'Editor')
     )
   )
   with check (
@@ -333,7 +333,7 @@ create policy "locations_update_owner_coowner"
       from public.project_members pm
       where pm.project_id = locations.project_id
         and pm.user_id = auth.uid()
-        and pm.role in ('owner', 'co-owner')
+        and pm.role in ('Owner', 'Administrator')
     )
   );
 
@@ -348,7 +348,7 @@ create policy "locations_delete_owner_coowner"
       from public.project_members pm
       where pm.project_id = locations.project_id
         and pm.user_id = auth.uid()
-        and pm.role in ('owner', 'co-owner')
+        and pm.role in ('Owner', 'Administrator')
     )
   );
 

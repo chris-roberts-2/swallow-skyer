@@ -901,7 +901,25 @@ class SupabaseClient:
         ).execute()
         return response.data[0] if response.data else None
 
-    def list_projects_for_user(self, user_id: str) -> List[Dict[str, Any]]:
+    def _normalize_project_role(self, role: Optional[str]) -> Optional[str]:
+        if not role:
+            return None
+        normalized = role.strip()
+        lowered = normalized.lower()
+        role_map = {
+            "owner": "Owner",
+            "administrator": "Administrator",
+            "admin": "Administrator",
+            "co-owner": "Administrator",
+            "editor": "Editor",
+            "collaborator": "Editor",
+            "viewer": "Viewer",
+        }
+        return role_map.get(lowered, normalized)
+
+    def list_projects_for_user(
+        self, user_id: str, show_on_projects: Optional[bool] = True
+    ) -> List[Dict[str, Any]]:
         if not self.client:
             raise RuntimeError("Supabase client not initialized")
         membership_response = (
@@ -914,15 +932,15 @@ class SupabaseClient:
         project_ids = [row["project_id"] for row in membership]
         if not project_ids:
             return []
-        response = (
-            self.client.table("projects")
-            .select("*")
-            .in_("id", project_ids)
-            .eq("show_on_projects", True)
-            .execute()
-        )
+        query = self.client.table("projects").select("*").in_("id", project_ids)
+        if show_on_projects is not None:
+            query = query.eq("show_on_projects", bool(show_on_projects))
+        response = query.execute()
         projects = response.data or []
-        role_map = {row["project_id"]: row["role"] for row in membership}
+        role_map = {
+            row["project_id"]: self._normalize_project_role(row.get("role"))
+            for row in membership
+        }
         access_map = {
             row["project_id"]: row.get("last_accessed_at") for row in membership
         }
@@ -1007,7 +1025,7 @@ class SupabaseClient:
             .execute()
         )
         if response.data:
-            return response.data[0].get("role")
+            return self._normalize_project_role(response.data[0].get("role"))
         return None
 
     def list_project_members(self, project_id: str) -> List[Dict[str, Any]]:
@@ -1050,7 +1068,7 @@ class SupabaseClient:
             result.append(
                 {
                     "user_id": m["user_id"],
-                    "role": m.get("role"),
+                    "role": self._normalize_project_role(m.get("role")),
                     "email": user_profile.get("email"),
                     "first_name": user_profile.get("first_name"),
                     "last_name": user_profile.get("last_name"),
@@ -1092,7 +1110,7 @@ class SupabaseClient:
             self.client.table("project_members")
             .select("id", count="exact")
             .eq("project_id", project_id)
-            .in_("role", ["owner", "co-owner"])
+            .in_("role", ["Owner", "owner"])
             .execute()
         )
         return getattr(response, "count", 0) or 0

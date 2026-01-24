@@ -36,7 +36,7 @@ const renderWithRole = role =>
 
 describe('role-based UI permissions', () => {
   test('viewer sees view-only controls', () => {
-    renderWithRole('viewer');
+    renderWithRole('Viewer');
     expect(screen.getByTestId('upload-disabled')).toBeInTheDocument();
     expect(screen.queryByTestId('dropzone')).not.toBeInTheDocument();
     expect(screen.queryByTestId('edit-project')).not.toBeInTheDocument();
@@ -45,17 +45,17 @@ describe('role-based UI permissions', () => {
     expect(screen.queryByTestId('delete-photo')).not.toBeInTheDocument();
   });
 
-  test('collaborator can upload but not manage project or members', () => {
-    renderWithRole('collaborator');
+  test('editor can upload but not manage project or members', () => {
+    renderWithRole('Editor');
     expect(screen.getByTestId('dropzone')).toBeInTheDocument();
     expect(screen.queryByTestId('edit-project')).not.toBeInTheDocument();
     expect(screen.queryByTestId('delete-project')).not.toBeInTheDocument();
     expect(screen.queryByTestId('add-member')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('delete-photo')).not.toBeInTheDocument();
+    expect(screen.getByTestId('delete-photo')).toBeInTheDocument();
   });
 
   test('owner can see all management actions', () => {
-    renderWithRole('owner');
+    renderWithRole('Owner');
     expect(screen.getByTestId('dropzone')).toBeInTheDocument();
     expect(screen.getByTestId('edit-project')).toBeInTheDocument();
     expect(screen.getByTestId('delete-project')).toBeInTheDocument();
@@ -77,7 +77,7 @@ describe('role-based UI permissions', () => {
         json: () => Promise.resolve({ message: 'forbidden' }),
       });
 
-    renderWithRole('owner');
+    renderWithRole('Owner');
 
     fireEvent.click(screen.getByTestId('delete-project'));
 

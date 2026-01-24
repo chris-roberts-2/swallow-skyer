@@ -20,10 +20,13 @@ const PhotoControls = ({
   const normalizedRole = (role || '').toLowerCase();
   const canDownload = Boolean(role);
   const canUpload =
-    normalizedRole === 'collaborator' ||
-    normalizedRole === 'co-owner' ||
+    normalizedRole === 'editor' ||
+    normalizedRole === 'administrator' ||
     normalizedRole === 'owner';
-  const canDelete = normalizedRole === 'owner' || normalizedRole === 'co-owner';
+  const canDelete =
+    normalizedRole === 'editor' ||
+    normalizedRole === 'administrator' ||
+    normalizedRole === 'owner';
   const { Toast, showForbiddenToast } = usePermissionToast();
   const projectId = projectIdProp || activeProjectId;
 

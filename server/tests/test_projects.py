@@ -64,7 +64,7 @@ def test_create_project_success(client, monkeypatch):
     )
     assert resp.status_code == 201
     assert resp.get_json()["id"] == "proj-1"
-    assert calls["member"]["role"] == "owner"
+    assert calls["member"]["role"] == "Owner"
 
 
 def test_create_project_requires_name(client):
@@ -76,7 +76,7 @@ def test_list_projects(client, monkeypatch):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "list_projects_for_user",
-        lambda user_id: [{"id": "proj-1", "name": "Demo"}],
+        lambda user_id, show_on_projects=True: [{"id": "proj-1", "name": "Demo"}],
     )
     resp = client.get("/api/v1/projects", headers=AUTH_HEADER)
     data = resp.get_json()
@@ -88,7 +88,7 @@ def test_get_project_success(client, monkeypatch):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "viewer",
+        lambda project_id, user_id: "Viewer",
     )
     monkeypatch.setattr(
         supabase_module.supabase_client,
@@ -114,7 +114,7 @@ def test_update_project_success(client, monkeypatch):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "owner",
+        lambda project_id, user_id: "Owner",
     )
     monkeypatch.setattr(
         supabase_module.supabase_client,
@@ -139,7 +139,7 @@ def test_update_project_forbidden(client, monkeypatch):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "collaborator",
+        lambda project_id, user_id: "Editor",
     )
     resp = client.patch(
         "/api/v1/projects/proj-1",
@@ -153,7 +153,7 @@ def test_update_project_viewer_forbidden(client, monkeypatch):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "viewer",
+        lambda project_id, user_id: "Viewer",
     )
     resp = client.patch(
         "/api/v1/projects/proj-1",
@@ -167,7 +167,7 @@ def test_delete_project_success(client, monkeypatch):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "co-owner",
+        lambda project_id, user_id: "Owner",
     )
     monkeypatch.setattr(
         supabase_module.supabase_client,
@@ -186,7 +186,7 @@ def test_delete_project_not_found(client, monkeypatch):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "owner",
+        lambda project_id, user_id: "Owner",
     )
     monkeypatch.setattr(
         supabase_module.supabase_client,
@@ -201,7 +201,7 @@ def test_delete_project_forbidden(client, monkeypatch):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "viewer",
+        lambda project_id, user_id: "Viewer",
     )
     resp = client.delete("/api/v1/projects/proj-1", headers=AUTH_HEADER)
     assert resp.status_code == 403
@@ -210,7 +210,7 @@ def test_delete_project_forbidden(client, monkeypatch):
 def test_list_projects_filters_by_user(client, monkeypatch):
     captured = {}
 
-    def fake_list_projects(user_id):
+    def fake_list_projects(user_id, show_on_projects=True):
         captured["user_id"] = user_id
         return [{"id": "proj-1"}]
 

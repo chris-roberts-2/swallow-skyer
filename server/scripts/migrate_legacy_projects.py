@@ -56,7 +56,7 @@ def _ensure_project_member(client, project_id: str, user_id: str):
         return False
 
     client.table("project_members").insert(
-        {"project_id": project_id, "user_id": user_id, "role": "owner"}
+        {"project_id": project_id, "user_id": user_id, "role": "Owner"}
     ).execute()
     return True
 

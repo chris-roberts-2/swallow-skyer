@@ -10,7 +10,8 @@ from app.services.storage.supabase_client import supabase_client
 
 projects_bp = Blueprint("projects", __name__, url_prefix="/api/v1/projects")
 VIEW_ROLES = set(ROLE_ORDER)
-OWNER_ROLES = {"owner", "co-owner"}
+MANAGE_ROLES = {"Owner", "Administrator"}
+OWNER_ONLY_ROLES = {"Owner"}
 
 
 def _require_auth():
@@ -51,7 +52,7 @@ def create_project():
         supabase_client.add_project_member(
             project_id=project["id"],
             user_id=user_id,
-            role="owner",
+            role="Owner",
         )
         return jsonify(project), 201
     except Exception as exc:
@@ -67,7 +68,15 @@ def list_projects():
         return jsonify({"error": str(exc)}), 401
 
     try:
-        projects = supabase_client.list_projects_for_user(user_id)
+        archived_flag = (request.args.get("archived") or "").strip().lower()
+        show_on_projects = None
+        if archived_flag in {"true", "1", "yes"}:
+            show_on_projects = False
+        elif archived_flag in {"false", "0", "no", ""}:
+            show_on_projects = True
+        projects = supabase_client.list_projects_for_user(
+            user_id, show_on_projects=show_on_projects
+        )
         return jsonify({"projects": projects})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
@@ -100,7 +109,7 @@ def update_project(project_id):
     except PermissionError as exc:
         return jsonify({"error": str(exc)}), 401
 
-    permission = require_role(project_id, OWNER_ROLES, user_id=user_id)
+    permission = require_role(project_id, MANAGE_ROLES, user_id=user_id)
     if isinstance(permission, tuple):
         payload, status_code = permission
         return jsonify(payload), status_code
@@ -135,7 +144,7 @@ def delete_project(project_id):
     except PermissionError as exc:
         return jsonify({"error": str(exc)}), 401
 
-    permission = require_role(project_id, OWNER_ROLES, user_id=user_id)
+    permission = require_role(project_id, OWNER_ONLY_ROLES, user_id=user_id)
     if isinstance(permission, tuple):
         payload, status_code = permission
         return jsonify(payload), status_code
@@ -179,7 +188,7 @@ def invite_project_member(project_id):
     except PermissionError as exc:
         return jsonify({"error": str(exc)}), 401
 
-    permission = require_role(project_id, OWNER_ROLES, user_id=user_id)
+    permission = require_role(project_id, MANAGE_ROLES, user_id=user_id)
     if isinstance(permission, tuple):
         payload, status_code = permission
         return jsonify(payload), status_code
@@ -191,23 +200,26 @@ def invite_project_member(project_id):
     requested_role = (payload.get("role") or "").strip().lower()
 
     role_map = {
-        "administrator": "co-owner",
-        "admin": "co-owner",
-        "co-owner": "co-owner",
-        "editor": "collaborator",
-        "collaborator": "collaborator",
-        "viewer": "viewer",
-        "owner": "owner",
+        "administrator": "Administrator",
+        "admin": "Administrator",
+        "co-owner": "Administrator",
+        "editor": "Editor",
+        "collaborator": "Editor",
+        "viewer": "Viewer",
+        "owner": "Owner",
     }
     resolved_role = role_map.get(requested_role)
 
     if not raw_email or not resolved_role:
         return jsonify({"error": "Email and valid role are required"}), 400
 
-    if resolved_role == "owner" and actor_role != "owner":
+    if resolved_role == "Owner" and actor_role != "owner":
         return jsonify({"error": "Only owners may assign owner role"}), 403
-    if resolved_role == "co-owner" and actor_role not in {"owner", "co-owner"}:
-        return jsonify({"error": "Only owners and co-owners may assign co-owner"}), 403
+    if resolved_role == "Administrator" and actor_role not in {"owner", "administrator"}:
+        return (
+            jsonify({"error": "Only owners and administrators may assign administrators"}),
+            403,
+        )
 
     try:
         target_user = supabase_client.get_user_by_email(raw_email)
@@ -216,6 +228,12 @@ def invite_project_member(project_id):
         target_user_id = target_user.get("id") if target_user else None
         if not target_user_id:
             return jsonify({"error": "Failed to resolve or create user"}), 500
+
+        project = supabase_client.get_project(project_id) or {}
+        project_owner_id = project.get("owner_id")
+        if project_owner_id and target_user_id == project_owner_id:
+            if resolved_role != "Owner":
+                return jsonify({"error": "Project creator must remain an Owner"}), 403
 
         if supabase_client.get_project_role(project_id, target_user_id):
             return jsonify({"error": "Member already exists"}), 400
@@ -242,10 +260,10 @@ def unjoin_project(project_id):
         payload, status_code = permission
         return jsonify(payload), status_code
 
-    # Prevent owners from leaving
-    role = supabase_client.get_project_role(project_id, user_id)
-    if role in {"owner", "co-owner"}:
-        return jsonify({"error": "Owners cannot unjoin their project"}), 400
+    project = supabase_client.get_project(project_id) or {}
+    project_owner_id = project.get("owner_id")
+    if project_owner_id and user_id == project_owner_id:
+        return jsonify({"error": "Project creator cannot unjoin their project"}), 400
 
     try:
         removed = supabase_client.remove_project_member(project_id, user_id)

@@ -66,7 +66,7 @@ def mock_presigned_url():
 class TestPhotosAPI:
     """Test cases for photos API."""
 
-    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="owner")
+    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="Owner")
     @patch("app.api_routes.v1.photos.supabase_client")
     @patch("app.api_routes.v1.photos.r2_client")
     def test_get_photos_default_params(
@@ -115,7 +115,7 @@ class TestPhotosAPI:
             include_signed_urls=True,
         )
 
-    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="viewer")
+    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="Viewer")
     @patch("app.api_routes.v1.photos.supabase_client")
     @patch("app.api_routes.v1.photos.r2_client")
     def test_get_photos_with_pagination(
@@ -159,7 +159,7 @@ class TestPhotosAPI:
             include_signed_urls=True,
         )
 
-    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="owner")
+    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="Owner")
     @patch("app.api_routes.v1.photos.supabase_client")
     @patch("app.api_routes.v1.photos.r2_client")
     def test_get_photos_with_filters(
@@ -203,7 +203,7 @@ class TestPhotosAPI:
             include_signed_urls=True,
         )
 
-    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="owner")
+    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="Owner")
     @patch("app.api_routes.v1.photos.supabase_client")
     @patch("app.api_routes.v1.photos.r2_client")
     def test_get_photos_enforces_page_size_cap(
@@ -247,7 +247,7 @@ class TestPhotosAPI:
             include_signed_urls=True,
         )
 
-    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="owner")
+    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="Owner")
     @patch("app.api_routes.v1.photos.supabase_client")
     @patch("app.api_routes.v1.photos.r2_client")
     def test_get_photos_generates_presigned_url_when_empty(
@@ -286,7 +286,7 @@ class TestPhotosAPI:
         assert data["photos"][1]["thumbnail_url"] == "https://signed.example/thumb"
         assert mock_r2.resolve_url.call_count == 2
 
-    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="owner")
+    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="Owner")
     @patch("app.api_routes.v1.photos.supabase_client")
     def test_get_photos_handles_errors(
         self, mock_supabase, _mock_role, client, auth_headers
@@ -305,7 +305,7 @@ class TestPhotosAPI:
         assert response.status_code == 500
         assert "error" in response.get_json()
 
-    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="owner")
+    @patch("app.services.auth.permissions.supabase_client.get_project_role", return_value="Owner")
     @patch("app.api_routes.v1.photos.supabase_client")
     @patch("app.api_routes.v1.photos.r2_client")
     def test_get_photos_empty_result(

@@ -92,7 +92,7 @@ def patch_presign(monkeypatch):
 def test_create_link_owner_only(client, auth_headers, monkeypatch):
     monkeypatch.setattr(
         "app.services.auth.permissions.supabase_client.get_project_role",
-        lambda project_id, user_id: "owner",
+        lambda project_id, user_id: "Owner",
     )
     resp = client.post(
         "/api/v1/projects/proj-1/public-links",
@@ -106,10 +106,10 @@ def test_create_link_owner_only(client, auth_headers, monkeypatch):
     assert data["url"].endswith(data["token"])
 
 
-def test_create_link_forbidden_for_collaborator(client, auth_headers, monkeypatch):
+def test_create_link_forbidden_for_editor(client, auth_headers, monkeypatch):
     monkeypatch.setattr(
         "app.services.auth.permissions.supabase_client.get_project_role",
-        lambda project_id, user_id: "collaborator",
+        lambda project_id, user_id: "Editor",
     )
     resp = client.post(
         "/api/v1/projects/proj-1/public-links",

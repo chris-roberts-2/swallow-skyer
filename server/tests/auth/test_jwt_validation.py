@@ -10,7 +10,7 @@ def test_protected_route_accepts_valid_supabase_token(client, auth_headers, monk
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "viewer",
+        lambda project_id, user_id: "Viewer",
     )
     monkeypatch.setattr(
         supabase_module.supabase_client,

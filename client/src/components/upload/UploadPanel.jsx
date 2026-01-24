@@ -9,8 +9,8 @@ const UploadPanel = () => {
   const resolvedRole = roleForActiveProject ? roleForActiveProject() : null;
   const normalizedRole = (resolvedRole || '').toLowerCase();
   const canUpload =
-    normalizedRole === 'collaborator' ||
-    normalizedRole === 'co-owner' ||
+    normalizedRole === 'editor' ||
+    normalizedRole === 'administrator' ||
     normalizedRole === 'owner';
 
   const { Toast, showForbiddenToast } = usePermissionToast();

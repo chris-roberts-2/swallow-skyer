@@ -37,7 +37,7 @@ def _auth_headers(token="valid-supabase-token"):
 
 @pytest.mark.parametrize(
     "role",
-    ["owner", "co-owner", "collaborator", "viewer"],
+    ["Owner", "Administrator", "Editor", "Viewer"],
 )
 def test_presign_allows_roles(
     app,
@@ -78,7 +78,7 @@ def test_presign_forbidden_role(
 def test_presign_mismatched_project(
     app, client, mock_permission, mock_photo, mock_presign, mock_supabase_verify
 ):
-    mock_permission("viewer")
+    mock_permission("Viewer")
     mock_photo({"id": "photo-1", "project_id": "project-2", "r2_path": "projects/project-2/photos/photo-1.jpg"})
 
     response = client.get(
@@ -93,7 +93,7 @@ def test_presign_mismatched_project(
 def test_presign_missing_photo(
     app, client, mock_permission, mock_photo, mock_presign, mock_supabase_verify
 ):
-    mock_permission("viewer")
+    mock_permission("Viewer")
     mock_photo(None)
 
     response = client.get(

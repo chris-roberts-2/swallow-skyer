@@ -36,12 +36,12 @@ def test_list_members_success(client, monkeypatch):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "viewer",
+        lambda project_id, user_id: "Viewer",
     )
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "list_project_members_with_profile",
-        lambda project_id: [{"user_id": "user-actor", "role": "viewer"}],
+        lambda project_id: [{"user_id": "user-actor", "role": "Viewer"}],
     )
     resp = client.get("/api/v1/projects/proj-1/members", headers=AUTH_HEADER)
     assert resp.status_code == 200
@@ -62,7 +62,7 @@ def test_add_member_success(client, monkeypatch):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "owner",
+        lambda project_id, user_id: "Owner",
     )
     monkeypatch.setattr(
         supabase_module.supabase_client,
@@ -72,26 +72,26 @@ def test_add_member_success(client, monkeypatch):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "owner" if user_id == "user-actor" else None,
+        lambda project_id, user_id: "Owner" if user_id == "user-actor" else None,
     )
     resp = client.post(
         "/api/v1/projects/proj-1/members",
-        json={"user_id": "user-new", "role": "viewer"},
+        json={"user_id": "user-new", "role": "Viewer"},
         headers=AUTH_HEADER,
     )
     assert resp.status_code == 201
     assert resp.get_json()["success"]
 
 
-def test_update_member_forbidden_for_collaborator(client, monkeypatch):
+def test_update_member_forbidden_for_editor(client, monkeypatch):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "collaborator",
+        lambda project_id, user_id: "Editor",
     )
     resp = client.patch(
         "/api/v1/projects/proj-1/members/user-2",
-        json={"role": "viewer"},
+        json={"role": "Viewer"},
         headers=AUTH_HEADER,
     )
     assert resp.status_code == 403
@@ -100,9 +100,9 @@ def test_update_member_forbidden_for_collaborator(client, monkeypatch):
 def test_remove_member_block_last_owner(client, monkeypatch):
     def mock_get_role(project_id, user_id):
         if user_id == "user-actor":
-            return "owner"
+            return "Owner"
         if user_id == "user-target":
-            return "owner"
+            return "Owner"
         return None
 
     monkeypatch.setattr(
@@ -122,9 +122,9 @@ def test_remove_member_block_last_owner(client, monkeypatch):
 def test_remove_member_allows_co_owner_when_multiple(client, monkeypatch):
     def mock_get_role(project_id, user_id):
         if user_id == "user-actor":
-            return "owner"
+            return "Owner"
         if user_id == "user-target":
-            return "co-owner"
+            return "Administrator"
         return None
 
     called = {}

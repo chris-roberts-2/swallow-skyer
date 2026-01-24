@@ -19,7 +19,7 @@ from app.services.storage.r2_client import r2_client
 from app.middleware.auth_middleware import jwt_required
 from app.services.auth.permissions import require_role
 
-ALLOWED_UPLOAD_ROLES = {"collaborator", "co-owner", "owner"}
+ALLOWED_UPLOAD_ROLES = {"Owner", "Administrator", "Editor"}
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 

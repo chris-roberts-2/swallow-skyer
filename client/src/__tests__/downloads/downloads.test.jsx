@@ -51,7 +51,7 @@ describe('download actions', () => {
       json: () => Promise.resolve({ url: 'https://signed.test/file' }),
     });
 
-    renderWithRole('viewer');
+    renderWithRole('Viewer');
 
     fireEvent.click(screen.getByTestId('download-photo'));
 
@@ -71,7 +71,7 @@ describe('download actions', () => {
       json: () => Promise.resolve({ message: 'forbidden' }),
     });
 
-    renderWithRole('viewer');
+    renderWithRole('Viewer');
 
     fireEvent.click(screen.getByTestId('download-photo'));
 

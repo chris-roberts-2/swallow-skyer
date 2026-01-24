@@ -13,7 +13,8 @@ const MemberManager = () => {
   const activeProjectId = activeProject?.id || activeProject || null;
   const role = roleForActiveProject ? roleForActiveProject() : null;
   const normalizedRole = (role || '').toLowerCase();
-  const canManage = normalizedRole === 'owner' || normalizedRole === 'co-owner';
+  const canManage =
+    normalizedRole === 'owner' || normalizedRole === 'administrator';
   const { Toast, showForbiddenToast } = usePermissionToast();
 
   const handleAddMember = useCallback(async () => {
@@ -26,7 +27,7 @@ const MemberManager = () => {
           'Content-Type': 'application/json',
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
-        body: JSON.stringify({ user_id: 'placeholder', role: 'viewer' }),
+        body: JSON.stringify({ user_id: 'placeholder', role: 'Viewer' }),
       });
       if (res.status === 403) {
         showForbiddenToast();
@@ -55,7 +56,7 @@ const MemberManager = () => {
   if (!canManage) {
     return (
       <div data-testid="member-manager-readonly">
-        Member management is restricted to owners and co-owners.
+        Member management is restricted to owners and administrators.
         {Toast}
       </div>
     );

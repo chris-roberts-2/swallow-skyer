@@ -7,7 +7,7 @@ from app.services.storage.r2_client import r2_client
 
 bp = Blueprint("files", __name__)
 
-ALLOWED_ROLES = {"owner", "co-owner", "collaborator", "viewer"}
+ALLOWED_ROLES = {"Owner", "Administrator", "Editor", "Viewer"}
 DEFAULT_DENIED_MESSAGE = "You do not have permission for this action."
 
 

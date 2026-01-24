@@ -13,7 +13,9 @@ const ProjectDashboard = ({ onProjectUpdated = () => {} }) => {
   const activeProjectId = activeProject?.id || activeProject || null;
   const role = roleForActiveProject ? roleForActiveProject() : null;
   const normalizedRole = (role || '').toLowerCase();
-  const canManage = normalizedRole === 'owner' || normalizedRole === 'co-owner';
+  const canManage =
+    normalizedRole === 'owner' || normalizedRole === 'administrator';
+  const canArchive = normalizedRole === 'owner';
 
   const { Toast, showForbiddenToast } = usePermissionToast();
 
@@ -33,7 +35,7 @@ const ProjectDashboard = ({ onProjectUpdated = () => {} }) => {
         return;
       }
       if (!res.ok) {
-        throw new Error('Failed to delete project');
+        throw new Error('Failed to archive project');
       }
       onProjectUpdated();
     } catch (err) {
@@ -66,18 +68,18 @@ const ProjectDashboard = ({ onProjectUpdated = () => {} }) => {
           Edit Project
         </button>
       )}
-      {canManage && (
+      {canArchive && (
         <button
           type="button"
           data-testid="delete-project"
           onClick={handleDelete}
         >
-          Delete Project
+          Archive Project
         </button>
       )}
       {!canManage && (
         <div data-testid="project-readonly">
-          Project editing is limited to owners and co-owners.
+          Project editing is limited to owners and administrators.
         </div>
       )}
       {Toast}

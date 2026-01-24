@@ -28,8 +28,8 @@ def test_date_filter(monkeypatch, client, auth_headers):
             "count": 1,
         }
 
-    def mock_list_projects_for_user(user_id):
-        return [{"id": "11111111-1111-1111-1111-111111111111", "role": "owner"}]
+    def mock_list_projects_for_user(user_id, show_on_projects=True):
+        return [{"id": "11111111-1111-1111-1111-111111111111", "role": "Owner"}]
 
     monkeypatch.setattr(
         supabase_module.supabase_client,
@@ -40,7 +40,7 @@ def test_date_filter(monkeypatch, client, auth_headers):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "owner",
+        lambda project_id, user_id: "Owner",
         raising=True,
     )
     monkeypatch.setattr(
@@ -75,8 +75,8 @@ def test_bbox_filter(monkeypatch, client, auth_headers):
         captured.update(kwargs)
         return {"data": [], "count": 0}
 
-    def mock_list_projects_for_user(user_id):
-        return [{"id": "11111111-1111-1111-1111-111111111111", "role": "owner"}]
+    def mock_list_projects_for_user(user_id, show_on_projects=True):
+        return [{"id": "11111111-1111-1111-1111-111111111111", "role": "Owner"}]
 
     monkeypatch.setattr(
         supabase_module.supabase_client,
@@ -87,7 +87,7 @@ def test_bbox_filter(monkeypatch, client, auth_headers):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "owner",
+        lambda project_id, user_id: "Owner",
         raising=True,
     )
     monkeypatch.setattr(
@@ -120,8 +120,8 @@ def test_geocode_filter(monkeypatch, client, auth_headers):
         captured.update(kwargs)
         return {"data": [], "count": 0}
 
-    def mock_list_projects_for_user(user_id):
-        return [{"id": "11111111-1111-1111-1111-111111111111", "role": "owner"}]
+    def mock_list_projects_for_user(user_id, show_on_projects=True):
+        return [{"id": "11111111-1111-1111-1111-111111111111", "role": "Owner"}]
 
     monkeypatch.setattr(
         supabase_module.supabase_client,
@@ -132,7 +132,7 @@ def test_geocode_filter(monkeypatch, client, auth_headers):
     monkeypatch.setattr(
         supabase_module.supabase_client,
         "get_project_role",
-        lambda project_id, user_id: "owner",
+        lambda project_id, user_id: "Owner",
         raising=True,
     )
     monkeypatch.setattr(

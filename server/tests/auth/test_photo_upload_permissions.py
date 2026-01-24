@@ -19,7 +19,7 @@ def upload_data():
     }
 
 
-def test_upload_collaborator_allowed(client, auth_headers, monkeypatch, upload_data):
+def test_upload_editor_allowed(client, auth_headers, monkeypatch, upload_data):
     from app.services.storage import r2_client as r2_module
     from app.services.storage import supabase_client as supabase_module
 
