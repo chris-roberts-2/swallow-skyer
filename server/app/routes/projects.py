@@ -118,6 +118,7 @@ def update_project(project_id):
     name = payload.get("name")
     description = None  # deprecated
     address = payload.get("address")
+    show_on_projects = payload.get("show_on_projects")
     if name is not None:
         name = name.strip()
         if not name:
@@ -128,6 +129,7 @@ def update_project(project_id):
             project_id=project_id,
             name=name,
             address=address,
+            show_on_projects=show_on_projects,
         )
         if not updated:
             return jsonify({"error": "Project not found"}), 404
