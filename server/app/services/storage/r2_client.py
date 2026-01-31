@@ -37,27 +37,33 @@ class R2Client:
 
     def _public_base_with_bucket(self) -> Optional[str]:
         """
-        Return a public base URL that includes the bucket path when required.
+        Return the public base URL for constructing file URLs.
 
-        Cloudflare's public endpoints (pub-*.r2.dev or *.r2.cloudflarestorage.com)
-        expect the bucket name as a path segment. If the configured public base
-        points at those domains and the bucket segment is missing, append it so
-        generated URLs resolve correctly.
+        Cloudflare's Public Development URLs (pub-*.r2.dev) have the bucket
+        pre-bound and don't need the bucket name in the path. Only custom
+        domains or certain S3-compatible endpoints might require the bucket
+        as a path segment.
         """
         if not self.public_url:
             return None
 
         base = self.public_url.rstrip("/")
+        
+        # Public Development URLs (pub-*.r2.dev) have bucket pre-bound
+        # Do NOT add bucket name to these URLs
+        normalized = base.lower()
+        if "pub-" in normalized and ".r2.dev" in normalized:
+            return base
+        
+        # For custom domains or other configurations, check if bucket already included
         if not self.bucket_name:
             return base
-
-        normalized = base.lower()
+            
         bucket_segment = f"/{self.bucket_name.lower()}"
-        if (
-            ("r2.dev" in normalized or "r2.cloudflarestorage.com" in normalized)
-            and bucket_segment not in normalized
-        ):
+        if bucket_segment not in normalized:
+            # Only add bucket for non-pub-.r2.dev URLs that don't already have it
             return f"{base}/{self.bucket_name}"
+        
         return base
 
     def upload_file(
