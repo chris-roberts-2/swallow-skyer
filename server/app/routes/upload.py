@@ -10,7 +10,7 @@ from uuid import UUID
 from flask import jsonify, request, g
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
-from PIL import Image, ImageFile
+from PIL import Image, ImageFile, ImageOps
 from PIL.ExifTags import TAGS, GPSTAGS
 from datetime import datetime, timezone
 
@@ -456,6 +456,14 @@ def _has_transparency(image: Image.Image) -> bool:
 def _generate_thumbnail_bytes(
     image: Image.Image, mime_type: str
 ) -> Tuple[bytes, str, str]:
+    # Apply EXIF orientation to ensure thumbnail is correctly rotated
+    # This prevents sideways/upside-down thumbnails from phone photos
+    try:
+        image = ImageOps.exif_transpose(image)
+    except Exception:
+        # If EXIF orientation fails, continue with original image
+        pass
+    
     thumb = image.copy()
     thumb.thumbnail((512, 512), Image.Resampling.LANCZOS)
 
