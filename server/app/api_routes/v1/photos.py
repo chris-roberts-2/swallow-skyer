@@ -238,7 +238,6 @@ def _serialize_photo(
         "uploaded_by": uploaded_by,
         "file_name": record.get("file_name"),
         "file_size": record.get("file_size"),
-        "caption": record.get("caption"),
         "latitude": lat,
         "longitude": lon,
         "location_id": location_id,
@@ -526,8 +525,6 @@ def update_photo(photo_id):
         data = request.get_json() or {}
 
         updates = {}
-        if "caption" in data:
-            updates["caption"] = data.get("caption")
         if not updates:
             return jsonify({"version": "v1", "photo": _serialize_photo(record, {project_id: {}}, {}, {})})
 

@@ -61,7 +61,6 @@ def registerUploadRoutes(blueprint):
             return jsonify(payload), status_code
 
         userId = permission.get("user_id")
-        caption = request.form.get("caption")
         timestamp = request.form.get("timestamp")
         latitudeRaw = request.form.get("latitude")
         longitudeRaw = request.form.get("longitude")
@@ -148,6 +147,18 @@ def registerUploadRoutes(blueprint):
                 pil_image, originalBytes
             )
 
+            # Check for duplicate photos before uploading
+            duplicate = supabase_client.check_duplicate_photo(
+                project_id=projectId,
+                file_name=safeName,
+                file_size=fileSize,
+                captured_at=captured_at,
+            )
+            
+            if duplicate:
+                # Skip this file as it's a duplicate
+                continue
+
             location_id = None
             if gps_decimal and gps_decimal.get("lat") is not None and gps_decimal.get(
                 "lon"
@@ -172,7 +183,6 @@ def registerUploadRoutes(blueprint):
                 if gps_decimal is None
                 else gps_decimal.get("lon", longitudeValue),
                 "location_id": location_id,
-                "caption": caption or None,
                 "show_on_photos": True,
             }
             if timestamp:

@@ -277,26 +277,59 @@ class SupabaseClient:
         self, latitude: float, longitude: float, elevation: Optional[float] = None
     ) -> Optional[str]:
         """
-        Fetch an existing location by lat/lon or create a new one.
-        Exact match is sufficient for current use.
+        Fetch an existing location within ~15 feet or create a new one.
+        Uses proximity-based clustering to group nearby photos.
         """
         if not self.client:
             print("Supabase client not initialized - check environment variables")
             return None
+        
+        # Define proximity threshold: 15 feet = 4.572 meters
+        PROXIMITY_THRESHOLD_METERS = 4.572
+        
+        # Calculate bounding box for efficient query
+        # Approximately 0.00005 degrees = ~5.5 meters at equator
+        lat_delta = 0.00005
+        lon_delta = 0.00005
+        
         try:
+            # Query locations within bounding box
             query = (
                 self.client.table("locations")
-                .select("id")
-                .eq("latitude", latitude)
-                .eq("longitude", longitude)
-                .limit(1)
+                .select("id,latitude,longitude")
+                .gte("latitude", latitude - lat_delta)
+                .lte("latitude", latitude + lat_delta)
+                .gte("longitude", longitude - lon_delta)
+                .lte("longitude", longitude + lon_delta)
             )
-            existing = query.execute()
-            if existing.data:
-                return existing.data[0].get("id")
+            nearby = query.execute()
+            
+            if nearby.data:
+                # Calculate actual distances using Haversine formula
+                closest_location = None
+                closest_distance = float('inf')
+                
+                for loc in nearby.data:
+                    loc_lat = loc.get("latitude")
+                    loc_lon = loc.get("longitude")
+                    if loc_lat is None or loc_lon is None:
+                        continue
+                    
+                    distance = self._calculate_distance(
+                        latitude, longitude, loc_lat, loc_lon
+                    )
+                    
+                    if distance < closest_distance:
+                        closest_distance = distance
+                        closest_location = loc
+                
+                # If closest location is within threshold, return it
+                if closest_location and closest_distance <= PROXIMITY_THRESHOLD_METERS:
+                    return closest_location.get("id")
         except Exception as e:
-            print(f"Error querying location: {e}")
+            print(f"Error querying nearby locations: {e}")
 
+        # No nearby location found, create new one
         try:
             payload = {"latitude": latitude, "longitude": longitude}
             if elevation is not None:
@@ -320,6 +353,31 @@ class SupabaseClient:
             print(f"Error creating location: {e}")
         return None
 
+    def _calculate_distance(
+        self, lat1: float, lon1: float, lat2: float, lon2: float
+    ) -> float:
+        """
+        Calculate distance between two GPS coordinates using Haversine formula.
+        Returns distance in meters.
+        """
+        from math import radians, sin, cos, sqrt, atan2
+        
+        # Earth radius in meters
+        R = 6371000
+        
+        # Convert to radians
+        lat1_rad = radians(lat1)
+        lat2_rad = radians(lat2)
+        delta_lat = radians(lat2 - lat1)
+        delta_lon = radians(lon2 - lon1)
+        
+        # Haversine formula
+        a = sin(delta_lat / 2) ** 2 + cos(lat1_rad) * cos(lat2_rad) * sin(delta_lon / 2) ** 2
+        c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        distance = R * c
+        
+        return distance
+
     def _build_location_geocode_fields(self, geocode: Dict[str, Any]) -> Dict[str, Any]:
         if self._location_geocode_columns is None:
             self._location_geocode_columns = self._detect_location_geocode_columns()
@@ -342,6 +400,46 @@ class SupabaseClient:
             return True
         except Exception:
             return False
+
+    def check_duplicate_photo(
+        self,
+        project_id: str,
+        file_name: str,
+        file_size: int,
+        captured_at: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Check if a photo with the same file name, file size, and captured_at
+        already exists in the project.
+        Returns the existing photo record if found, None otherwise.
+        """
+        if not self.client:
+            return None
+        
+        try:
+            query = (
+                self.client.table("photos")
+                .select("id,file_name,file_size,captured_at")
+                .eq("project_id", project_id)
+                .eq("file_name", file_name)
+                .eq("file_size", file_size)
+            )
+            
+            if captured_at:
+                query = query.eq("captured_at", captured_at)
+            
+            if self.supports_show_on_photos():
+                query = query.eq("show_on_photos", True)
+            
+            response = query.limit(1).execute()
+            
+            if response.data and len(response.data) > 0:
+                return response.data[0]
+            
+            return None
+        except Exception as e:
+            print(f"Error checking for duplicate photo: {e}")
+            return None
 
     def update_photo_metadata(
         self, photo_id: str, updates: Dict[str, Any]
@@ -598,7 +696,6 @@ class SupabaseClient:
             "id",
             "project_id",
             "user_id",
-            "caption",
             "file_name",
             "latitude",
             "longitude",
@@ -640,7 +737,7 @@ class SupabaseClient:
                 .lte("longitude", lon_max)
             )
 
-        query = query.order("uploaded_at", desc=order_desc).limit(safe_page_size).offset(
+        query = query.order("captured_at", desc=order_desc).limit(safe_page_size).offset(
             offset
         )
 

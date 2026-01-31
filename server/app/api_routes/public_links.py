@@ -82,7 +82,6 @@ def _sanitize_photo(record: Dict) -> Dict:
     return {
         "id": record.get("id"),
         "project_id": record.get("project_id"),
-        "caption": record.get("caption"),
         "latitude": record.get("latitude"),
         "longitude": record.get("longitude"),
         "created_at": record.get("created_at"),
