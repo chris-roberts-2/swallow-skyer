@@ -323,15 +323,17 @@ class SupabaseClient:
                         closest_distance = distance
                         closest_location = loc
                 
-                # If closest location is within threshold, return it
+                # If closest location is within threshold, increment count and return it
                 if closest_location and closest_distance <= PROXIMITY_THRESHOLD_METERS:
-                    return closest_location.get("id")
+                    loc_id = closest_location.get("id")
+                    self._increment_location_count(loc_id)
+                    return loc_id
         except Exception as e:
             print(f"Error querying nearby locations: {e}")
 
         # No nearby location found, create new one
         try:
-            payload = {"latitude": latitude, "longitude": longitude}
+            payload = {"latitude": latitude, "longitude": longitude, "number": 1}
             if elevation is not None:
                 payload["elevation"] = elevation
             inserted = self.client.table("locations").insert(payload).execute()
@@ -352,6 +354,40 @@ class SupabaseClient:
         except Exception as e:
             print(f"Error creating location: {e}")
         return None
+
+    def _increment_location_count(self, location_id: str) -> None:
+        """
+        Increment the number column for a location when a photo is added.
+        """
+        if not self.client or not location_id:
+            return
+        
+        try:
+            # Fetch current count
+            result = self.client.table("locations").select("number").eq("id", location_id).execute()
+            if result.data and len(result.data) > 0:
+                current_count = result.data[0].get("number") or 0
+                new_count = current_count + 1
+                self.client.table("locations").update({"number": new_count}).eq("id", location_id).execute()
+        except Exception as e:
+            print(f"Error incrementing location count: {e}")
+    
+    def decrement_location_count(self, location_id: str) -> None:
+        """
+        Decrement the number column for a location when a photo is deleted.
+        """
+        if not self.client or not location_id:
+            return
+        
+        try:
+            # Fetch current count
+            result = self.client.table("locations").select("number").eq("id", location_id).execute()
+            if result.data and len(result.data) > 0:
+                current_count = result.data[0].get("number") or 0
+                new_count = max(0, current_count - 1)
+                self.client.table("locations").update({"number": new_count}).eq("id", location_id).execute()
+        except Exception as e:
+            print(f"Error decrementing location count: {e}")
 
     def _calculate_distance(
         self, lat1: float, lon1: float, lat2: float, lon2: float

@@ -562,6 +562,9 @@ def delete_photo(photo_id):
             payload, status_code = permission
             return jsonify(payload), status_code
 
+        # Get location_id before deletion
+        location_id = record.get("location_id")
+
         # Soft-hide by flipping show_on_photos so it disappears from Photos/Map.
         updated = supabase_client.update_photo_metadata(
             photo_id, {"show_on_photos": False}
@@ -576,6 +579,10 @@ def delete_photo(photo_id):
                 ),
                 500,
             )
+
+        # Decrement location count
+        if location_id:
+            supabase_client.decrement_location_count(location_id)
 
         return jsonify({"message": "Photo deleted successfully", "version": "v1"})
     except Exception as e:

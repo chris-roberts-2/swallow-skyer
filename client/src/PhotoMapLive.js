@@ -77,32 +77,6 @@ const resolvePhotoUrl = photo => {
   return { primaryUrl, fallbackUrl, resolvedUrl };
 };
 
-const distanceMeters = (a, b) => {
-  if (
-    !Number.isFinite(a.mapLatitude) ||
-    !Number.isFinite(a.mapLongitude) ||
-    !Number.isFinite(b.mapLatitude) ||
-    !Number.isFinite(b.mapLongitude)
-  ) {
-    return Number.POSITIVE_INFINITY;
-  }
-
-  const dLat = toRadians(b.mapLatitude - a.mapLatitude);
-  const dLon = toRadians(b.mapLongitude - a.mapLongitude);
-  const lat1Rad = toRadians(a.mapLatitude);
-  const lat2Rad = toRadians(b.mapLatitude);
-
-  const hav =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1Rad) * Math.cos(lat2Rad) * Math.sin(dLon / 2) ** 2;
-
-  return 2 * EARTH_RADIUS_METERS * Math.asin(Math.sqrt(hav));
-};
-
-// Cluster photos within ~15 feet
-const FIFTEEN_FEET_METERS = 4.572;
-const zoomToThresholdMeters = () => FIFTEEN_FEET_METERS;
-
 const parsePhotoCapturedAtMs = photo => {
   const raw =
     photo?.captured_at ||
@@ -123,74 +97,8 @@ const parsePhotoCapturedAtMs = photo => {
   }
 };
 
-const pickOldestPhoto = photos => {
-  if (!photos?.length) return null;
-  let oldest = null;
-  let oldestMs = Number.POSITIVE_INFINITY;
-  for (const photo of photos) {
-    const ms = parsePhotoCapturedAtMs(photo);
-    if (ms === null) continue;
-    if (ms < oldestMs) {
-      oldestMs = ms;
-      oldest = photo;
-    }
-  }
-  // If none have a usable timestamp, fall back to first entry to keep output stable.
-  return oldest || photos[0];
-};
-
-const buildClusters = (photoList, thresholdMeters) => {
-  if (!photoList.length) return [];
-
-  const remaining = new Set(photoList.map((_, index) => index));
-  const clusters = [];
-
-  while (remaining.size > 0) {
-    const iterator = remaining.values().next().value;
-    remaining.delete(iterator);
-
-    const clusterIndices = [iterator];
-    let position = 0;
-
-    while (position < clusterIndices.length) {
-      const currentIdx = clusterIndices[position];
-      position += 1;
-
-      const currentPhoto = photoList[currentIdx];
-
-      for (const idx of Array.from(remaining)) {
-        const candidate = photoList[idx];
-        if (distanceMeters(currentPhoto, candidate) <= thresholdMeters) {
-          clusterIndices.push(idx);
-          remaining.delete(idx);
-        }
-      }
-    }
-
-    const clusterPhotos = clusterIndices.map(index => photoList[index]);
-    // Anchor cluster marker to the exact coordinates of the oldest photo.
-    // This prevents "walking" when grouping changes or when using averaged positions.
-    const anchor = pickOldestPhoto(clusterPhotos);
-    const latitude = anchor?.mapLatitude;
-    const longitude = anchor?.mapLongitude;
-
-    clusters.push({
-      latitude,
-      longitude,
-      // Keep photos sorted oldest -> newest for consistent stacks.
-      photos: [...clusterPhotos].sort((a, b) => {
-        const am = parsePhotoCapturedAtMs(a);
-        const bm = parsePhotoCapturedAtMs(b);
-        if (am === null && bm === null) return 0;
-        if (am === null) return 1;
-        if (bm === null) return -1;
-        return am - bm;
-      }),
-    });
-  }
-
-  return clusters;
-};
+// Clustering is now done on the backend via locations table
+// Frontend simply displays markers based on locations.number
 
 class BasemapToggleControl {
   constructor({ onSelect, getActive }) {
@@ -255,9 +163,11 @@ const PhotoMapLive = () => {
   const mapInstance = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [photos, setPhotos] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [mapZoom, setMapZoom] = useState(3.5);
   const [activeStack, setActiveStack] = useState(null);
   const cacheRef = useRef({ data: null, fetchedAt: 0 });
+  const locationsCacheRef = useRef({ data: null, fetchedAt: 0 });
   const markersRef = useRef([]);
   const stackPopupRef = useRef(null);
   const photoPopupRef = useRef(null);
@@ -336,12 +246,33 @@ const PhotoMapLive = () => {
 
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
-    mapInstance.current = new maplibregl.Map({
-      container: mapRef.current,
-      style: STANDARD_STYLE_URL,
-      center: [-98.5, 39.8], // USA center
-      zoom: 3.5,
-    });
+
+    try {
+      mapInstance.current = new maplibregl.Map({
+        container: mapRef.current,
+        style: STANDARD_STYLE_URL,
+        center: [-98.5, 39.8], // USA center
+        zoom: 3.5,
+        transformRequest: (url, resourceType) => {
+          // Ensure proper CORS headers for style and tile requests
+          if (
+            resourceType === 'Style' ||
+            resourceType === 'Source' ||
+            resourceType === 'Tile'
+          ) {
+            return {
+              url: url,
+              headers: {},
+              credentials: 'omit',
+            };
+          }
+        },
+      });
+    } catch (error) {
+      console.error('Error initializing map:', error);
+      return;
+    }
+
     if (typeof mapInstance.current?.addControl === 'function') {
       mapInstance.current.addControl(
         new maplibregl.NavigationControl(),
@@ -370,9 +301,14 @@ const PhotoMapLive = () => {
       setIsMapReady(true);
     };
 
+    const handleError = e => {
+      console.error('Map error:', e);
+    };
+
     const supportsEvents = typeof mapInstance.current?.on === 'function';
     if (supportsEvents) {
       mapInstance.current.on('load', handleLoad);
+      mapInstance.current.on('error', handleError);
       mapInstance.current.on('zoomend', handleZoom);
       const setInteracted = () => {
         userInteractedRef.current = true;
@@ -779,6 +715,68 @@ const PhotoMapLive = () => {
     };
   }, [refreshCounter, activeProjectId]);
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    const fetchLocations = async () => {
+      if (!activeProjectId) {
+        setLocations([]);
+        return;
+      }
+      const cached = locationsCacheRef.current || {};
+      const candidates = envApiBases;
+
+      const accessToken = localStorage.getItem('access_token') || '';
+
+      for (const base of candidates) {
+        try {
+          const url = new URL(`${base}/api/v1/locations/`);
+          url.searchParams.set('project_id', activeProjectId);
+          url.searchParams.set('show_on_photos', 'true');
+          const res = await fetch(url.toString(), {
+            headers: {
+              ...(accessToken
+                ? {
+                    Authorization: `Bearer ${accessToken}`,
+                  }
+                : {}),
+            },
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            // try next candidate
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+          const list = Array.isArray(data.locations) ? data.locations : [];
+          console.debug('Fetched locations', list.length);
+          if (!isCancelled) {
+            setLocations(list);
+            locationsCacheRef.current = {
+              data: list,
+              fetchedAt: Date.now(),
+              projectId: activeProjectId,
+            };
+          }
+          return;
+        } catch (e) {
+          // Try next base
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+      }
+
+      // All attempts failed - keep cached if present
+      if (!isCancelled && cached.data) {
+        setLocations(cached.data);
+      }
+    };
+    fetchLocations();
+    return () => {
+      isCancelled = true;
+    };
+  }, [refreshCounter, activeProjectId]);
+
   const normalisedPhotos = useMemo(() => {
     return (photos || [])
       .map(photo => {
@@ -829,12 +827,39 @@ const PhotoMapLive = () => {
   }, [photos]);
 
   const clusters = useMemo(() => {
-    // Keep clusters stable while zooming. Re-clustering on every zoom change can
-    // make cluster markers look like they "move" even when the underlying coordinates
-    // are unchanged.
-    const threshold = zoomToThresholdMeters();
-    return buildClusters(normalisedPhotos, threshold);
-  }, [normalisedPhotos]);
+    // Build clusters from locations data instead of client-side clustering
+    // Each location represents a cluster, and locations.number tells us if it's single or multi
+    return locations
+      .map(location => {
+        // Find all photos that belong to this location
+        const locationPhotos = normalisedPhotos.filter(photo => {
+          // Match photos to location by coordinates (within small tolerance for floating point)
+          const latMatch =
+            Math.abs(photo.mapLatitude - location.latitude) < 0.000001;
+          const lonMatch =
+            Math.abs(photo.mapLongitude - location.longitude) < 0.000001;
+          return latMatch && lonMatch;
+        });
+
+        // Sort photos by timestamp (oldest first)
+        const sortedPhotos = [...locationPhotos].sort((a, b) => {
+          const am = parsePhotoCapturedAtMs(a);
+          const bm = parsePhotoCapturedAtMs(b);
+          if (am === null && bm === null) return 0;
+          if (am === null) return 1;
+          if (bm === null) return -1;
+          return am - bm;
+        });
+
+        return {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          photos: sortedPhotos,
+          locationNumber: location.number || 0,
+        };
+      })
+      .filter(cluster => cluster.photos.length > 0);
+  }, [locations, normalisedPhotos]);
 
   useEffect(() => {
     if (!activeStack) return;
@@ -1314,10 +1339,13 @@ const PhotoMapLive = () => {
         return;
       }
 
-      if (cluster.photos.length === 1) {
+      // Use locationNumber from backend to determine marker type
+      const isIndividual = (cluster.locationNumber || 0) === 1;
+
+      if (isIndividual && cluster.photos.length > 0) {
         const marker = createPhotoMarker(cluster.photos[0]);
         if (marker) markersRef.current.push(marker);
-      } else {
+      } else if (cluster.photos.length > 0) {
         const marker = createClusterMarker(cluster);
         if (marker) markersRef.current.push(marker);
       }
