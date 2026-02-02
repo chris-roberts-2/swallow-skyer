@@ -119,7 +119,7 @@ const ProjectsPage = () => {
         await refreshProjects({ redirectWhenEmpty: false });
         setActiveProject(project);
         setIsModalOpen(false);
-        navigate('/map');
+        // Stay on Projects page after creating a new project
       } catch (err) {
         setError(
           err?.payload?.error ||

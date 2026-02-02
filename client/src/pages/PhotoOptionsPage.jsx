@@ -140,13 +140,19 @@ const PhotoOptionsPage = () => {
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
 
     if (!mapInstance.current) {
-      mapInstance.current = new maplibregl.Map({
-        container: mapRef.current,
-        style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-        center: [lon, lat],
-        zoom: 13,
-        interactive: false,
-      });
+      try {
+        mapInstance.current = new maplibregl.Map({
+          container: mapRef.current,
+          style:
+            'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+          center: [lon, lat],
+          zoom: 13,
+          interactive: false,
+        });
+      } catch (error) {
+        console.error('Error initializing map:', error);
+        return;
+      }
     } else {
       mapInstance.current.setCenter([lon, lat]);
     }
