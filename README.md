@@ -173,11 +173,14 @@ mkdir -p /tmp/swallow-build
 cp -R "client/build/." /tmp/swallow-build/
 ```
 
-Switch branch and replace contents:
+Switch branch and replace contents (preserving .env files):
 
 ```bash
 git checkout website-v1
-rm -rf ./*
+
+# SAFE CLEANUP: Remove everything EXCEPT .env files and .git
+find . -mindepth 1 -maxdepth 1 ! -name '.env*' ! -name '.git' -exec rm -rf {} +
+
 cp -R /tmp/swallow-build/. .
 ```
 
