@@ -1,17 +1,17 @@
 {
   "files": {
     "main.css": "/swallow-skyer/static/css/main.1c106f01.css",
-    "main.js": "/swallow-skyer/static/js/main.3d890283.js",
+    "main.js": "/swallow-skyer/static/js/main.ca050b52.js",
     "static/js/159.32eca207.chunk.js": "/swallow-skyer/static/js/159.32eca207.chunk.js",
     "static/js/453.eb570f4f.chunk.js": "/swallow-skyer/static/js/453.eb570f4f.chunk.js",
     "index.html": "/swallow-skyer/index.html",
     "main.1c106f01.css.map": "/swallow-skyer/static/css/main.1c106f01.css.map",
-    "main.3d890283.js.map": "/swallow-skyer/static/js/main.3d890283.js.map",
+    "main.ca050b52.js.map": "/swallow-skyer/static/js/main.ca050b52.js.map",
     "159.32eca207.chunk.js.map": "/swallow-skyer/static/js/159.32eca207.chunk.js.map",
     "453.eb570f4f.chunk.js.map": "/swallow-skyer/static/js/453.eb570f4f.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.1c106f01.css",
-    "static/js/main.3d890283.js"
+    "static/js/main.ca050b52.js"
   ]
 }
