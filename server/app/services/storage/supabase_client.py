@@ -274,11 +274,12 @@ class SupabaseClient:
             return None
 
     def get_or_create_location(
-        self, latitude: float, longitude: float, elevation: Optional[float] = None
+        self, latitude: float, longitude: float, elevation: Optional[float] = None, project_id: Optional[str] = None
     ) -> Optional[str]:
         """
         Fetch an existing location within ~36 feet or create a new one.
         Uses proximity-based clustering to group nearby photos.
+        IMPORTANT: Only searches within the same project to prevent cross-project grouping.
         """
         if not self.client:
             print("Supabase client not initialized - check environment variables")
@@ -293,7 +294,7 @@ class SupabaseClient:
         lon_delta = 0.0001
         
         try:
-            # Query locations within bounding box
+            # Query locations within bounding box AND same project
             query = (
                 self.client.table("locations")
                 .select("id,latitude,longitude")
@@ -302,6 +303,9 @@ class SupabaseClient:
                 .gte("longitude", longitude - lon_delta)
                 .lte("longitude", longitude + lon_delta)
             )
+            # CRITICAL: Filter by project_id to prevent cross-project grouping
+            if project_id:
+                query = query.eq("project_id", project_id)
             nearby = query.execute()
             
             if nearby.data:
@@ -336,6 +340,8 @@ class SupabaseClient:
             payload = {"latitude": latitude, "longitude": longitude, "number": 1}
             if elevation is not None:
                 payload["elevation"] = elevation
+            if project_id:
+                payload["project_id"] = project_id
             inserted = self.client.table("locations").insert(payload).execute()
             if inserted.data:
                 loc_id = inserted.data[0].get("id")

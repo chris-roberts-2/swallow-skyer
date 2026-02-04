@@ -695,6 +695,8 @@ const PhotoMapLive = () => {
               fetchedAt: Date.now(),
               projectId: activeProjectId,
             };
+            // Reset auto-zoom when photos change to allow re-centering
+            hasAutoFitRef.current = false;
           }
           return;
         } catch (e) {
@@ -757,6 +759,8 @@ const PhotoMapLive = () => {
               fetchedAt: Date.now(),
               projectId: activeProjectId,
             };
+            // Reset auto-zoom when locations change to allow re-centering
+            hasAutoFitRef.current = false;
           }
           return;
         } catch (e) {

@@ -164,7 +164,7 @@ def registerUploadRoutes(blueprint):
                 "lon"
             ) is not None:
                 location_id = supabase_client.get_or_create_location(
-                    gps_decimal["lat"], gps_decimal["lon"], gps_decimal.get("alt")
+                    gps_decimal["lat"], gps_decimal["lon"], gps_decimal.get("alt"), project_id=projectId
                 )
 
             # Step 1: create placeholder record without r2_path so we can obtain photo_id
