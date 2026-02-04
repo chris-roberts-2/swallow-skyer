@@ -277,20 +277,20 @@ class SupabaseClient:
         self, latitude: float, longitude: float, elevation: Optional[float] = None
     ) -> Optional[str]:
         """
-        Fetch an existing location within ~15 feet or create a new one.
+        Fetch an existing location within ~36 feet or create a new one.
         Uses proximity-based clustering to group nearby photos.
         """
         if not self.client:
             print("Supabase client not initialized - check environment variables")
             return None
         
-        # Define proximity threshold: 15 feet = 4.572 meters
-        PROXIMITY_THRESHOLD_METERS = 4.572
+        # Define proximity threshold: 36 feet = 11 meters (approximately 0.0001 degrees)
+        PROXIMITY_THRESHOLD_METERS = 11.0
         
         # Calculate bounding box for efficient query
-        # Approximately 0.00005 degrees = ~5.5 meters at equator
-        lat_delta = 0.00005
-        lon_delta = 0.00005
+        # 0.0001 degrees = ~11 meters at equator
+        lat_delta = 0.0001
+        lon_delta = 0.0001
         
         try:
             # Query locations within bounding box

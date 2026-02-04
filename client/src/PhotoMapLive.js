@@ -806,6 +806,8 @@ const PhotoMapLive = () => {
         }
 
         const isoTimestamp =
+          photo.captured_at ||
+          photo.capturedAt ||
           photo.taken_at ||
           photo.takenAt ||
           photo.created_at ||
@@ -827,18 +829,13 @@ const PhotoMapLive = () => {
   }, [photos]);
 
   const clusters = useMemo(() => {
-    // Build clusters from locations data instead of client-side clustering
+    // Build clusters from backend-assigned location_id (grouping was done during upload)
     // Each location represents a cluster, and locations.number tells us if it's single or multi
     return locations
       .map(location => {
-        // Find all photos that belong to this location
+        // Find all photos that belong to this location using backend-assigned location_id
         const locationPhotos = normalisedPhotos.filter(photo => {
-          // Match photos to location by coordinates (within small tolerance for floating point)
-          const latMatch =
-            Math.abs(photo.mapLatitude - location.latitude) < 0.000001;
-          const lonMatch =
-            Math.abs(photo.mapLongitude - location.longitude) < 0.000001;
-          return latMatch && lonMatch;
+          return photo.location_id === location.id;
         });
 
         // Sort photos by timestamp (oldest first)
@@ -1133,7 +1130,13 @@ const PhotoMapLive = () => {
           thumb.style.display = 'none';
         }
       };
-      thumb.src = photo.primaryUrl || photo.url || photo.fallbackUrl || '';
+      thumb.src =
+        photo.thumbnail_url ||
+        photo.thumbnailUrl ||
+        photo.primaryUrl ||
+        photo.url ||
+        photo.fallbackUrl ||
+        '';
       thumb.style.cursor = 'pointer';
       thumb.onclick = evt => {
         evt.stopPropagation();
@@ -1482,6 +1485,7 @@ const PhotoMapLive = () => {
       const thumb = document.createElement('img');
       thumb.alt = photo.caption || `Photo ${index + 1}`;
       thumb.src =
+        photo.thumbnail_url ||
         photo.thumbnailUrl ||
         photo.primaryUrl ||
         photo.url ||
