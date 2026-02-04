@@ -173,14 +173,20 @@ mkdir -p /tmp/swallow-build
 cp -R "client/build/." /tmp/swallow-build/
 ```
 
-Switch branch and replace contents (preserving .env files):
+**IMPORTANT**: Backup .env files before switching branches (they only exist on main):
+
+```bash
+mkdir -p /tmp/swallow-env-backup
+cp -f .env* /tmp/swallow-env-backup/ 2>/dev/null || true
+cp -f client/.env* /tmp/swallow-env-backup/ 2>/dev/null || true
+cp -f server/.env* /tmp/swallow-env-backup/ 2>/dev/null || true
+```
+
+Switch branch and replace contents:
 
 ```bash
 git checkout website-v1
-
-# SAFE CLEANUP: Remove everything EXCEPT .env files and .git
-find . -mindepth 1 -maxdepth 1 ! -name '.env*' ! -name '.git' -exec rm -rf {} +
-
+rm -rf ./*
 cp -R /tmp/swallow-build/. .
 ```
 
@@ -192,10 +198,13 @@ git commit -m "Deploy frontend build"
 git push origin website-v1
 ```
 
-Return to `main`:
+Return to `main` and restore .env files:
 
 ```bash
 git checkout main
+cp -f /tmp/swallow-env-backup/.env* . 2>/dev/null || true
+cp -f /tmp/swallow-env-backup/.env* client/ 2>/dev/null || true
+cp -f /tmp/swallow-env-backup/.env* server/ 2>/dev/null || true
 ```
 
 ## API quick reference
