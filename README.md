@@ -141,6 +141,21 @@ the static build output (`client/build`), not the source tree.
 Use this full workflow to rebuild and redeploy both services. Reminder: `npm run build`
 will fail on Prettier errors, so fix formatting issues before committing.
 
+**CRITICAL**: Before building, ensure `client/.env.local` exists with your API keys:
+
+```bash
+# If client/.env.local doesn't exist, create it from the example:
+cd client
+cp env.example .env.local
+# Then edit .env.local with your actual Supabase URL, anon key, and R2 URL
+```
+
+The `.env.local` file should contain:
+- `REACT_APP_API_BASE_URL=https://swallow-skyer-v1.onrender.com`
+- `REACT_APP_SUPABASE_URL=<your supabase url>`
+- `REACT_APP_SUPABASE_ANON_KEY=<your anon key>`
+- `REACT_APP_R2_PUBLIC_BASE_URL=<your r2 public url>`
+
 1) Rebuild `/client/build` (updated frontend):
 
 ```bash
@@ -148,6 +163,8 @@ cd client
 npm ci
 npm run build
 ```
+
+**If build fails with missing env var errors**, you forgot to create `.env.local`!
 
 Build output is in `client/build/`.
 
@@ -165,7 +182,21 @@ Render will deploy from `main` automatically.
 
 3) Redeploy frontend to GitHub Pages (commit/push to `website-v1`):
 
-Build first (step 1). From repo root:
+**RECOMMENDED**: Use the automated deployment script:
+
+```bash
+# From repo root, after ensuring client/.env.local exists
+./scripts/deploy-frontend.sh
+```
+
+The script will:
+- Check you're on `main` with no uncommitted changes
+- Verify `client/.env.local` exists
+- Build the frontend
+- Backup/restore .env files automatically
+- Deploy to GitHub Pages
+
+**OR** do it manually (build first - step 1). From repo root:
 
 ```bash
 rm -rf /tmp/swallow-build
@@ -177,9 +208,10 @@ cp -R "client/build/." /tmp/swallow-build/
 
 ```bash
 mkdir -p /tmp/swallow-env-backup
-cp -f .env* /tmp/swallow-env-backup/ 2>/dev/null || true
-cp -f client/.env* /tmp/swallow-env-backup/ 2>/dev/null || true
-cp -f server/.env* /tmp/swallow-env-backup/ 2>/dev/null || true
+# Backup any .env files (ignore errors if none exist)
+[ -f "client/.env.local" ] && cp client/.env.local /tmp/swallow-env-backup/
+[ -f "client/.env" ] && cp client/.env /tmp/swallow-env-backup/
+[ -f "server/.env" ] && cp server/.env /tmp/swallow-env-backup/
 ```
 
 Switch branch and replace contents:
@@ -202,9 +234,10 @@ Return to `main` and restore .env files:
 
 ```bash
 git checkout main
-cp -f /tmp/swallow-env-backup/.env* . 2>/dev/null || true
-cp -f /tmp/swallow-env-backup/.env* client/ 2>/dev/null || true
-cp -f /tmp/swallow-env-backup/.env* server/ 2>/dev/null || true
+# Restore backed up .env files
+[ -f "/tmp/swallow-env-backup/.env.local" ] && cp /tmp/swallow-env-backup/.env.local client/
+[ -f "/tmp/swallow-env-backup/.env" ] && cp /tmp/swallow-env-backup/.env client/
+[ -f "/tmp/swallow-env-backup/.env" ] && cp /tmp/swallow-env-backup/.env server/
 ```
 
 ## API quick reference
