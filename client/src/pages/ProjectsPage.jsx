@@ -75,7 +75,7 @@ const ProjectsPage = () => {
         if (activeProjectId === project.id) {
           setActiveProject(null);
         }
-        await refreshProjects({ redirectWhenEmpty: false });
+        await refreshProjects({ redirectWhenEmpty: false, force: true });
       } catch (err) {
         setError(
           err?.payload?.error ||
@@ -96,7 +96,7 @@ const ProjectsPage = () => {
         if (activeProjectId === project.id) {
           setActiveProject(null);
         }
-        await refreshProjects({ redirectWhenEmpty: false });
+        await refreshProjects({ redirectWhenEmpty: false, force: true });
       } catch (err) {
         setError(
           err?.payload?.error ||
@@ -116,7 +116,7 @@ const ProjectsPage = () => {
           name,
           address,
         });
-        await refreshProjects({ redirectWhenEmpty: false });
+        await refreshProjects({ redirectWhenEmpty: false, force: true });
         setActiveProject(project);
         setIsModalOpen(false);
         // Stay on Projects page after creating a new project
