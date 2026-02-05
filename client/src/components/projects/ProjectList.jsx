@@ -77,13 +77,17 @@ const ProjectList = ({
         tabIndex={0}
         onClick={() => {
           closeMenu();
-          onActivate(project);
+          if (!isArchivedView) {
+            onActivate(project);
+          }
         }}
         onKeyDown={e => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             closeMenu();
-            onActivate(project);
+            if (!isArchivedView) {
+              onActivate(project);
+            }
           }
         }}
         style={cardStyle(isActive, isMenuOpen)}

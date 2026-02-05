@@ -109,12 +109,12 @@ const PhotoOptionsPage = () => {
     if (!photo) return null;
     const { primaryUrl, fallbackUrl, resolvedUrl } = resolvePhotoUrl(photo);
     const isoTimestamp =
+      photo.captured_at ||
+      photo.capturedAt ||
       photo.uploaded_at ||
       photo.uploadedAt ||
       photo.created_at ||
-      photo.createdAt ||
-      photo.captured_at ||
-      photo.capturedAt;
+      photo.createdAt;
     const projectId = photo.project_id || null;
     const projectName =
       photo.project_name || projects?.find(p => p.id === projectId)?.name || '';
