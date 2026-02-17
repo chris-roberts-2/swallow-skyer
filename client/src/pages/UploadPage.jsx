@@ -43,12 +43,13 @@ const formatTimestamp = value => formatLocalDateTime(value);
 const menuItemStyle = {
   width: '100%',
   textAlign: 'left',
-  padding: '8px 12px',
+  padding: 'var(--space-sm) var(--space-md)',
   background: 'transparent',
   border: 'none',
   cursor: 'pointer',
   fontSize: 14,
   transition: 'background 120ms ease',
+  color: 'var(--color-text-primary)',
 };
 
 const PhotosPage = () => {
@@ -293,13 +294,15 @@ const PhotosPage = () => {
     return (
       <div
         style={{
-          padding: '24px',
+          padding: 'var(--space-xl)',
           width: '100%',
           boxSizing: 'border-box',
         }}
       >
-        <h2>Photos</h2>
-        <p>Select or create a project to view its photos.</p>
+        <h2 style={{ color: 'var(--color-text-primary)' }}>Photos</h2>
+        <p style={{ color: 'var(--color-text-secondary)' }}>
+          Select or create a project to view its photos.
+        </p>
       </div>
     );
   }
@@ -308,7 +311,7 @@ const PhotosPage = () => {
     <div
       style={{
         width: '100%',
-        padding: '16px 24px',
+        padding: 'var(--space-md) var(--space-lg)',
         boxSizing: 'border-box',
         position: 'relative',
       }}
@@ -317,8 +320,8 @@ const PhotosPage = () => {
         style={{
           position: 'absolute',
           zIndex: 3,
-          top: 8,
-          left: 8,
+          top: 'var(--space-sm)',
+          left: 'var(--space-sm)',
         }}
       >
         <select
@@ -357,13 +360,23 @@ const PhotosPage = () => {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: 12,
-            gap: 12,
+            marginBottom: 'var(--space-md)',
+            gap: 'var(--space-md)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <h2 style={{ margin: 0 }}>Photos</h2>
-            <span style={{ color: '#6b7280', fontSize: 13 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-md)',
+            }}
+          >
+            <h2 style={{ margin: 0, color: 'var(--color-text-primary)' }}>
+              Photos
+            </h2>
+            <span
+              style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}
+            >
               {normalisedPhotos.length} items
             </span>
           </div>
@@ -377,12 +390,12 @@ const PhotosPage = () => {
           <div
             style={{
               display: 'flex',
-              gap: 8,
+              gap: 'var(--space-sm)',
               alignItems: 'center',
-              marginBottom: 10,
+              marginBottom: 'var(--space-sm)',
             }}
           >
-            <span style={{ fontSize: 13, color: '#374151' }}>
+            <span style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>
               {selectedIds.size} selected
             </span>
             <button
@@ -413,8 +426,8 @@ const PhotosPage = () => {
               className="btn-format-1"
               style={{
                 padding: '6px 10px',
-                color: '#b91c1c',
-                borderColor: '#fca5a5',
+                color: 'var(--color-accent)',
+                borderColor: 'var(--color-accent)',
               }}
               onClick={() => deletePhotos([...selectedIds])}
             >
@@ -435,7 +448,14 @@ const PhotosPage = () => {
         ) : null}
 
         {error ? (
-          <div style={{ color: '#dc2626', marginBottom: 12 }}>{error}</div>
+          <div
+            style={{
+              color: 'var(--color-accent)',
+              marginBottom: 'var(--space-md)',
+            }}
+          >
+            {error}
+          </div>
         ) : null}
         {isLoading ? <div>Loading photos...</div> : null}
 
@@ -443,7 +463,7 @@ const PhotosPage = () => {
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-            gap: 14,
+            gap: 'var(--space-md)',
           }}
           ref={cardsRef}
         >
@@ -455,15 +475,16 @@ const PhotosPage = () => {
                 key={photo.id}
                 className="photo-card"
                 style={{
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 12,
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-xl)',
                   padding: 0,
-                  background: '#fff',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                  background: 'var(--color-surface-primary)',
+                  boxShadow: 'var(--shadow-sm)',
                   display: 'flex',
                   flexDirection: 'column',
                   position: 'relative',
                   overflow: 'hidden',
+                  transition: 'all 0.2s ease',
                 }}
                 onClick={() => {
                   if (!selectionMode) {
@@ -478,14 +499,14 @@ const PhotosPage = () => {
                     onChange={() => toggleSelect(photo.id)}
                     style={{
                       position: 'absolute',
-                      top: 10,
-                      left: 10,
+                      top: 'var(--space-sm)',
+                      left: 'var(--space-sm)',
                       zIndex: 2,
                       width: 18,
                       height: 18,
-                      accentColor: '#1e88e5',
-                      borderRadius: 6,
-                      border: '1px solid #d1d5db',
+                      accentColor: 'var(--color-primary)',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--color-border)',
                     }}
                   />
                 ) : null}
@@ -493,8 +514,8 @@ const PhotosPage = () => {
                   className="photo-menu"
                   style={{
                     position: 'absolute',
-                    top: 10,
-                    right: 10,
+                    top: 'var(--space-sm)',
+                    right: 'var(--space-sm)',
                     zIndex: 2,
                   }}
                 >
@@ -508,13 +529,14 @@ const PhotosPage = () => {
                       );
                     }}
                     style={{
-                      border: '1px solid #e5e7eb',
-                      borderRadius: 10,
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-lg)',
                       width: 30,
                       height: 30,
-                      background: '#fff',
+                      background: 'var(--color-surface-primary)',
                       cursor: 'pointer',
                       lineHeight: '24px',
+                      transition: 'all 0.2s ease',
                     }}
                   >
                     ⋮
@@ -525,10 +547,10 @@ const PhotosPage = () => {
                         position: 'absolute',
                         top: 34,
                         right: 0,
-                        background: '#fff',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: 8,
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                        background: 'var(--color-surface-primary)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-lg)',
+                        boxShadow: 'var(--shadow-lg)',
                         zIndex: 5,
                         minWidth: 180,
                         padding: '6px 0',
@@ -539,7 +561,8 @@ const PhotosPage = () => {
                         type="button"
                         style={menuItemStyle}
                         onMouseEnter={e => {
-                          e.currentTarget.style.background = '#f5f7fb';
+                          e.currentTarget.style.background =
+                            'var(--color-surface-secondary)';
                         }}
                         onMouseLeave={e => {
                           e.currentTarget.style.background = 'transparent';
@@ -555,7 +578,8 @@ const PhotosPage = () => {
                         type="button"
                         style={menuItemStyle}
                         onMouseEnter={e => {
-                          e.currentTarget.style.background = '#f5f7fb';
+                          e.currentTarget.style.background =
+                            'var(--color-surface-secondary)';
                         }}
                         onMouseLeave={e => {
                           e.currentTarget.style.background = 'transparent';
@@ -574,9 +598,13 @@ const PhotosPage = () => {
                       </button>
                       <button
                         type="button"
-                        style={{ ...menuItemStyle, color: '#dc2626' }}
+                        style={{
+                          ...menuItemStyle,
+                          color: 'var(--color-accent)',
+                        }}
                         onMouseEnter={e => {
-                          e.currentTarget.style.background = '#fef2f2';
+                          e.currentTarget.style.background =
+                            'var(--color-surface-secondary)';
                         }}
                         onMouseLeave={e => {
                           e.currentTarget.style.background = 'transparent';
@@ -596,7 +624,7 @@ const PhotosPage = () => {
                     width: '100%',
                     borderRadius: 0,
                     overflow: 'hidden',
-                    background: '#f3f4f6',
+                    background: 'var(--color-surface-secondary)',
                     aspectRatio: '4 / 3',
                     display: 'flex',
                     alignItems: 'center',
@@ -631,22 +659,28 @@ const PhotosPage = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    padding: '8px 10px',
-                    borderTop: '1px solid #e5e7eb',
-                    background: '#fff',
+                    padding: 'var(--space-sm)',
+                    borderTop: '1px solid var(--color-border)',
+                    background: 'var(--color-surface-primary)',
                   }}
                 >
-                  <div style={{ color: '#6b7280', fontSize: 12 }}>
+                  <div
+                    style={{
+                      color: 'var(--color-text-secondary)',
+                      fontSize: 12,
+                    }}
+                  >
                     {photo.createdAt || 'Date unknown'}
                   </div>
                   {missingGps ? (
                     <span
                       style={{
                         fontSize: 11,
-                        color: '#92400e',
-                        background: '#fef3c7',
-                        borderRadius: 999,
-                        padding: '2px 8px',
+                        color: 'var(--color-accent)',
+                        background: 'var(--color-surface-secondary)',
+                        borderRadius: 'var(--radius-pill)',
+                        padding: '2px var(--space-sm)',
+                        fontWeight: 600,
                       }}
                     >
                       No GPS

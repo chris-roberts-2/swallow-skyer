@@ -145,7 +145,7 @@ const ProjectsPage = () => {
       className="projects-page"
       style={{
         width: '100%',
-        padding: '12px 24px',
+        padding: 'var(--space-md) var(--space-lg)',
         boxSizing: 'border-box',
         display: 'flex',
         justifyContent: 'center',
@@ -157,10 +157,12 @@ const ProjectsPage = () => {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: 12,
+            marginBottom: 'var(--space-md)',
           }}
         >
-          <h2 style={{ margin: 0 }}>Projects</h2>
+          <h2 style={{ margin: 0, color: 'var(--color-text-primary)' }}>
+            Projects
+          </h2>
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
@@ -169,12 +171,13 @@ const ProjectsPage = () => {
               borderRadius: '50%',
               width: 36,
               height: 36,
-              border: '1px solid #e0e0e0',
-              background: '#f7f9fc',
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface-secondary)',
               fontSize: 20,
               fontWeight: 600,
               lineHeight: '32px',
               cursor: 'pointer',
+              transition: 'all 0.2s ease',
             }}
           >
             +
@@ -183,8 +186,8 @@ const ProjectsPage = () => {
         {error && (
           <div
             style={{
-              marginBottom: 12,
-              color: 'red',
+              marginBottom: 'var(--space-md)',
+              color: 'var(--color-accent)',
             }}
           >
             {error}
@@ -205,13 +208,22 @@ const ProjectsPage = () => {
           />
         )}
         {!userHasProjects && (
-          <p style={{ marginTop: 12 }}>
+          <p
+            style={{
+              marginTop: 'var(--space-md)',
+              color: 'var(--color-text-secondary)',
+            }}
+          >
             You have no projects yet. Create one to start uploading and viewing
             photos.
           </p>
         )}
         <div
-          style={{ marginTop: 16, display: 'flex', justifyContent: 'center' }}
+          style={{
+            marginTop: 'var(--space-lg)',
+            display: 'flex',
+            justifyContent: 'center',
+          }}
         >
           <button
             type="button"

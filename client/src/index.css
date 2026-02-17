@@ -1,6 +1,54 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:ital,wght@1,400&display=swap');
 
 :root {
+  /* ===========================================
+     BARN SWALLOW DESIGN SYSTEM
+     =========================================== */
+
+  /* Color System */
+  --color-deep-plumage-blue: #1f3a5f;
+  --color-mid-sky-blue: #3f6fa0;
+  --color-pale-feather-blue: #b7cde6;
+  --color-warm-feather-white: #f5f7f6;
+  --color-swallow-rust: #9b4a2f;
+  --color-charcoal-slate: #2a2e34;
+  --color-cool-gray-feather: #d1d6da;
+
+  /* Semantic Color Roles */
+  --color-primary: var(--color-mid-sky-blue);
+  --color-primary-dark: var(--color-deep-plumage-blue);
+  --color-accent: var(--color-swallow-rust);
+  --color-text-primary: var(--color-charcoal-slate);
+  --color-text-secondary: #5a5f66;
+  --color-border: var(--color-cool-gray-feather);
+  --color-surface-primary: #ffffff;
+  --color-surface-secondary: var(--color-pale-feather-blue);
+  --color-background: var(--color-warm-feather-white);
+
+  /* Spacing System (8px base rhythm) */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+
+  /* Border Radius System */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-pill: 999px;
+
+  /* Shadow System */
+  --shadow-xs: 0 1px 2px rgba(31, 58, 95, 0.06);
+  --shadow-sm: 0 2px 4px rgba(31, 58, 95, 0.08);
+  --shadow-md: 0 4px 8px rgba(31, 58, 95, 0.1);
+  --shadow-lg: 0 8px 16px rgba(31, 58, 95, 0.12);
+  --shadow-xl: 0 12px 24px rgba(31, 58, 95, 0.14);
+
+  /* Typography */
   font-family:
     'Inter',
     system-ui,
@@ -20,6 +68,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
 }
 
 input,

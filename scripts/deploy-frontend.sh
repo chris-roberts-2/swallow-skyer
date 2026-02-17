@@ -7,10 +7,10 @@ set -e
 echo "=== Swallow Skyer Frontend Deployment ==="
 echo ""
 
-# Check we're on main branch
+# Check we're on an allowed branch (main or v1.1-UI)
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-if [ "$CURRENT_BRANCH" != "main" ]; then
-  echo "❌ Error: Must be on 'main' branch before deploying"
+if [ "$CURRENT_BRANCH" != "main" ] && [ "$CURRENT_BRANCH" != "v1.1-UI" ]; then
+  echo "❌ Error: Must be on 'main' or 'v1.1-UI' branch before deploying"
   echo "   Current branch: $CURRENT_BRANCH"
   exit 1
 fi
@@ -33,7 +33,7 @@ if [ ! -f "client/.env.local" ]; then
   exit 1
 fi
 
-echo "✅ On main branch with no uncommitted changes"
+echo "✅ On $CURRENT_BRANCH branch with no uncommitted changes"
 echo "✅ Found client/.env.local"
 echo ""
 
@@ -86,9 +86,9 @@ else
 fi
 echo ""
 
-# Return to main branch
-echo "🔀 Returning to main branch..."
-git checkout main
+# Return to original branch
+echo "🔀 Returning to $CURRENT_BRANCH branch..."
+git checkout "$CURRENT_BRANCH"
 
 # Restore .env files
 echo "📥 Restoring .env files..."

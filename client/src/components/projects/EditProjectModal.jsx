@@ -32,7 +32,7 @@ const EditProjectModal = ({ open, onClose, onSubmit, initial }) => {
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0,0,0,0.35)',
+        background: 'rgba(31, 58, 95, 0.4)',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
@@ -41,39 +41,88 @@ const EditProjectModal = ({ open, onClose, onSubmit, initial }) => {
     >
       <div
         style={{
-          background: '#fff',
-          padding: 24,
-          borderRadius: 8,
+          background: 'var(--color-surface-primary)',
+          padding: 'var(--space-xl)',
+          borderRadius: 'var(--radius-lg)',
           width: 400,
           maxWidth: '90%',
+          boxShadow: 'var(--shadow-xl)',
         }}
       >
-        <h3>Edit Project</h3>
+        <h3
+          style={{
+            color: 'var(--color-text-primary)',
+            margin: '0 0 var(--space-lg) 0',
+          }}
+        >
+          Edit Project
+        </h3>
         <form
           onSubmit={handleSubmit}
-          style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-md)',
+          }}
         >
-          <label>
+          <label
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--space-xs)',
+              color: 'var(--color-text-primary)',
+              fontWeight: 600,
+            }}
+          >
             Name (required)
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
               required
-              style={{ width: '100%' }}
+              style={{
+                width: '100%',
+                padding: 'var(--space-sm) var(--space-md)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--color-border)',
+                fontSize: 14,
+                transition: 'border-color 0.2s ease',
+              }}
             />
           </label>
-          <label>
+          <label
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--space-xs)',
+              color: 'var(--color-text-primary)',
+              fontWeight: 600,
+            }}
+          >
             Address (optional)
             <input
               type="text"
               value={address}
               onChange={e => setAddress(e.target.value)}
-              style={{ width: '100%' }}
+              style={{
+                width: '100%',
+                padding: 'var(--space-sm) var(--space-md)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--color-border)',
+                fontSize: 14,
+                transition: 'border-color 0.2s ease',
+              }}
               placeholder="Street, city, etc."
             />
           </label>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 'var(--space-sm)',
+              justifyContent: 'flex-end',
+              marginTop: 'var(--space-md)',
+            }}
+          >
             <button type="button" onClick={onClose} className="btn-format-1">
               Cancel
             </button>
