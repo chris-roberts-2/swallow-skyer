@@ -61,21 +61,16 @@ const ProfileMenu = () => {
         onClick={() => setIsOpen(prev => !prev)}
         aria-label="Open profile menu"
       >
-        <span className="profile-menu__avatar" aria-hidden="true">
-          {avatarLabel}
-        </span>
+        {avatarLabel}
       </button>
       {isOpen && (
         <div className="profile-menu__panel">
           <div className="profile-menu__info">
-            <span
-              className="profile-menu__avatar profile-menu__avatar--inline"
-              aria-hidden="true"
-            >
+            <span className="profile-menu__avatar" aria-hidden="true">
               {avatarLabel}
             </span>
             <div>
-              <div className="profile-menu__label">
+              <div className="profile-menu__name">
                 {displayName || user.email || 'User'}
               </div>
               {displayName ? (
@@ -83,17 +78,18 @@ const ProfileMenu = () => {
               ) : null}
             </div>
           </div>
-          <div className="profile-menu__actions profile-menu__actions--inline">
+          <div className="profile-menu__divider" />
+          <div className="profile-menu__actions">
             <button
               type="button"
-              className="profile-menu__action btn-format-1"
+              className="profile-menu__action-btn"
               onClick={handleGoToProfile}
             >
               Profile
             </button>
             <button
               type="button"
-              className="profile-menu__action btn-format-1"
+              className="profile-menu__action-btn profile-menu__action-btn--destructive"
               onClick={handleLogout}
             >
               Logout
