@@ -11,7 +11,7 @@
 
 .App-header {
   background-color: var(--color-deep-plumage-blue);
-  padding: var(--space-md) var(--layout-margin-x);
+  padding: 10px 0;
   color: white;
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -25,6 +25,7 @@
   gap: var(--space-md);
   max-width: var(--layout-max-width);
   margin: 0 auto;
+  padding: 0 var(--layout-margin-x);
   width: 100%;
 }
 
@@ -43,7 +44,7 @@
 }
 
 .App-header__logo {
-  height: 36px;
+  height: 30px;
   width: auto;
   display: block;
 }
@@ -103,8 +104,8 @@
 }
 
 .profile-menu__trigger {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.14);
   border: 2px solid rgba(255, 255, 255, 0.28);
@@ -210,7 +211,7 @@
 
 .profile-menu__action-btn--destructive {
   color: var(--color-swallow-rust);
-  border-color: transparent;
+  border-color: var(--color-border);
 }
 
 .profile-menu__action-btn--destructive:hover {
