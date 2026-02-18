@@ -47,7 +47,7 @@ const menuItemStyle = {
   background: 'transparent',
   border: 'none',
   cursor: 'pointer',
-  fontSize: 14,
+  fontSize: 'var(--font-size-base)',
   transition: 'background 120ms ease',
   color: 'var(--color-text-primary)',
 };
@@ -375,7 +375,10 @@ const PhotosPage = () => {
               Photos
             </h2>
             <span
-              style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}
+              style={{
+                color: 'var(--color-text-secondary)',
+                fontSize: 'var(--font-size-sm)',
+              }}
             >
               {normalisedPhotos.length} items
             </span>
@@ -395,7 +398,12 @@ const PhotosPage = () => {
               marginBottom: 'var(--space-sm)',
             }}
           >
-            <span style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>
+            <span
+              style={{
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--color-text-primary)',
+              }}
+            >
               {selectedIds.size} selected
             </span>
             <button
@@ -667,7 +675,7 @@ const PhotosPage = () => {
                   <div
                     style={{
                       color: 'var(--color-text-secondary)',
-                      fontSize: 12,
+                      fontSize: 'var(--font-size-sm)',
                     }}
                   >
                     {photo.createdAt || 'Date unknown'}
@@ -675,12 +683,12 @@ const PhotosPage = () => {
                   {missingGps ? (
                     <span
                       style={{
-                        fontSize: 11,
+                        fontSize: 'var(--font-size-xs)',
                         color: 'var(--color-accent)',
                         background: 'var(--color-surface-secondary)',
                         borderRadius: 'var(--radius-pill)',
                         padding: '2px var(--space-sm)',
-                        fontWeight: 600,
+                        fontWeight: 'var(--font-weight-semibold)',
                       }}
                     >
                       No GPS

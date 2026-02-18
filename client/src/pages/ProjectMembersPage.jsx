@@ -169,10 +169,10 @@ const ProjectMembersPage = () => {
     borderRadius: '50%',
     width: 36,
     height: 36,
-    border: '1px solid #e0e0e0',
-    background: '#f7f9fc',
-    fontSize: 20,
-    fontWeight: 600,
+    border: '1px solid var(--color-border)',
+    background: 'var(--color-surface-secondary)',
+    fontSize: 'var(--font-size-xl)',
+    fontWeight: 'var(--font-weight-semibold)',
     lineHeight: '32px',
     cursor: 'pointer',
     display: 'inline-flex',
@@ -213,8 +213,8 @@ const ProjectMembersPage = () => {
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              fontSize: 14,
-              color: '#374151',
+              fontSize: 'var(--font-size-base)',
+              color: 'var(--color-text-primary)',
             }}
           >
             <span>Project:</span>
@@ -229,11 +229,11 @@ const ProjectMembersPage = () => {
               }}
               style={{
                 minWidth: 200,
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: 6,
                 padding: '6px 10px',
-                background: '#fff',
-                fontSize: 14,
+                background: 'var(--color-surface-primary)',
+                fontSize: 'var(--font-size-base)',
               }}
             >
               <option value="">Select a project</option>
@@ -483,7 +483,14 @@ const ProjectMembersPage = () => {
               <label
                 style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
               >
-                <span style={{ fontWeight: 600, fontSize: 14 }}>Email</span>
+                <span
+                  style={{
+                    fontWeight: 'var(--font-weight-semibold)',
+                    fontSize: 'var(--font-size-base)',
+                  }}
+                >
+                  Email
+                </span>
                 <input
                   type="email"
                   value={addForm.email}
@@ -495,15 +502,22 @@ const ProjectMembersPage = () => {
                   style={{
                     padding: '10px 12px',
                     borderRadius: 8,
-                    border: '1px solid #e5e7eb',
-                    fontSize: 14,
+                    border: '1px solid var(--color-border)',
+                    fontSize: 'var(--font-size-base)',
                   }}
                 />
               </label>
               <label
                 style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
               >
-                <span style={{ fontWeight: 600, fontSize: 14 }}>Role</span>
+                <span
+                  style={{
+                    fontWeight: 'var(--font-weight-semibold)',
+                    fontSize: 'var(--font-size-base)',
+                  }}
+                >
+                  Role
+                </span>
                 <select
                   value={addForm.role}
                   onChange={e =>
@@ -512,8 +526,8 @@ const ProjectMembersPage = () => {
                   style={{
                     padding: '10px 12px',
                     borderRadius: 8,
-                    border: '1px solid #e5e7eb',
-                    fontSize: 14,
+                    border: '1px solid var(--color-border)',
+                    fontSize: 'var(--font-size-base)',
                   }}
                 >
                   {roleOptions.map(option => (
@@ -545,12 +559,12 @@ const ProjectMembersPage = () => {
                 onClick={handleAddMember}
                 disabled={isSubmitting}
                 style={{
-                  background: '#2563eb',
+                  background: 'var(--color-primary)',
                   color: '#fff',
-                  border: '1px solid #1d4ed8',
+                  border: '1px solid var(--color-primary-dark)',
                   borderRadius: 8,
                   padding: '10px 14px',
-                  fontWeight: 700,
+                  fontWeight: 'var(--font-weight-semibold)',
                   cursor: 'pointer',
                 }}
               >
@@ -596,7 +610,14 @@ const ProjectMembersPage = () => {
               <label
                 style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
               >
-                <span style={{ fontWeight: 600, fontSize: 14 }}>Email</span>
+                <span
+                  style={{
+                    fontWeight: 'var(--font-weight-semibold)',
+                    fontSize: 'var(--font-size-base)',
+                  }}
+                >
+                  Email
+                </span>
                 <input
                   type="email"
                   value={editingMember?.email || ''}
@@ -604,17 +625,24 @@ const ProjectMembersPage = () => {
                   style={{
                     padding: '10px 12px',
                     borderRadius: 8,
-                    border: '1px solid #e5e7eb',
-                    fontSize: 14,
-                    background: '#f3f4f6',
-                    color: '#6b7280',
+                    border: '1px solid var(--color-border)',
+                    fontSize: 'var(--font-size-base)',
+                    background: 'var(--color-background)',
+                    color: 'var(--color-text-secondary)',
                   }}
                 />
               </label>
               <label
                 style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
               >
-                <span style={{ fontWeight: 600, fontSize: 14 }}>Role</span>
+                <span
+                  style={{
+                    fontWeight: 'var(--font-weight-semibold)',
+                    fontSize: 'var(--font-size-base)',
+                  }}
+                >
+                  Role
+                </span>
                 <select
                   value={editForm.role}
                   onChange={e =>
@@ -623,8 +651,8 @@ const ProjectMembersPage = () => {
                   style={{
                     padding: '10px 12px',
                     borderRadius: 8,
-                    border: '1px solid #e5e7eb',
-                    fontSize: 14,
+                    border: '1px solid var(--color-border)',
+                    fontSize: 'var(--font-size-base)',
                   }}
                 >
                   {roleOptions.map(option => (
@@ -656,12 +684,12 @@ const ProjectMembersPage = () => {
                 onClick={handleUpdateMember}
                 disabled={isSubmitting}
                 style={{
-                  background: '#2563eb',
+                  background: 'var(--color-primary)',
                   color: '#fff',
-                  border: '1px solid #1d4ed8',
+                  border: '1px solid var(--color-primary-dark)',
                   borderRadius: 8,
                   padding: '10px 14px',
-                  fontWeight: 700,
+                  fontWeight: 'var(--font-weight-semibold)',
                   cursor: 'pointer',
                 }}
               >
@@ -768,7 +796,7 @@ const ProjectMembersPage = () => {
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
-              fontSize: 14,
+              fontSize: 'var(--font-size-base)',
             }}
             onClick={() => handleEditMember(menuContextMember)}
           >
@@ -783,7 +811,7 @@ const ProjectMembersPage = () => {
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
-              fontSize: 14,
+              fontSize: 'var(--font-size-base)',
               color: '#dc2626',
             }}
             onClick={() => {

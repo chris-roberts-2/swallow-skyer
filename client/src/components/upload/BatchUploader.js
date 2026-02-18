@@ -152,8 +152,8 @@ const BatchUploader = ({ onForbidden, onUploaded, variant = 'full' }) => {
             minWidth: 28,
             border: activeBorder,
             background: isDragging ? '#f1f5f9' : '#f7f9fc',
-            fontSize: 20,
-            fontWeight: 700,
+            fontSize: 'var(--font-size-xl)',
+            fontWeight: 'var(--font-weight-bold)',
             lineHeight: '24px',
             textAlign: 'center',
             cursor: 'pointer',
@@ -173,9 +173,21 @@ const BatchUploader = ({ onForbidden, onUploaded, variant = 'full' }) => {
           />
         </div>
         {isSubmitting ? (
-          <span style={{ fontSize: 12, color: '#6b7280' }}>Uploading…</span>
+          <span
+            style={{
+              fontSize: 'var(--font-size-sm)',
+              color: 'var(--color-text-secondary)',
+            }}
+          >
+            Uploading…
+          </span>
         ) : (
-          <span style={{ fontSize: 12, color: '#6b7280' }}>
+          <span
+            style={{
+              fontSize: 'var(--font-size-sm)',
+              color: 'var(--color-text-secondary)',
+            }}
+          >
             Click or drop to upload
           </span>
         )}

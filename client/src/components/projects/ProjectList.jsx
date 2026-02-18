@@ -7,7 +7,8 @@ const menuItemStyle = {
   background: 'transparent',
   border: 'none',
   cursor: 'pointer',
-  fontSize: 14,
+  fontSize: 'var(--font-size-base)',
+  fontWeight: 'var(--font-weight-regular)',
   transition: 'background 120ms ease',
 };
 
@@ -109,11 +110,22 @@ const ProjectList = ({
           }}
         >
           <div>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>
+            <div
+              style={{
+                fontWeight: 'var(--font-weight-semibold)',
+                fontSize: 'var(--font-size-md)',
+                marginBottom: 6,
+              }}
+            >
               {project.name}
             </div>
             {project.address ? (
-              <div style={{ color: '#6b7280', fontSize: 12 }}>
+              <div
+                style={{
+                  color: 'var(--color-text-secondary)',
+                  fontSize: 'var(--font-size-sm)',
+                }}
+              >
                 {project.address}
               </div>
             ) : null}
@@ -298,11 +310,22 @@ const ProjectList = ({
             alignItems: 'center',
           }}
         >
-          <div style={{ fontSize: 12, color: '#6b7280' }}>
+          <div
+            style={{
+              fontSize: 'var(--font-size-sm)',
+              color: 'var(--color-text-secondary)',
+            }}
+          >
             {project.role || 'Viewer'}
           </div>
           {isActive ? (
-            <span style={{ fontSize: 12, color: '#2563eb', fontWeight: 600 }}>
+            <span
+              style={{
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--color-primary)',
+                fontWeight: 'var(--font-weight-semibold)',
+              }}
+            >
               Active
             </span>
           ) : null}

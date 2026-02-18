@@ -29,18 +29,18 @@
 
 .App-header h1 {
   margin: 0;
-  font-size: 2rem;
+  font-size: var(--font-size-3xl);
 }
 
 .App-header__brandPrimary {
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
+  font-family: var(--font-family-sans);
+  font-weight: var(--font-weight-semibold);
   font-style: normal;
 }
 
 .App-header__brandByline {
-  font-family: 'Lora', serif;
-  font-weight: 400;
+  font-family: var(--font-family-serif);
+  font-weight: var(--font-weight-regular);
   font-style: italic;
   font-size: 0.68em;
 }
@@ -55,7 +55,8 @@
 .App-nav a {
   color: var(--color-pale-feather-blue);
   text-decoration: none;
-  font-weight: 600;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
   transition: color 0.2s ease;
 }
 
@@ -123,7 +124,9 @@
 }
 
 .profile-menu__label {
-  font-size: 12px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-wide);
   text-transform: uppercase;
   color: var(--color-text-secondary);
 }
@@ -135,7 +138,8 @@
   border-radius: var(--radius-md);
   background: var(--color-primary);
   color: white;
-  font-weight: 600;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition: background 0.2s ease;
 }
@@ -232,17 +236,17 @@
 .auth-form label {
   display: flex;
   flex-direction: column;
-  font-weight: 600;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   gap: var(--space-xs);
-  font-size: 14px;
 }
 
 .auth-form input {
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
-  font-size: 14px;
+  font-size: var(--font-size-base);
   transition: border-color 0.2s ease;
 }
 
@@ -253,8 +257,8 @@
 
 .auth-form button {
   padding: var(--space-sm) var(--space-md);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
   background-color: var(--color-primary);
   color: #fff;
   border: none;
@@ -274,13 +278,13 @@
 
 .auth-error {
   color: var(--color-accent);
-  font-size: 14px;
+  font-size: var(--font-size-base);
 }
 
 .auth-footer {
   margin-top: var(--space-md);
   text-align: center;
-  font-size: 14px;
+  font-size: var(--font-size-base);
 }
 
 .profile-page {
@@ -320,8 +324,8 @@
   border-radius: var(--radius-md);
   padding: 6px var(--space-md);
   cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
   transition:
     background 120ms ease,
     border-color 120ms ease;
@@ -347,8 +351,8 @@
   border-radius: var(--radius-md);
   padding: var(--space-sm) var(--space-md);
   cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
   transition:
     background 120ms ease,
     border-color 120ms ease;
@@ -382,7 +386,7 @@
   justify-content: space-between;
   align-items: center;
   gap: var(--space-md);
-  font-size: 15px;
+  font-size: var(--font-size-md);
 }
 
 .profile-card__row strong {
@@ -418,7 +422,8 @@
   border-radius: var(--radius-md);
   background: var(--color-primary);
   color: white;
-  font-weight: 600;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition: background 0.2s ease;
 }
@@ -444,7 +449,7 @@
 
 .auth-user {
   margin-left: 8px;
-  font-size: 14px;
+  font-size: var(--font-size-base);
   color: #ccc;
 }
 
@@ -476,8 +481,8 @@
 .photo-count {
   transform: rotate(45deg);
   color: white;
-  font-weight: bold;
-  font-size: 12px;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
   line-height: 1;
 }
 
@@ -516,7 +521,7 @@
 
 .stack-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--font-size-lg);
   color: var(--color-text-primary);
 }
 
@@ -525,10 +530,10 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: var(--space-xs) var(--space-sm);
-  font-size: 12px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition: background-color 0.2s;
-  font-weight: 600;
 }
 
 .toggle-btn:hover {
@@ -574,13 +579,13 @@
 
 .photo-caption {
   margin: 0 0 var(--space-xs) 0;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
 }
 
 .photo-date {
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
 }
 
@@ -606,8 +611,8 @@
 .node-pin .photo-count {
   transform: rotate(45deg);
   color: white;
-  font-weight: bold;
-  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-xs);
 }
 
 .photo-node.active .node-pin {
@@ -631,8 +636,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
-  font-weight: bold;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
   border: 2px solid white;
   box-shadow: var(--shadow-sm);
 }

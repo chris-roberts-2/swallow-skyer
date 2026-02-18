@@ -85,7 +85,7 @@ const EditProjectModal = ({ open, onClose, onSubmit, initial }) => {
                 padding: 'var(--space-sm) var(--space-md)',
                 borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--color-border)',
-                fontSize: 14,
+                fontSize: 'var(--font-size-base)',
                 transition: 'border-color 0.2s ease',
               }}
             />
@@ -96,7 +96,7 @@ const EditProjectModal = ({ open, onClose, onSubmit, initial }) => {
               flexDirection: 'column',
               gap: 'var(--space-xs)',
               color: 'var(--color-text-primary)',
-              fontWeight: 600,
+              fontWeight: 'var(--font-weight-semibold)',
             }}
           >
             Address (optional)
@@ -109,7 +109,7 @@ const EditProjectModal = ({ open, onClose, onSubmit, initial }) => {
                 padding: 'var(--space-sm) var(--space-md)',
                 borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--color-border)',
-                fontSize: 14,
+                fontSize: 'var(--font-size-base)',
                 transition: 'border-color 0.2s ease',
               }}
               placeholder="Street, city, etc."

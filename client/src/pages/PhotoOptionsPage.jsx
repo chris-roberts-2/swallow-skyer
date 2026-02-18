@@ -410,7 +410,14 @@ const PhotoOptionsPage = () => {
                 gap: 6,
               }}
             >
-              <div style={{ fontWeight: 600 }}>Information</div>
+              <div
+                style={{
+                  fontWeight: 'var(--font-weight-semibold)',
+                  fontSize: 'var(--font-size-base)',
+                }}
+              >
+                Information
+              </div>
               <dl
                 style={{
                   margin: 0,
@@ -425,9 +432,9 @@ const PhotoOptionsPage = () => {
                 <dt
                   style={{
                     margin: 0,
-                    fontSize: 13,
-                    color: '#6b7280',
-                    fontWeight: 600,
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-secondary)',
+                    fontWeight: 'var(--font-weight-semibold)',
                   }}
                 >
                   Date/Time
@@ -435,8 +442,8 @@ const PhotoOptionsPage = () => {
                 <dd
                   style={{
                     margin: 0,
-                    fontSize: 13,
-                    color: '#374151',
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-primary)',
                     textAlign: 'left',
                   }}
                 >
@@ -446,9 +453,9 @@ const PhotoOptionsPage = () => {
                 <dt
                   style={{
                     margin: 0,
-                    fontSize: 13,
-                    color: '#6b7280',
-                    fontWeight: 600,
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-secondary)',
+                    fontWeight: 'var(--font-weight-semibold)',
                   }}
                 >
                   Project
@@ -456,8 +463,8 @@ const PhotoOptionsPage = () => {
                 <dd
                   style={{
                     margin: 0,
-                    fontSize: 13,
-                    color: '#374151',
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-primary)',
                     textAlign: 'left',
                   }}
                 >
@@ -467,9 +474,9 @@ const PhotoOptionsPage = () => {
                 <dt
                   style={{
                     margin: 0,
-                    fontSize: 13,
-                    color: '#6b7280',
-                    fontWeight: 600,
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-secondary)',
+                    fontWeight: 'var(--font-weight-semibold)',
                   }}
                 >
                   Uploaded By
@@ -477,8 +484,8 @@ const PhotoOptionsPage = () => {
                 <dd
                   style={{
                     margin: 0,
-                    fontSize: 13,
-                    color: '#374151',
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-primary)',
                     textAlign: 'left',
                   }}
                 >
@@ -488,9 +495,9 @@ const PhotoOptionsPage = () => {
                 <dt
                   style={{
                     margin: 0,
-                    fontSize: 13,
-                    color: '#6b7280',
-                    fontWeight: 600,
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-secondary)',
+                    fontWeight: 'var(--font-weight-semibold)',
                   }}
                 >
                   File Size
@@ -498,8 +505,8 @@ const PhotoOptionsPage = () => {
                 <dd
                   style={{
                     margin: 0,
-                    fontSize: 13,
-                    color: '#374151',
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-primary)',
                     textAlign: 'left',
                   }}
                 >
@@ -519,9 +526,9 @@ const PhotoOptionsPage = () => {
               <div
                 style={{
                   padding: '8px 10px',
-                  borderBottom: '1px solid #e5e7eb',
-                  fontWeight: 600,
-                  fontSize: 13,
+                  borderBottom: '1px solid var(--color-border)',
+                  fontWeight: 'var(--font-weight-semibold)',
+                  fontSize: 'var(--font-size-base)',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -531,7 +538,10 @@ const PhotoOptionsPage = () => {
                 <button
                   type="button"
                   className="btn-format-1"
-                  style={{ padding: '4px 8px', fontSize: 12 }}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: 'var(--font-size-sm)',
+                  }}
                   onClick={() => navigate('/map')}
                 >
                   Open Map
