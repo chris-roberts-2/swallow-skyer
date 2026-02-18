@@ -12,6 +12,7 @@ import './App.css';
 import { AuthProvider, useAuth } from './context';
 import AuthGuard from './components/auth/AuthGuard';
 import ProfileMenu from './components/auth/ProfileMenu';
+import PageLayout from './components/layout/PageLayout';
 import {
   LoginPage,
   RegisterPage,
@@ -86,6 +87,16 @@ const RootRedirect = () => {
   return <Navigate to={user ? '/map' : '/login'} replace />;
 };
 
+/**
+ * AuthLayout — combines auth protection with the shared page layout frame.
+ * Used for all authenticated routes except the full-screen map view.
+ */
+const AuthLayout = ({ children }) => (
+  <AuthGuard>
+    <PageLayout>{children}</PageLayout>
+  </AuthGuard>
+);
+
 export function AppRoutes() {
   const location = useLocation();
   const showHeader = !(
@@ -114,50 +125,50 @@ export function AppRoutes() {
           <Route
             path="/photos"
             element={
-              <AuthGuard>
+              <AuthLayout>
                 <PhotosPage />
-              </AuthGuard>
+              </AuthLayout>
             }
           />
           <Route
             path="/photos/:id/options"
             element={
-              <AuthGuard>
+              <AuthLayout>
                 <PhotoOptionsPage />
-              </AuthGuard>
+              </AuthLayout>
             }
           />
           <Route path="/upload" element={<Navigate to="/photos" replace />} />
           <Route
             path="/projects"
             element={
-              <AuthGuard>
+              <AuthLayout>
                 <ProjectsPage />
-              </AuthGuard>
+              </AuthLayout>
             }
           />
           <Route
             path="/projects/archived"
             element={
-              <AuthGuard>
+              <AuthLayout>
                 <ArchivedProjectsPage />
-              </AuthGuard>
+              </AuthLayout>
             }
           />
           <Route
             path="/projects/:id/members"
             element={
-              <AuthGuard>
+              <AuthLayout>
                 <ProjectMembersPage />
-              </AuthGuard>
+              </AuthLayout>
             }
           />
           <Route
             path="/profile"
             element={
-              <AuthGuard>
+              <AuthLayout>
                 <ProfilePage />
-              </AuthGuard>
+              </AuthLayout>
             }
           />
           <Route path="/public/:token" element={<PublicProjectView />} />
