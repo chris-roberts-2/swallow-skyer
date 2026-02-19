@@ -235,13 +235,13 @@ const PhotoOptionsPage = () => {
     return (
       <div
         style={{
-          padding: 24,
+          padding: 'var(--space-lg)',
           boxSizing: 'border-box',
           width: '100%',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'flex-start',
-          gap: 12,
+          gap: 'var(--space-md)',
         }}
       >
         <button
@@ -252,7 +252,7 @@ const PhotoOptionsPage = () => {
           Back
         </button>
         {error ? (
-          <div style={{ color: '#dc2626' }}>{error}</div>
+          <div style={{ color: 'var(--color-accent)' }}>{error}</div>
         ) : (
           <div>Loading photo...</div>
         )}
@@ -264,16 +264,16 @@ const PhotoOptionsPage = () => {
     <div
       style={{
         width: '100%',
-        padding: '12px 24px 24px',
+        padding: 'var(--space-md) var(--space-lg)',
+        paddingBottom: 'var(--space-2xl)',
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'flex-start',
-        gap: 12,
+        gap: 'var(--space-md)',
         flex: 1,
         minHeight: 0,
         overflowY: 'auto',
-        paddingBottom: 80,
       }}
     >
       <div
@@ -282,7 +282,7 @@ const PhotoOptionsPage = () => {
           gridTemplateColumns: 'auto 1fr',
           alignItems: 'center',
           width: '100%',
-          columnGap: 12,
+          columnGap: 'var(--space-md)',
         }}
       >
         <button
@@ -314,7 +314,7 @@ const PhotoOptionsPage = () => {
       <div
         style={{
           display: 'flex',
-          gap: 18,
+          gap: 'var(--space-lg)',
           alignItems: 'flex-start',
           flexWrap: 'wrap',
           width: '100%',
@@ -324,7 +324,7 @@ const PhotoOptionsPage = () => {
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: 10,
+            gap: 'var(--space-sm)',
             alignItems: 'flex-start',
             maxWidth: 'min(520px, 90vw)',
             width: '100%',
@@ -336,8 +336,8 @@ const PhotoOptionsPage = () => {
             style={{
               width: '100%',
               height: 'auto',
-              borderRadius: 12,
-              boxShadow: '0 6px 20px rgba(0,0,0,0.14)',
+              borderRadius: 'var(--radius-xl)',
+              boxShadow: 'var(--shadow-xl)',
               objectFit: 'cover',
               display: 'block',
             }}
@@ -358,8 +358,8 @@ const PhotoOptionsPage = () => {
           <div
             style={{
               display: 'flex',
-              gap: 8,
-              marginTop: 10,
+              gap: 'var(--space-sm)',
+              marginTop: 'var(--space-sm)',
               width: '100%',
             }}
           >
@@ -374,7 +374,10 @@ const PhotoOptionsPage = () => {
             <button
               type="button"
               className="btn-format-1"
-              style={{ color: '#b91c1c', borderColor: '#fca5a5' }}
+              style={{
+                color: 'var(--color-accent)',
+                borderColor: 'var(--color-accent)',
+              }}
               onClick={remove}
               disabled={isDeleting}
             >
@@ -389,25 +392,26 @@ const PhotoOptionsPage = () => {
             minWidth: 300,
             display: 'flex',
             flexDirection: 'column',
-            gap: 12,
+            gap: 'var(--space-md)',
           }}
         >
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: '1.2fr 1fr',
-              gap: 12,
+              gap: 'var(--space-md)',
               alignItems: 'start',
             }}
           >
             <div
               style={{
-                border: '1px solid #e5e7eb',
-                borderRadius: 12,
-                padding: '10px 12px',
-                background: '#fff',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-xl)',
+                padding: 'var(--space-sm) var(--space-md)',
+                background: 'var(--color-surface-primary)',
+                boxShadow: 'var(--shadow-sm)',
                 display: 'grid',
-                gap: 6,
+                gap: 'var(--space-xs)',
               }}
             >
               <div
@@ -517,15 +521,16 @@ const PhotoOptionsPage = () => {
 
             <div
               style={{
-                border: '1px solid #e5e7eb',
-                borderRadius: 12,
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-xl)',
                 overflow: 'hidden',
-                background: '#fff',
+                background: 'var(--color-surface-primary)',
+                boxShadow: 'var(--shadow-sm)',
               }}
             >
               <div
                 style={{
-                  padding: '8px 10px',
+                  padding: 'var(--space-sm) var(--space-md)',
                   borderBottom: '1px solid var(--color-border)',
                   fontWeight: 'var(--font-weight-semibold)',
                   fontSize: 'var(--font-size-base)',

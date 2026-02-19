@@ -103,7 +103,7 @@ const ArchivedProjectsPage = () => {
       className="projects-page"
       style={{
         width: '100%',
-        padding: '12px 24px',
+        padding: 'var(--space-md) var(--space-lg)',
         boxSizing: 'border-box',
         display: 'flex',
         justifyContent: 'center',
@@ -115,10 +115,12 @@ const ArchivedProjectsPage = () => {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: 12,
+            marginBottom: 'var(--space-md)',
           }}
         >
-          <h2 style={{ margin: 0 }}>Archived Projects</h2>
+          <h2 style={{ margin: 0, color: 'var(--color-text-primary)' }}>
+            Archived Projects
+          </h2>
           <button
             type="button"
             onClick={() => navigate('/projects')}
@@ -128,7 +130,14 @@ const ArchivedProjectsPage = () => {
           </button>
         </div>
         {error ? (
-          <div style={{ marginBottom: 12, color: 'red' }}>{error}</div>
+          <div
+            style={{
+              marginBottom: 'var(--space-md)',
+              color: 'var(--color-accent)',
+            }}
+          >
+            {error}
+          </div>
         ) : null}
         {isLoading ? (
           <div>Loading...</div>
@@ -147,7 +156,14 @@ const ArchivedProjectsPage = () => {
           />
         )}
         {!hasProjects && !isLoading ? (
-          <p style={{ marginTop: 12 }}>No archived projects yet.</p>
+          <p
+            style={{
+              marginTop: 'var(--space-md)',
+              color: 'var(--color-text-secondary)',
+            }}
+          >
+            No archived projects yet.
+          </p>
         ) : null}
       </div>
     </div>

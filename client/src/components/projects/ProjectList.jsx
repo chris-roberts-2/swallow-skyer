@@ -47,16 +47,18 @@ const ProjectList = ({
   const otherProjects = safeProjects.filter(p => p.id !== activeProjectId);
 
   const cardStyle = (isActive, isMenuOpen) => ({
-    border: '1px solid #e5e7eb',
-    borderRadius: 12,
-    padding: '12px 14px',
+    border: '1px solid var(--color-border)',
+    borderRadius: 'var(--radius-xl)',
+    padding: 'var(--space-md)',
     textAlign: 'left',
-    background: isActive ? '#f4f7ff' : '#fff',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+    background: isActive
+      ? 'var(--color-surface-secondary)'
+      : 'var(--color-surface-primary)',
+    boxShadow: 'var(--shadow-xs)',
     cursor: 'pointer',
     display: 'flex',
     flexDirection: 'column',
-    gap: 8,
+    gap: 'var(--space-sm)',
     transition: 'transform 120ms ease, box-shadow 120ms ease',
     position: 'relative',
     overflow: 'visible',
@@ -94,11 +96,11 @@ const ProjectList = ({
         style={cardStyle(isActive, isMenuOpen)}
         onMouseEnter={e => {
           e.currentTarget.style.transform = 'translateY(-2px)';
-          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+          e.currentTarget.style.boxShadow = 'var(--shadow-md)';
         }}
         onMouseLeave={e => {
           e.currentTarget.style.transform = 'none';
-          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+          e.currentTarget.style.boxShadow = 'var(--shadow-xs)';
         }}
       >
         <div
@@ -106,7 +108,7 @@ const ProjectList = ({
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'flex-start',
-            gap: 8,
+            gap: 'var(--space-sm)',
           }}
         >
           <div>
@@ -144,11 +146,11 @@ const ProjectList = ({
                 );
               }}
               style={{
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '50%',
                 width: 28,
                 height: 28,
-                background: '#fff',
+                background: 'var(--color-surface-primary)',
                 cursor: 'pointer',
                 lineHeight: '24px',
               }}
@@ -161,13 +163,13 @@ const ProjectList = ({
                   position: 'absolute',
                   top: 32,
                   right: 0,
-                  background: '#fff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 8,
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                  background: 'var(--color-surface-primary)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-lg)',
+                  boxShadow: 'var(--shadow-lg)',
                   zIndex: 70,
                   minWidth: 180,
-                  padding: '6px 0',
+                  padding: 'var(--space-xs) 0',
                 }}
                 onClick={e => e.stopPropagation()}
               >
@@ -177,7 +179,8 @@ const ProjectList = ({
                       type="button"
                       style={menuItemStyle}
                       onMouseEnter={e => {
-                        e.currentTarget.style.background = '#f5f7fb';
+                        e.currentTarget.style.background =
+                          'var(--color-surface-secondary)';
                       }}
                       onMouseLeave={e => {
                         e.currentTarget.style.background = 'transparent';
@@ -196,7 +199,8 @@ const ProjectList = ({
                       type="button"
                       style={menuItemStyle}
                       onMouseEnter={e => {
-                        e.currentTarget.style.background = '#f5f7fb';
+                        e.currentTarget.style.background =
+                          'var(--color-surface-secondary)';
                       }}
                       onMouseLeave={e => {
                         e.currentTarget.style.background = 'transparent';
@@ -212,7 +216,8 @@ const ProjectList = ({
                       type="button"
                       style={menuItemStyle}
                       onMouseEnter={e => {
-                        e.currentTarget.style.background = '#f5f7fb';
+                        e.currentTarget.style.background =
+                          'var(--color-surface-secondary)';
                       }}
                       onMouseLeave={e => {
                         e.currentTarget.style.background = 'transparent';
@@ -227,9 +232,13 @@ const ProjectList = ({
                     {isOwner ? (
                       <button
                         type="button"
-                        style={{ ...menuItemStyle, color: '#dc2626' }}
+                        style={{
+                          ...menuItemStyle,
+                          color: 'var(--color-accent)',
+                        }}
                         onMouseEnter={e => {
-                          e.currentTarget.style.background = '#fef2f2';
+                          e.currentTarget.style.background =
+                            'rgba(155, 74, 47, 0.07)';
                         }}
                         onMouseLeave={e => {
                           e.currentTarget.style.background = 'transparent';
@@ -247,7 +256,8 @@ const ProjectList = ({
                         type="button"
                         style={menuItemStyle}
                         onMouseEnter={e => {
-                          e.currentTarget.style.background = '#f5f7fb';
+                          e.currentTarget.style.background =
+                            'var(--color-surface-secondary)';
                         }}
                         onMouseLeave={e => {
                           e.currentTarget.style.background = 'transparent';
@@ -267,7 +277,8 @@ const ProjectList = ({
                       type="button"
                       style={menuItemStyle}
                       onMouseEnter={e => {
-                        e.currentTarget.style.background = '#f5f7fb';
+                        e.currentTarget.style.background =
+                          'var(--color-surface-secondary)';
                       }}
                       onMouseLeave={e => {
                         e.currentTarget.style.background = 'transparent';
@@ -284,7 +295,8 @@ const ProjectList = ({
                         type="button"
                         style={menuItemStyle}
                         onMouseEnter={e => {
-                          e.currentTarget.style.background = '#f5f7fb';
+                          e.currentTarget.style.background =
+                            'var(--color-surface-secondary)';
                         }}
                         onMouseLeave={e => {
                           e.currentTarget.style.background = 'transparent';
@@ -341,7 +353,7 @@ const ProjectList = ({
         width: '100%',
         display: 'flex',
         flexDirection: 'column',
-        gap: 16,
+        gap: 'var(--space-md)',
       }}
     >
       {activeProject ? (
@@ -359,7 +371,7 @@ const ProjectList = ({
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-          gap: 16,
+          gap: 'var(--space-md)',
           width: '100%',
         }}
       >

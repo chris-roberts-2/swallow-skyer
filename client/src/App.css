@@ -709,3 +709,99 @@
   border: 2px solid white;
   box-shadow: var(--shadow-sm);
 }
+
+/* ===========================
+   STATUS ALERTS
+   =========================== */
+
+.profile-page__alert {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-md);
+  font-size: var(--font-size-base);
+}
+
+.profile-page__alert--error {
+  color: var(--color-accent);
+  background: rgba(155, 74, 47, 0.07);
+  border: 1px solid rgba(155, 74, 47, 0.2);
+}
+
+.profile-page__alert--info {
+  color: var(--color-primary-dark);
+  background: rgba(63, 111, 160, 0.07);
+  border: 1px solid rgba(63, 111, 160, 0.2);
+}
+
+/* ===========================
+   SURFACE SYSTEM
+   =========================== */
+
+/* Primary content surface — white workspace containers */
+.surface-card {
+  background: var(--color-surface-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-lg);
+  box-sizing: border-box;
+}
+
+/* Secondary surface — grouped or supporting sections */
+.surface-section {
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  box-sizing: border-box;
+}
+
+/* ===========================
+   MODAL SYSTEM
+   =========================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(31, 58, 95, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-md);
+}
+
+.modal-body {
+  background: var(--color-surface-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  width: min(420px, 100%);
+  box-shadow: var(--shadow-xl);
+  box-sizing: border-box;
+}
+
+/* ===========================
+   DATA TABLE SYSTEM
+   =========================== */
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th {
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.data-table td {
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}

@@ -42,8 +42,9 @@ const EditProjectModal = ({ open, onClose, onSubmit, initial }) => {
       <div
         style={{
           background: 'var(--color-surface-primary)',
+          border: '1px solid var(--color-border)',
           padding: 'var(--space-xl)',
-          borderRadius: 'var(--radius-lg)',
+          borderRadius: 'var(--radius-xl)',
           width: 400,
           maxWidth: '90%',
           boxShadow: 'var(--shadow-xl)',

@@ -183,7 +183,7 @@ const ProjectMembersPage = () => {
   return (
     <div
       style={{
-        padding: '16px 24px',
+        padding: 'var(--space-md) var(--space-lg)',
         maxWidth: 1100,
         margin: '0 auto',
         width: '100%',
@@ -194,8 +194,8 @@ const ProjectMembersPage = () => {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 12,
-          marginBottom: 12,
+          gap: 'var(--space-md)',
+          marginBottom: 'var(--space-md)',
         }}
       >
         <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
@@ -269,10 +269,21 @@ const ProjectMembersPage = () => {
 
       <h2 style={{ marginTop: 0 }}>Project Members</h2>
       {error ? (
-        <div style={{ color: 'red', marginBottom: 12 }}>{error}</div>
+        <div
+          style={{
+            color: 'var(--color-accent)',
+            marginBottom: 'var(--space-md)',
+          }}
+        >
+          {error}
+        </div>
       ) : null}
       <div
         style={{
+          background: 'var(--color-surface-primary)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-xl)',
+          boxShadow: 'var(--shadow-md)',
           overflowX: 'auto',
           overflowY: 'visible',
           position: 'relative',
@@ -298,8 +309,8 @@ const ProjectMembersPage = () => {
             <tr style={{ textAlign: 'left' }}>
               <th
                 style={{
-                  padding: '10px 8px',
-                  borderBottom: '1px solid #e5e7eb',
+                  padding: 'var(--space-sm)',
+                  borderBottom: '1px solid var(--color-border)',
                   textAlign: 'left',
                 }}
               >
@@ -307,8 +318,8 @@ const ProjectMembersPage = () => {
               </th>
               <th
                 style={{
-                  padding: '10px 8px',
-                  borderBottom: '1px solid #e5e7eb',
+                  padding: 'var(--space-sm)',
+                  borderBottom: '1px solid var(--color-border)',
                   textAlign: 'left',
                 }}
               >
@@ -316,8 +327,8 @@ const ProjectMembersPage = () => {
               </th>
               <th
                 style={{
-                  padding: '10px 8px',
-                  borderBottom: '1px solid #e5e7eb',
+                  padding: 'var(--space-sm)',
+                  borderBottom: '1px solid var(--color-border)',
                   textAlign: 'left',
                 }}
               >
@@ -325,8 +336,8 @@ const ProjectMembersPage = () => {
               </th>
               <th
                 style={{
-                  padding: '10px 8px',
-                  borderBottom: '1px solid #e5e7eb',
+                  padding: 'var(--space-sm)',
+                  borderBottom: '1px solid var(--color-border)',
                   textAlign: 'left',
                 }}
               >
@@ -334,8 +345,8 @@ const ProjectMembersPage = () => {
               </th>
               <th
                 style={{
-                  padding: '10px 8px',
-                  borderBottom: '1px solid #e5e7eb',
+                  padding: 'var(--space-sm)',
+                  borderBottom: '1px solid var(--color-border)',
                   textAlign: 'left',
                 }}
               >
@@ -356,11 +367,11 @@ const ProjectMembersPage = () => {
               return (
                 <tr
                   key={member.user_id}
-                  style={{ borderBottom: '1px solid #f1f3f5' }}
+                  style={{ borderBottom: '1px solid var(--color-border)' }}
                 >
                   <td
                     style={{
-                      padding: '8px 6px',
+                      padding: 'var(--space-sm)',
                       textAlign: 'left',
                       position: 'relative',
                       overflow: 'visible',
@@ -368,22 +379,22 @@ const ProjectMembersPage = () => {
                   >
                     {name || ''}
                   </td>
-                  <td style={{ padding: '8px 6px', textAlign: 'left' }}>
+                  <td style={{ padding: 'var(--space-sm)', textAlign: 'left' }}>
                     {member.company || ''}
                   </td>
-                  <td style={{ padding: '8px 6px', textAlign: 'left' }}>
+                  <td style={{ padding: 'var(--space-sm)', textAlign: 'left' }}>
                     {member.email || ''}
                   </td>
                   <td
                     style={{
-                      padding: '8px 6px',
+                      padding: 'var(--space-sm)',
                       textTransform: 'capitalize',
                       textAlign: 'left',
                     }}
                   >
                     {member.role || 'Viewer'}
                   </td>
-                  <td style={{ padding: '8px 6px', textAlign: 'left' }}>
+                  <td style={{ padding: 'var(--space-sm)', textAlign: 'left' }}>
                     {canShowActions ? (
                       <div
                         className="member-row-menu"
@@ -420,11 +431,11 @@ const ProjectMembersPage = () => {
                             });
                           }}
                           style={{
-                            border: '1px solid #e5e7eb',
+                            border: '1px solid var(--color-border)',
                             borderRadius: '50%',
                             width: 28,
                             height: 28,
-                            background: '#fff',
+                            background: 'var(--color-surface-primary)',
                             cursor: 'pointer',
                             lineHeight: '24px',
                           }}
@@ -441,7 +452,10 @@ const ProjectMembersPage = () => {
               <tr>
                 <td
                   colSpan={5}
-                  style={{ padding: '12px 8px', color: '#6b7280' }}
+                  style={{
+                    padding: 'var(--space-md) var(--space-sm)',
+                    color: 'var(--color-text-secondary)',
+                  }}
                 >
                   No members
                 </td>
@@ -456,12 +470,12 @@ const ProjectMembersPage = () => {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.35)',
+            background: 'rgba(31, 58, 95, 0.35)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
-            padding: 16,
+            padding: 'var(--space-md)',
           }}
           onClick={() => {
             if (!isSubmitting) setIsAddOpen(false);
@@ -469,19 +483,32 @@ const ProjectMembersPage = () => {
         >
           <div
             style={{
-              background: '#fff',
-              borderRadius: 10,
-              padding: 20,
+              background: 'var(--color-surface-primary)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-xl)',
+              padding: 'var(--space-lg)',
               width: 'min(420px, 100%)',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
+              boxShadow: 'var(--shadow-xl)',
               boxSizing: 'border-box',
             }}
             onClick={e => e.stopPropagation()}
           >
-            <h3 style={{ marginTop: 0, marginBottom: 12 }}>Add Member</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <h3 style={{ marginTop: 0, marginBottom: 'var(--space-md)' }}>
+              Add Member
+            </h3>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'var(--space-md)',
+              }}
+            >
               <label
-                style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--space-xs)',
+                }}
               >
                 <span
                   style={{
@@ -500,15 +527,19 @@ const ProjectMembersPage = () => {
                   placeholder="person@example.com"
                   required
                   style={{
-                    padding: '10px 12px',
-                    borderRadius: 8,
+                    padding: 'var(--space-sm) var(--space-md)',
+                    borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--color-border)',
                     fontSize: 'var(--font-size-base)',
                   }}
                 />
               </label>
               <label
-                style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--space-xs)',
+                }}
               >
                 <span
                   style={{
@@ -524,8 +555,8 @@ const ProjectMembersPage = () => {
                     setAddForm(prev => ({ ...prev, role: e.target.value }))
                   }
                   style={{
-                    padding: '10px 12px',
-                    borderRadius: 8,
+                    padding: 'var(--space-sm) var(--space-md)',
+                    borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--color-border)',
                     fontSize: 'var(--font-size-base)',
                   }}
@@ -542,8 +573,8 @@ const ProjectMembersPage = () => {
               style={{
                 display: 'flex',
                 justifyContent: 'flex-end',
-                gap: 10,
-                marginTop: 16,
+                gap: 'var(--space-sm)',
+                marginTop: 'var(--space-md)',
               }}
             >
               <button
@@ -562,8 +593,8 @@ const ProjectMembersPage = () => {
                   background: 'var(--color-primary)',
                   color: '#fff',
                   border: '1px solid var(--color-primary-dark)',
-                  borderRadius: 8,
-                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-md)',
+                  padding: 'var(--space-sm) var(--space-md)',
                   fontWeight: 'var(--font-weight-semibold)',
                   cursor: 'pointer',
                 }}
@@ -580,12 +611,12 @@ const ProjectMembersPage = () => {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.35)',
+            background: 'rgba(31, 58, 95, 0.35)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
-            padding: 16,
+            padding: 'var(--space-md)',
           }}
           onClick={() => {
             if (!isSubmitting) {
@@ -596,19 +627,32 @@ const ProjectMembersPage = () => {
         >
           <div
             style={{
-              background: '#fff',
-              borderRadius: 10,
-              padding: 20,
+              background: 'var(--color-surface-primary)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-xl)',
+              padding: 'var(--space-lg)',
               width: 'min(420px, 100%)',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
+              boxShadow: 'var(--shadow-xl)',
               boxSizing: 'border-box',
             }}
             onClick={e => e.stopPropagation()}
           >
-            <h3 style={{ marginTop: 0, marginBottom: 12 }}>Edit Member</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <h3 style={{ marginTop: 0, marginBottom: 'var(--space-md)' }}>
+              Edit Member
+            </h3>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'var(--space-md)',
+              }}
+            >
               <label
-                style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--space-xs)',
+                }}
               >
                 <span
                   style={{
@@ -623,8 +667,8 @@ const ProjectMembersPage = () => {
                   value={editingMember?.email || ''}
                   disabled
                   style={{
-                    padding: '10px 12px',
-                    borderRadius: 8,
+                    padding: 'var(--space-sm) var(--space-md)',
+                    borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--color-border)',
                     fontSize: 'var(--font-size-base)',
                     background: 'var(--color-background)',
@@ -633,7 +677,11 @@ const ProjectMembersPage = () => {
                 />
               </label>
               <label
-                style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--space-xs)',
+                }}
               >
                 <span
                   style={{
@@ -649,8 +697,8 @@ const ProjectMembersPage = () => {
                     setEditForm(prev => ({ ...prev, role: e.target.value }))
                   }
                   style={{
-                    padding: '10px 12px',
-                    borderRadius: 8,
+                    padding: 'var(--space-sm) var(--space-md)',
+                    borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--color-border)',
                     fontSize: 'var(--font-size-base)',
                   }}
@@ -667,8 +715,8 @@ const ProjectMembersPage = () => {
               style={{
                 display: 'flex',
                 justifyContent: 'flex-end',
-                gap: 10,
-                marginTop: 16,
+                gap: 'var(--space-sm)',
+                marginTop: 'var(--space-md)',
               }}
             >
               <button
@@ -687,8 +735,8 @@ const ProjectMembersPage = () => {
                   background: 'var(--color-primary)',
                   color: '#fff',
                   border: '1px solid var(--color-primary-dark)',
-                  borderRadius: 8,
-                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-md)',
+                  padding: 'var(--space-sm) var(--space-md)',
                   fontWeight: 'var(--font-weight-semibold)',
                   cursor: 'pointer',
                 }}
@@ -705,12 +753,12 @@ const ProjectMembersPage = () => {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.35)',
+            background: 'rgba(31, 58, 95, 0.35)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
-            padding: 16,
+            padding: 'var(--space-md)',
           }}
           onClick={() => {
             if (!isSubmitting) {
@@ -721,25 +769,28 @@ const ProjectMembersPage = () => {
         >
           <div
             style={{
-              background: '#fff',
-              borderRadius: 10,
-              padding: 20,
+              background: 'var(--color-surface-primary)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-xl)',
+              padding: 'var(--space-lg)',
               width: 'min(420px, 100%)',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
+              boxShadow: 'var(--shadow-xl)',
               boxSizing: 'border-box',
             }}
             onClick={e => e.stopPropagation()}
           >
-            <h3 style={{ marginTop: 0, marginBottom: 8 }}>Remove Member</h3>
-            <p style={{ marginTop: 0, color: '#4b5563' }}>
+            <h3 style={{ marginTop: 0, marginBottom: 'var(--space-sm)' }}>
+              Remove Member
+            </h3>
+            <p style={{ marginTop: 0, color: 'var(--color-text-secondary)' }}>
               Remove {deletingMember?.email || 'this member'} from the project?
             </p>
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'flex-end',
-                gap: 10,
-                marginTop: 16,
+                gap: 'var(--space-sm)',
+                marginTop: 'var(--space-md)',
               }}
             >
               <button
@@ -755,12 +806,12 @@ const ProjectMembersPage = () => {
                 onClick={handleDeleteMember}
                 disabled={isSubmitting}
                 style={{
-                  background: '#dc2626',
+                  background: 'var(--color-accent)',
                   color: '#fff',
-                  border: '1px solid #b91c1c',
-                  borderRadius: 8,
-                  padding: '10px 14px',
-                  fontWeight: 700,
+                  border: '1px solid var(--color-accent)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: 'var(--space-sm) var(--space-md)',
+                  fontWeight: 'var(--font-weight-bold)',
                   cursor: 'pointer',
                 }}
               >
@@ -777,13 +828,13 @@ const ProjectMembersPage = () => {
             position: 'fixed',
             top: menuPosition.top,
             left: menuPosition.left,
-            background: '#fff',
-            border: '1px solid #e5e7eb',
-            borderRadius: 8,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+            background: 'var(--color-surface-primary)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'var(--shadow-lg)',
             zIndex: 2000,
             minWidth: 160,
-            padding: '6px 0',
+            padding: 'var(--space-xs) 0',
           }}
           onClick={e => e.stopPropagation()}
         >
@@ -792,11 +843,12 @@ const ProjectMembersPage = () => {
             style={{
               width: '100%',
               textAlign: 'left',
-              padding: '8px 12px',
+              padding: 'var(--space-sm) var(--space-md)',
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
               fontSize: 'var(--font-size-base)',
+              color: 'var(--color-text-primary)',
             }}
             onClick={() => handleEditMember(menuContextMember)}
           >
@@ -807,12 +859,12 @@ const ProjectMembersPage = () => {
             style={{
               width: '100%',
               textAlign: 'left',
-              padding: '8px 12px',
+              padding: 'var(--space-sm) var(--space-md)',
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
               fontSize: 'var(--font-size-base)',
-              color: '#dc2626',
+              color: 'var(--color-accent)',
             }}
             onClick={() => {
               setDeletingMember(menuContextMember);
