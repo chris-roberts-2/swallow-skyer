@@ -23,10 +23,9 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
-  max-width: var(--layout-max-width);
-  margin: 0 auto;
   padding: 0 var(--banner-padding-x);
   width: 100%;
+  box-sizing: border-box;
 }
 
 .App-header__logoLink {
@@ -64,9 +63,8 @@
   align-items: stretch;
   gap: var(--space-xs);
   height: 44px;
-  max-width: var(--layout-max-width);
-  margin: 0 auto;
   padding: 0 var(--banner-padding-x);
+  box-sizing: border-box;
 }
 
 .App-subnav__link {
