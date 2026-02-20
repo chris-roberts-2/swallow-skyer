@@ -246,7 +246,7 @@ const PhotoOptionsPage = () => {
       >
         <button
           type="button"
-          className="btn-format-1"
+          className="btn-secondary"
           onClick={() => navigate(backTarget)}
         >
           Back
@@ -287,7 +287,7 @@ const PhotoOptionsPage = () => {
       >
         <button
           type="button"
-          className="btn-format-1"
+          className="btn-secondary"
           onClick={() => navigate(backTarget)}
         >
           Back
@@ -365,7 +365,7 @@ const PhotoOptionsPage = () => {
           >
             <button
               type="button"
-              className="btn-format-1"
+              className="btn-secondary"
               onClick={download}
               disabled={isDownloading}
             >
@@ -373,11 +373,7 @@ const PhotoOptionsPage = () => {
             </button>
             <button
               type="button"
-              className="btn-format-1"
-              style={{
-                color: 'var(--color-accent)',
-                borderColor: 'var(--color-accent)',
-              }}
+              className="btn-destructive"
               onClick={remove}
               disabled={isDeleting}
             >
@@ -542,7 +538,7 @@ const PhotoOptionsPage = () => {
                 <span>Location</span>
                 <button
                   type="button"
-                  className="btn-format-1"
+                  className="btn-secondary"
                   style={{
                     padding: '4px 8px',
                     fontSize: 'var(--font-size-sm)',

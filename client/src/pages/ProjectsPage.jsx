@@ -167,18 +167,7 @@ const ProjectsPage = () => {
             type="button"
             onClick={() => setIsModalOpen(true)}
             title="Create Project"
-            style={{
-              borderRadius: '50%',
-              width: 36,
-              height: 36,
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-surface-secondary)',
-              fontSize: 'var(--font-size-xl)',
-              fontWeight: 'var(--font-weight-semibold)',
-              lineHeight: '32px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
+            className="btn-primary btn-icon"
           >
             +
           </button>
@@ -228,7 +217,7 @@ const ProjectsPage = () => {
           <button
             type="button"
             onClick={handleArchived}
-            className="btn-format-1"
+            className="btn-secondary"
           >
             Archived Projects
           </button>

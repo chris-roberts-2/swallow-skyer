@@ -65,7 +65,12 @@ const MemberManager = () => {
   return (
     <div data-testid="member-manager">
       <h4>Project Members</h4>
-      <button type="button" data-testid="add-member" onClick={handleAddMember}>
+      <button
+        type="button"
+        data-testid="add-member"
+        className="btn-primary"
+        onClick={handleAddMember}
+      >
         Add Member
       </button>
       {Toast}

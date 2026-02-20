@@ -127,12 +127,14 @@ const BatchUploader = ({ onForbidden, onUploaded, variant = 'full' }) => {
   const triggerFileSelect = () => inputRef.current?.click();
 
   if (variant === 'compact') {
-    const activeBorder = isDragging ? '2px solid #1e88e5' : '1px solid #e5e7eb';
+    const activeBorder = isDragging
+      ? '2px solid var(--color-mid-sky-blue)'
+      : '1px solid var(--color-cool-gray-feather)';
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div
           data-testid="compact-drop"
-          className="btn-format-1"
+          className="btn-secondary btn-icon-sm"
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -146,19 +148,14 @@ const BatchUploader = ({ onForbidden, onUploaded, variant = 'full' }) => {
             }
           }}
           style={{
-            borderRadius: '50%',
-            width: 28,
-            height: 28,
-            minWidth: 28,
             border: activeBorder,
-            background: isDragging ? '#f1f5f9' : '#f7f9fc',
+            background: isDragging
+              ? 'var(--color-surface-secondary)'
+              : 'var(--color-surface-primary)',
             fontSize: 'var(--font-size-xl)',
-            fontWeight: 'var(--font-weight-bold)',
-            lineHeight: '24px',
-            textAlign: 'center',
-            cursor: 'pointer',
-            boxShadow: isDragging ? '0 0 0 3px rgba(30,136,229,0.18)' : 'none',
-            transition: 'all 120ms ease',
+            boxShadow: isDragging
+              ? '0 0 0 3px rgba(63, 111, 160, 0.18)'
+              : 'var(--shadow-xs)',
           }}
           title="Upload photos"
         >
@@ -224,7 +221,11 @@ const BatchUploader = ({ onForbidden, onUploaded, variant = 'full' }) => {
             onChange={handleInputChange}
           />
         </div>
-        <button type="submit" disabled={isSubmitting || !files.length}>
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={isSubmitting || !files.length}
+        >
           {isSubmitting ? 'Uploading...' : 'Upload'}
         </button>
       </form>

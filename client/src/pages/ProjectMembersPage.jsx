@@ -165,21 +165,6 @@ const ProjectMembersPage = () => {
     }
   };
 
-  const addButtonStyle = {
-    borderRadius: '50%',
-    width: 36,
-    height: 36,
-    border: '1px solid var(--color-border)',
-    background: 'var(--color-surface-secondary)',
-    fontSize: 'var(--font-size-xl)',
-    fontWeight: 'var(--font-weight-semibold)',
-    lineHeight: '32px',
-    cursor: 'pointer',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  };
-
   return (
     <div
       style={{
@@ -202,7 +187,7 @@ const ProjectMembersPage = () => {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="btn-format-1"
+            className="btn-secondary"
           >
             ← Back
           </button>
@@ -259,7 +244,7 @@ const ProjectMembersPage = () => {
               title="Add Member"
               aria-label="Add Member"
               onClick={() => setIsAddOpen(true)}
-              style={addButtonStyle}
+              className="btn-primary btn-icon"
             >
               +
             </button>
@@ -430,15 +415,7 @@ const ProjectMembersPage = () => {
                               return next;
                             });
                           }}
-                          style={{
-                            border: '1px solid var(--color-border)',
-                            borderRadius: '50%',
-                            width: 28,
-                            height: 28,
-                            background: 'var(--color-surface-primary)',
-                            cursor: 'pointer',
-                            lineHeight: '24px',
-                          }}
+                          className="btn-secondary btn-icon-sm"
                         >
                           ⋮
                         </button>
@@ -581,7 +558,7 @@ const ProjectMembersPage = () => {
                 type="button"
                 onClick={() => setIsAddOpen(false)}
                 disabled={isSubmitting}
-                className="btn-format-1"
+                className="btn-secondary"
               >
                 Cancel
               </button>
@@ -589,15 +566,7 @@ const ProjectMembersPage = () => {
                 type="button"
                 onClick={handleAddMember}
                 disabled={isSubmitting}
-                style={{
-                  background: 'var(--color-primary)',
-                  color: '#fff',
-                  border: '1px solid var(--color-primary-dark)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: 'var(--space-sm) var(--space-md)',
-                  fontWeight: 'var(--font-weight-semibold)',
-                  cursor: 'pointer',
-                }}
+                className="btn-primary"
               >
                 {isSubmitting ? 'Adding...' : 'Add Member'}
               </button>
@@ -723,7 +692,7 @@ const ProjectMembersPage = () => {
                 type="button"
                 onClick={() => setIsEditOpen(false)}
                 disabled={isSubmitting}
-                className="btn-format-1"
+                className="btn-secondary"
               >
                 Cancel
               </button>
@@ -731,15 +700,7 @@ const ProjectMembersPage = () => {
                 type="button"
                 onClick={handleUpdateMember}
                 disabled={isSubmitting}
-                style={{
-                  background: 'var(--color-primary)',
-                  color: '#fff',
-                  border: '1px solid var(--color-primary-dark)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: 'var(--space-sm) var(--space-md)',
-                  fontWeight: 'var(--font-weight-semibold)',
-                  cursor: 'pointer',
-                }}
+                className="btn-primary"
               >
                 {isSubmitting ? 'Saving...' : 'Save'}
               </button>
@@ -797,7 +758,7 @@ const ProjectMembersPage = () => {
                 type="button"
                 onClick={() => setIsDeleteOpen(false)}
                 disabled={isSubmitting}
-                className="btn-format-1"
+                className="btn-secondary"
               >
                 Cancel
               </button>
@@ -805,15 +766,7 @@ const ProjectMembersPage = () => {
                 type="button"
                 onClick={handleDeleteMember}
                 disabled={isSubmitting}
-                style={{
-                  background: 'var(--color-accent)',
-                  color: '#fff',
-                  border: '1px solid var(--color-accent)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: 'var(--space-sm) var(--space-md)',
-                  fontWeight: 'var(--font-weight-bold)',
-                  cursor: 'pointer',
-                }}
+                className="btn-destructive"
               >
                 {isSubmitting ? 'Removing...' : 'Remove'}
               </button>
@@ -840,32 +793,14 @@ const ProjectMembersPage = () => {
         >
           <button
             type="button"
-            style={{
-              width: '100%',
-              textAlign: 'left',
-              padding: 'var(--space-sm) var(--space-md)',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 'var(--font-size-base)',
-              color: 'var(--color-text-primary)',
-            }}
+            className="btn-menu-item"
             onClick={() => handleEditMember(menuContextMember)}
           >
             Edit
           </button>
           <button
             type="button"
-            style={{
-              width: '100%',
-              textAlign: 'left',
-              padding: 'var(--space-sm) var(--space-md)',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 'var(--font-size-base)',
-              color: 'var(--color-accent)',
-            }}
+            className="btn-menu-item btn-menu-item-destructive"
             onClick={() => {
               setDeletingMember(menuContextMember);
               setIsDeleteOpen(true);

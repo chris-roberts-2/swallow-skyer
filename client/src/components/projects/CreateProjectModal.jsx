@@ -124,10 +124,10 @@ const CreateProjectModal = ({ open, onClose, onSubmit }) => {
               marginTop: 'var(--space-md)',
             }}
           >
-            <button type="button" onClick={onClose} className="btn-format-1">
+            <button type="button" onClick={onClose} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn-format-1">
+            <button type="submit" className="btn-primary">
               Create
             </button>
           </div>

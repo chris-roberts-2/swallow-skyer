@@ -40,18 +40,6 @@ const resolvePhotoUrl = photo => {
 
 const formatTimestamp = value => formatLocalDateTime(value);
 
-const menuItemStyle = {
-  width: '100%',
-  textAlign: 'left',
-  padding: 'var(--space-sm) var(--space-md)',
-  background: 'transparent',
-  border: 'none',
-  cursor: 'pointer',
-  fontSize: 'var(--font-size-base)',
-  transition: 'background 120ms ease',
-  color: 'var(--color-text-primary)',
-};
-
 const PhotosPage = () => {
   const { activeProject, projects, setActiveProject } = useAuth();
   const navigate = useNavigate();
@@ -408,7 +396,7 @@ const PhotosPage = () => {
             </span>
             <button
               type="button"
-              className="btn-format-1"
+              className="btn-secondary"
               style={{ padding: '6px 10px' }}
               onClick={() => {
                 const allIds = (normalisedPhotos || [])
@@ -422,7 +410,7 @@ const PhotosPage = () => {
             </button>
             <button
               type="button"
-              className="btn-format-1"
+              className="btn-secondary"
               style={{ padding: '6px 10px' }}
               onClick={() => downloadPhotos([...selectedIds], normalisedPhotos)}
               disabled={isDownloading}
@@ -431,19 +419,15 @@ const PhotosPage = () => {
             </button>
             <button
               type="button"
-              className="btn-format-1"
-              style={{
-                padding: '6px 10px',
-                color: 'var(--color-accent)',
-                borderColor: 'var(--color-accent)',
-              }}
+              className="btn-destructive"
+              style={{ padding: '6px 10px' }}
               onClick={() => deletePhotos([...selectedIds])}
             >
               Delete selected
             </button>
             <button
               type="button"
-              className="btn-format-1"
+              className="btn-secondary"
               style={{ padding: '6px 10px' }}
               onClick={() => {
                 setSelectionMode(false);
@@ -536,16 +520,7 @@ const PhotosPage = () => {
                         prev === photo.id ? null : photo.id
                       );
                     }}
-                    style={{
-                      border: '1px solid var(--color-border)',
-                      borderRadius: 'var(--radius-lg)',
-                      width: 30,
-                      height: 30,
-                      background: 'var(--color-surface-primary)',
-                      cursor: 'pointer',
-                      lineHeight: '24px',
-                      transition: 'all 0.2s ease',
-                    }}
+                    className="btn-secondary btn-icon-sm"
                   >
                     ⋮
                   </button>
@@ -567,14 +542,7 @@ const PhotosPage = () => {
                     >
                       <button
                         type="button"
-                        style={menuItemStyle}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background =
-                            'var(--color-surface-secondary)';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = 'transparent';
-                        }}
+                        className="btn-menu-item"
                         onClick={() => {
                           setOpenMenuId(null);
                           downloadPhotos([photo.id], normalisedPhotos);
@@ -584,14 +552,7 @@ const PhotosPage = () => {
                       </button>
                       <button
                         type="button"
-                        style={menuItemStyle}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background =
-                            'var(--color-surface-secondary)';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = 'transparent';
-                        }}
+                        className="btn-menu-item"
                         onClick={() => {
                           setOpenMenuId(null);
                           setSelectionMode(true);
@@ -606,17 +567,7 @@ const PhotosPage = () => {
                       </button>
                       <button
                         type="button"
-                        style={{
-                          ...menuItemStyle,
-                          color: 'var(--color-accent)',
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background =
-                            'var(--color-surface-secondary)';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = 'transparent';
-                        }}
+                        className="btn-menu-item btn-menu-item-destructive"
                         onClick={() => {
                           setOpenMenuId(null);
                           deletePhotos([photo.id]);

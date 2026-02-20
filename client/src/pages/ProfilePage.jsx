@@ -215,7 +215,7 @@ const ProfilePage = () => {
                   type="button"
                   onClick={handleSaveUser}
                   disabled={isSaving}
-                  className="btn-format-1"
+                  className="btn-primary"
                 >
                   Save
                 </button>
@@ -231,7 +231,7 @@ const ProfilePage = () => {
                       company: profile?.company || '',
                     });
                   }}
-                  className="btn-format-1"
+                  className="btn-secondary"
                 >
                   Cancel
                 </button>
@@ -310,7 +310,7 @@ const ProfilePage = () => {
                   type="button"
                   onClick={handleSaveLogin}
                   disabled={isSaving}
-                  className="btn-format-1"
+                  className="btn-primary"
                 >
                   Save
                 </button>
@@ -325,7 +325,7 @@ const ProfilePage = () => {
                       password: '',
                     });
                   }}
-                  className="btn-format-1"
+                  className="btn-secondary"
                 >
                   Cancel
                 </button>
