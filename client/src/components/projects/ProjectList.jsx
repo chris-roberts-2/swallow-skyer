@@ -37,12 +37,12 @@ const ProjectList = ({
   const cardStyle = (isActive, isMenuOpen) => ({
     border: '1px solid var(--color-border)',
     borderRadius: 'var(--radius-xl)',
-    padding: 'var(--space-md)',
+    padding: 'var(--space-lg)',
     textAlign: 'left',
     background: isActive
       ? 'var(--color-surface-secondary)'
       : 'var(--color-surface-primary)',
-    boxShadow: 'var(--shadow-xs)',
+    boxShadow: 'var(--shadow-sm)',
     cursor: 'pointer',
     display: 'flex',
     flexDirection: 'column',
@@ -88,7 +88,7 @@ const ProjectList = ({
         }}
         onMouseLeave={e => {
           e.currentTarget.style.transform = 'none';
-          e.currentTarget.style.boxShadow = 'var(--shadow-xs)';
+          e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
         }}
       >
         <div
@@ -104,7 +104,7 @@ const ProjectList = ({
               style={{
                 fontWeight: 'var(--font-weight-semibold)',
                 fontSize: 'var(--font-size-md)',
-                marginBottom: 6,
+                marginBottom: 'var(--space-xs)',
               }}
             >
               {project.name}

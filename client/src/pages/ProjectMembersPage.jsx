@@ -264,24 +264,16 @@ const ProjectMembersPage = () => {
         </div>
       ) : null}
       <div
+        className="data-table-container"
         style={{
-          background: 'var(--color-surface-primary)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-xl)',
-          boxShadow: 'var(--shadow-md)',
           overflowX: 'auto',
           overflowY: 'visible',
           position: 'relative',
         }}
       >
         <table
-          style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            minWidth: 640,
-            tableLayout: 'fixed',
-            overflow: 'visible',
-          }}
+          className="data-table"
+          style={{ minWidth: 640, tableLayout: 'fixed' }}
         >
           <colgroup>
             <col style={{ width: '25%' }} />
@@ -291,52 +283,12 @@ const ProjectMembersPage = () => {
             <col style={{ width: '8%' }} />
           </colgroup>
           <thead>
-            <tr style={{ textAlign: 'left' }}>
-              <th
-                style={{
-                  padding: 'var(--space-sm)',
-                  borderBottom: '1px solid var(--color-border)',
-                  textAlign: 'left',
-                }}
-              >
-                Name
-              </th>
-              <th
-                style={{
-                  padding: 'var(--space-sm)',
-                  borderBottom: '1px solid var(--color-border)',
-                  textAlign: 'left',
-                }}
-              >
-                Company
-              </th>
-              <th
-                style={{
-                  padding: 'var(--space-sm)',
-                  borderBottom: '1px solid var(--color-border)',
-                  textAlign: 'left',
-                }}
-              >
-                Email
-              </th>
-              <th
-                style={{
-                  padding: 'var(--space-sm)',
-                  borderBottom: '1px solid var(--color-border)',
-                  textAlign: 'left',
-                }}
-              >
-                Role
-              </th>
-              <th
-                style={{
-                  padding: 'var(--space-sm)',
-                  borderBottom: '1px solid var(--color-border)',
-                  textAlign: 'left',
-                }}
-              >
-                &nbsp;
-              </th>
+            <tr>
+              <th>Name</th>
+              <th>Company</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>&nbsp;</th>
             </tr>
           </thead>
           <tbody>
@@ -350,36 +302,16 @@ const ProjectMembersPage = () => {
                 member.user_id !== user?.id &&
                 member.user_id !== project?.owner_id;
               return (
-                <tr
-                  key={member.user_id}
-                  style={{ borderBottom: '1px solid var(--color-border)' }}
-                >
-                  <td
-                    style={{
-                      padding: 'var(--space-sm)',
-                      textAlign: 'left',
-                      position: 'relative',
-                      overflow: 'visible',
-                    }}
-                  >
+                <tr key={member.user_id}>
+                  <td style={{ position: 'relative', overflow: 'visible' }}>
                     {name || ''}
                   </td>
-                  <td style={{ padding: 'var(--space-sm)', textAlign: 'left' }}>
-                    {member.company || ''}
-                  </td>
-                  <td style={{ padding: 'var(--space-sm)', textAlign: 'left' }}>
-                    {member.email || ''}
-                  </td>
-                  <td
-                    style={{
-                      padding: 'var(--space-sm)',
-                      textTransform: 'capitalize',
-                      textAlign: 'left',
-                    }}
-                  >
+                  <td>{member.company || ''}</td>
+                  <td>{member.email || ''}</td>
+                  <td style={{ textTransform: 'capitalize' }}>
                     {member.role || 'Viewer'}
                   </td>
-                  <td style={{ padding: 'var(--space-sm)', textAlign: 'left' }}>
+                  <td>
                     {canShowActions ? (
                       <div
                         className="member-row-menu"
@@ -429,10 +361,7 @@ const ProjectMembersPage = () => {
               <tr>
                 <td
                   colSpan={5}
-                  style={{
-                    padding: 'var(--space-md) var(--space-sm)',
-                    color: 'var(--color-text-secondary)',
-                  }}
+                  style={{ color: 'var(--color-text-secondary)' }}
                 >
                   No members
                 </td>
@@ -444,35 +373,13 @@ const ProjectMembersPage = () => {
 
       {isAddOpen ? (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(31, 58, 95, 0.35)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: 'var(--space-md)',
-          }}
+          className="modal-overlay"
           onClick={() => {
             if (!isSubmitting) setIsAddOpen(false);
           }}
         >
-          <div
-            style={{
-              background: 'var(--color-surface-primary)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-xl)',
-              padding: 'var(--space-lg)',
-              width: 'min(420px, 100%)',
-              boxShadow: 'var(--shadow-xl)',
-              boxSizing: 'border-box',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: 'var(--space-md)' }}>
-              Add Member
-            </h3>
+          <div className="modal-body" onClick={e => e.stopPropagation()}>
+            <h3 className="modal-header">Add Member</h3>
             <div
               style={{
                 display: 'flex',
@@ -487,12 +394,7 @@ const ProjectMembersPage = () => {
                   gap: 'var(--space-xs)',
                 }}
               >
-                <span
-                  style={{
-                    fontWeight: 'var(--font-weight-semibold)',
-                    fontSize: 'var(--font-size-base)',
-                  }}
-                >
+                <span style={{ fontWeight: 'var(--font-weight-semibold)' }}>
                   Email
                 </span>
                 <input
@@ -508,6 +410,8 @@ const ProjectMembersPage = () => {
                     borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--color-border)',
                     fontSize: 'var(--font-size-base)',
+                    boxSizing: 'border-box',
+                    width: '100%',
                   }}
                 />
               </label>
@@ -518,12 +422,7 @@ const ProjectMembersPage = () => {
                   gap: 'var(--space-xs)',
                 }}
               >
-                <span
-                  style={{
-                    fontWeight: 'var(--font-weight-semibold)',
-                    fontSize: 'var(--font-size-base)',
-                  }}
-                >
+                <span style={{ fontWeight: 'var(--font-weight-semibold)' }}>
                   Role
                 </span>
                 <select
@@ -546,14 +445,7 @@ const ProjectMembersPage = () => {
                 </select>
               </label>
             </div>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: 'var(--space-sm)',
-                marginTop: 'var(--space-md)',
-              }}
-            >
+            <div className="modal-footer">
               <button
                 type="button"
                 onClick={() => setIsAddOpen(false)}
@@ -577,16 +469,7 @@ const ProjectMembersPage = () => {
 
       {isEditOpen ? (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(31, 58, 95, 0.35)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: 'var(--space-md)',
-          }}
+          className="modal-overlay"
           onClick={() => {
             if (!isSubmitting) {
               setIsEditOpen(false);
@@ -594,21 +477,8 @@ const ProjectMembersPage = () => {
             }
           }}
         >
-          <div
-            style={{
-              background: 'var(--color-surface-primary)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-xl)',
-              padding: 'var(--space-lg)',
-              width: 'min(420px, 100%)',
-              boxShadow: 'var(--shadow-xl)',
-              boxSizing: 'border-box',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: 'var(--space-md)' }}>
-              Edit Member
-            </h3>
+          <div className="modal-body" onClick={e => e.stopPropagation()}>
+            <h3 className="modal-header">Edit Member</h3>
             <div
               style={{
                 display: 'flex',
@@ -623,12 +493,7 @@ const ProjectMembersPage = () => {
                   gap: 'var(--space-xs)',
                 }}
               >
-                <span
-                  style={{
-                    fontWeight: 'var(--font-weight-semibold)',
-                    fontSize: 'var(--font-size-base)',
-                  }}
-                >
+                <span style={{ fontWeight: 'var(--font-weight-semibold)' }}>
                   Email
                 </span>
                 <input
@@ -642,6 +507,8 @@ const ProjectMembersPage = () => {
                     fontSize: 'var(--font-size-base)',
                     background: 'var(--color-background)',
                     color: 'var(--color-text-secondary)',
+                    boxSizing: 'border-box',
+                    width: '100%',
                   }}
                 />
               </label>
@@ -652,12 +519,7 @@ const ProjectMembersPage = () => {
                   gap: 'var(--space-xs)',
                 }}
               >
-                <span
-                  style={{
-                    fontWeight: 'var(--font-weight-semibold)',
-                    fontSize: 'var(--font-size-base)',
-                  }}
-                >
+                <span style={{ fontWeight: 'var(--font-weight-semibold)' }}>
                   Role
                 </span>
                 <select
@@ -680,14 +542,7 @@ const ProjectMembersPage = () => {
                 </select>
               </label>
             </div>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: 'var(--space-sm)',
-                marginTop: 'var(--space-md)',
-              }}
-            >
+            <div className="modal-footer">
               <button
                 type="button"
                 onClick={() => setIsEditOpen(false)}
@@ -711,16 +566,7 @@ const ProjectMembersPage = () => {
 
       {isDeleteOpen ? (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(31, 58, 95, 0.35)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: 'var(--space-md)',
-          }}
+          className="modal-overlay"
           onClick={() => {
             if (!isSubmitting) {
               setIsDeleteOpen(false);
@@ -728,32 +574,12 @@ const ProjectMembersPage = () => {
             }
           }}
         >
-          <div
-            style={{
-              background: 'var(--color-surface-primary)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-xl)',
-              padding: 'var(--space-lg)',
-              width: 'min(420px, 100%)',
-              boxShadow: 'var(--shadow-xl)',
-              boxSizing: 'border-box',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: 'var(--space-sm)' }}>
-              Remove Member
-            </h3>
+          <div className="modal-body" onClick={e => e.stopPropagation()}>
+            <h3 className="modal-header">Remove Member</h3>
             <p style={{ marginTop: 0, color: 'var(--color-text-secondary)' }}>
               Remove {deletingMember?.email || 'this member'} from the project?
             </p>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: 'var(--space-sm)',
-                marginTop: 'var(--space-md)',
-              }}
-            >
+            <div className="modal-footer">
               <button
                 type="button"
                 onClick={() => setIsDeleteOpen(false)}
