@@ -33,31 +33,35 @@ const ConfirmEmailPage = () => {
   };
 
   return (
-    <div className="auth-page">
-      <h2>Confirm your email</h2>
-      <p style={{ maxWidth: 560 }}>
-        Signup successful. Please check your email to confirm your account
-        before logging in.
-      </p>
-      {status ? <p style={{ marginTop: 12, maxWidth: 560 }}>{status}</p> : null}
-      <div
-        style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}
-      >
-        <button
-          type="button"
-          className="btn-format-1"
-          onClick={resend}
-          disabled={isSending}
-        >
-          {isSending ? 'Sending…' : 'Resend confirmation email'}
-        </button>
-        <button
-          type="button"
-          className="btn-format-1"
-          onClick={() => navigate('/login', { replace: true })}
-        >
-          Sign In
-        </button>
+    <div className="auth-page-wrapper">
+      <div className="auth-brand">
+        <span className="auth-brand-name">Swallow Robotics</span>
+        <span className="auth-brand-tagline">Flight Operations Platform</span>
+      </div>
+      <div className="auth-page">
+        <h2>Confirm your email</h2>
+        <p>
+          Signup successful. Please check your email to confirm your account
+          before logging in.
+        </p>
+        {status ? <p>{status}</p> : null}
+        <div className="auth-actions">
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={resend}
+            disabled={isSending}
+          >
+            {isSending ? 'Sending…' : 'Resend confirmation email'}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => navigate('/login', { replace: true })}
+          >
+            Back to Login
+          </button>
+        </div>
       </div>
     </div>
   );
