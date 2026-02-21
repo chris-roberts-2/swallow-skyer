@@ -297,6 +297,9 @@ const ProjectMembersPage = () => {
                 .filter(Boolean)
                 .join(' ')
                 .trim();
+              const registrationIncomplete =
+                !member.first_name && !member.last_name;
+              const RUST = '#9B4A2F';
               const canShowActions =
                 canManageMembers &&
                 member.user_id !== user?.id &&
@@ -304,11 +307,26 @@ const ProjectMembersPage = () => {
               return (
                 <tr key={member.user_id}>
                   <td style={{ position: 'relative', overflow: 'visible' }}>
-                    {name || ''}
+                    {registrationIncomplete ? (
+                      <span style={{ color: RUST, fontStyle: 'italic' }}>
+                        Registration Incomplete
+                      </span>
+                    ) : (
+                      name || ''
+                    )}
                   </td>
-                  <td>{member.company || ''}</td>
-                  <td>{member.email || ''}</td>
-                  <td style={{ textTransform: 'capitalize' }}>
+                  <td>{registrationIncomplete ? '' : member.company || ''}</td>
+                  <td
+                    style={registrationIncomplete ? { color: RUST } : undefined}
+                  >
+                    {member.email || ''}
+                  </td>
+                  <td
+                    style={{
+                      textTransform: 'capitalize',
+                      ...(registrationIncomplete ? { color: RUST } : {}),
+                    }}
+                  >
                     {member.role || 'Viewer'}
                   </td>
                   <td>

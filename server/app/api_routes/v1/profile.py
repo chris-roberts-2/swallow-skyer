@@ -71,9 +71,24 @@ def register_profile():
         if auth_email and auth_email != email:
             return jsonify({"error": "Email does not match Supabase auth user"}), 400
 
+        resolved_email = auth_email or email
+
+        # When a user is pre-added to a project before registering, a placeholder
+        # row is created in public.users with a generated UUID and just the email.
+        # On registration, auth assigns a new UUID. We must transfer any
+        # project_members references from the old placeholder UUID to the new
+        # auth UUID before upserting, otherwise the unique email constraint blocks
+        # the insert.
+        existing = supabase_client.get_user_by_email(resolved_email)
+        if existing and existing.get("id") and existing["id"] != user_id:
+            old_id = existing["id"]
+            client = supabase_client.client  # type: ignore[union-attr]
+            client.table("project_members").update({"user_id": user_id}).eq("user_id", old_id).execute()
+            client.table("users").delete().eq("id", old_id).execute()
+
         updates = {
             "id": user_id,
-            "email": auth_email or email,
+            "email": resolved_email,
             "first_name": first_name or None,
             "last_name": last_name or None,
             "company": company or None,
