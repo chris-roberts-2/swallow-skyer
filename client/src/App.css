@@ -269,7 +269,54 @@
 .map {
   width: 100%;
   height: 100%;
-  border: 1px solid var(--color-border);
+}
+
+/* ===========================
+   MAPLIBRE CONTROL OVERRIDES
+   =========================== */
+
+.maplibregl-ctrl-group {
+  border: 1px solid var(--color-cool-gray-feather) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-xs) !important;
+  overflow: hidden !important;
+}
+
+.maplibregl-ctrl-group button {
+  background: var(--color-surface-primary) !important;
+  color: var(--color-charcoal-slate) !important;
+  border: none !important;
+  border-bottom: 1px solid var(--color-cool-gray-feather) !important;
+  transition: background 150ms ease !important;
+  font-family: var(--font-family-sans) !important;
+}
+
+.maplibregl-ctrl-group button:last-child {
+  border-bottom: none !important;
+}
+
+.maplibregl-ctrl-group button:hover:not(:disabled) {
+  background: #edf1f5 !important;
+}
+
+.maplibregl-ctrl-group button:active:not(:disabled) {
+  background: #e0e7ee !important;
+}
+
+.maplibregl-ctrl-group button:disabled {
+  opacity: 0.55 !important;
+}
+
+.maplibregl-ctrl-group .maplibregl-ctrl-icon {
+  filter: none !important;
+}
+
+/* MapLibre popup resets — custom popups manage their own surface */
+.maplibregl-popup-content {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
 }
 
 .home-page {
