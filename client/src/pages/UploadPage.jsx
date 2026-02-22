@@ -293,45 +293,33 @@ const PhotosPage = () => {
 
   return (
     <div style={{ width: '100%', boxSizing: 'border-box' }}>
-      <div
-        className="page-header"
-        style={{ justifyContent: 'space-between', position: 'relative' }}
-      >
-        <select
-          className="btn-format-1"
-          ref={projectSelectRef}
-          value={activeProjectId || projects[0]?.id || ''}
-          onChange={e => {
-            const nextId = e.target.value;
-            setActiveProject(nextId || null);
-            setPhotos([]);
-            fetchPhotos(nextId);
-          }}
-          style={{
-            paddingRight: 28,
-            width: `${projectToggleWidth}px`,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {projects.map(p => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            display: 'flex',
-            alignItems: 'baseline',
-            gap: 'var(--space-sm)',
-          }}
-        >
-          <h2 style={{ margin: 0, color: 'var(--color-text-primary)' }}>
-            Photos
-          </h2>
+      <div className="page-header">
+        <div className="page-header__left">
+          <select
+            className="btn-format-1"
+            ref={projectSelectRef}
+            value={activeProjectId || projects[0]?.id || ''}
+            onChange={e => {
+              const nextId = e.target.value;
+              setActiveProject(nextId || null);
+              setPhotos([]);
+              fetchPhotos(nextId);
+            }}
+            style={{
+              paddingRight: 28,
+              width: `${projectToggleWidth}px`,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {projects.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="page-header__center">
+          <h2 className="page-header__title">Photos</h2>
           <span
             style={{
               color: 'var(--color-text-secondary)',
@@ -341,10 +329,12 @@ const PhotosPage = () => {
             {normalisedPhotos.length} items
           </span>
         </div>
-        <BatchUploader
-          variant="compact"
-          onUploaded={() => fetchPhotos(activeProjectId)}
-        />
+        <div className="page-header__right">
+          <BatchUploader
+            variant="compact"
+            onUploaded={() => fetchPhotos(activeProjectId)}
+          />
+        </div>
       </div>
 
       {selectionMode ? (

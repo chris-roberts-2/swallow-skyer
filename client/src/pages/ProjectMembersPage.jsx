@@ -169,27 +169,31 @@ const ProjectMembersPage = () => {
     <div className="page-container">
       <div className="page-content">
         <div className="page-header">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="btn-secondary"
-          >
-            ← Back
-          </button>
-          <h2 className="page-header__title">Project Members</h2>
-          {canManageMembers ? (
+          <div className="page-header__left">
             <button
               type="button"
-              title="Add Member"
-              aria-label="Add Member"
-              onClick={() => setIsAddOpen(true)}
-              className="btn-primary btn-icon"
+              onClick={() => navigate(-1)}
+              className="btn-secondary"
             >
-              +
+              ← Back
             </button>
-          ) : (
-            <div />
-          )}
+          </div>
+          <div className="page-header__center">
+            <h2 className="page-header__title">Project Members</h2>
+          </div>
+          <div className="page-header__right">
+            {canManageMembers ? (
+              <button
+                type="button"
+                title="Add Member"
+                aria-label="Add Member"
+                onClick={() => setIsAddOpen(true)}
+                className="btn-primary btn-icon"
+              >
+                +
+              </button>
+            ) : null}
+          </div>
         </div>
         {error ? <div className="page-error">{error}</div> : null}
         <div

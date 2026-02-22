@@ -143,15 +143,20 @@ const ProjectsPage = () => {
     <div className="projects-page page-container">
       <div className="page-content">
         <div className="page-header">
-          <h2 className="page-header__title">Projects</h2>
-          <button
-            type="button"
-            onClick={() => setIsModalOpen(true)}
-            title="Create Project"
-            className="btn-primary btn-icon"
-          >
-            +
-          </button>
+          <div className="page-header__left" />
+          <div className="page-header__center">
+            <h2 className="page-header__title">Projects</h2>
+          </div>
+          <div className="page-header__right">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              title="Create Project"
+              className="btn-primary btn-icon"
+            >
+              +
+            </button>
+          </div>
         </div>
         {error && <div className="page-error">{error}</div>}
         {isLoading && !user ? (

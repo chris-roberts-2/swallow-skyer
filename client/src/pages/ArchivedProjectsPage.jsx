@@ -102,14 +102,19 @@ const ArchivedProjectsPage = () => {
     <div className="projects-page page-container">
       <div className="page-content">
         <div className="page-header">
-          <button
-            type="button"
-            onClick={() => navigate('/projects')}
-            className="btn-secondary"
-          >
-            ← Back
-          </button>
-          <h2 className="page-header__title">Archived Projects</h2>
+          <div className="page-header__left">
+            <button
+              type="button"
+              onClick={() => navigate('/projects')}
+              className="btn-secondary"
+            >
+              ← Back
+            </button>
+          </div>
+          <div className="page-header__center">
+            <h2 className="page-header__title">Archived Projects</h2>
+          </div>
+          <div className="page-header__right" />
         </div>
         {error ? <div className="page-error">{error}</div> : null}
         {isLoading ? (

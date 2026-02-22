@@ -110,7 +110,11 @@ const ProfilePage = () => {
   return (
     <div style={{ width: '100%', boxSizing: 'border-box' }}>
       <div className="page-header">
-        <h2 className="page-header__title">Profile</h2>
+        <div className="page-header__left" />
+        <div className="page-header__center">
+          <h2 className="page-header__title">Profile</h2>
+        </div>
+        <div className="page-header__right" />
       </div>
       <div className="profile-page">
         {(error || status) && (

@@ -840,6 +840,7 @@
   border-radius: 50%;
   font-size: var(--font-size-xl);
   line-height: 1;
+  box-sizing: border-box;
 }
 
 /* Small icon button — circular, 28px; for table row actions and menus */
@@ -1423,15 +1424,33 @@
 }
 
 .page-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-md);
   min-height: 36px;
   margin-bottom: var(--space-md);
 }
 
+.page-header__left {
+  display: flex;
+  align-items: center;
+}
+
+.page-header__center {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--space-sm);
+}
+
+.page-header__right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .page-header__title {
-  flex: 1;
   margin: 0;
   color: var(--color-text-primary);
 }

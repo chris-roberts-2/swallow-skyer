@@ -235,14 +235,19 @@ const PhotoOptionsPage = () => {
     return (
       <div style={{ width: '100%', boxSizing: 'border-box' }}>
         <div className="page-header">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => navigate(backTarget)}
-          >
-            ← Back
-          </button>
-          <h2 className="page-header__title">Photo Options</h2>
+          <div className="page-header__left">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => navigate(backTarget)}
+            >
+              ← Back
+            </button>
+          </div>
+          <div className="page-header__center">
+            <h2 className="page-header__title">Photo Options</h2>
+          </div>
+          <div className="page-header__right" />
         </div>
         {error ? (
           <div className="page-error">{error}</div>
@@ -266,14 +271,19 @@ const PhotoOptionsPage = () => {
       }}
     >
       <div className="page-header">
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={() => navigate(backTarget)}
-        >
-          ← Back
-        </button>
-        <h2 className="page-header__title">Photo Options</h2>
+        <div className="page-header__left">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => navigate(backTarget)}
+          >
+            ← Back
+          </button>
+        </div>
+        <div className="page-header__center">
+          <h2 className="page-header__title">Photo Options</h2>
+        </div>
+        <div className="page-header__right" />
       </div>
 
       <div
