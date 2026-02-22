@@ -227,6 +227,11 @@
   box-shadow: none;
 }
 
+.profile-menu__action-btn--destructive:active {
+  background: rgba(155, 74, 47, 0.12);
+  box-shadow: none;
+}
+
 @media (max-width: 640px) {
   .App-subnav__inner {
     gap: 0;
@@ -347,7 +352,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--space-xl) var(--space-md);
+  padding: var(--space-lg) var(--space-md);
   background-color: var(--color-warm-feather-white);
   box-sizing: border-box;
 }
@@ -577,7 +582,6 @@
 .profile-page {
   max-width: 620px;
   width: 100%;
-  margin: var(--space-2xl) auto;
   padding: var(--space-xl);
   background: var(--color-surface-primary);
   border-radius: var(--radius-lg);
@@ -778,6 +782,52 @@
 }
 
 .btn-destructive:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Critical Action — white surface, rust text; for destructive or logout actions */
+.btn-critical {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-cool-gray-feather);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-primary);
+  color: var(--color-swallow-rust);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-snug);
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: var(--shadow-xs);
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.btn-critical:hover:not(:disabled) {
+  background: rgba(155, 74, 47, 0.07);
+  border-color: var(--color-swallow-rust);
+  box-shadow: none;
+}
+
+.btn-critical:active:not(:disabled) {
+  background: rgba(155, 74, 47, 0.12);
+  box-shadow: none;
+}
+
+.btn-critical:focus-visible {
+  outline: 2px solid var(--color-swallow-rust);
+  outline-offset: 2px;
+}
+
+.btn-critical:disabled {
   opacity: 0.55;
   cursor: not-allowed;
   box-shadow: none;
@@ -1366,7 +1416,6 @@
 
 .page-container {
   width: 100%;
-  padding: var(--space-md) var(--space-lg);
   box-sizing: border-box;
   display: flex;
   justify-content: center;
@@ -1378,12 +1427,13 @@
 
 .page-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: var(--space-md);
   margin-bottom: var(--space-md);
 }
 
 .page-header__title {
+  flex: 1;
   margin: 0;
   color: var(--color-text-primary);
 }

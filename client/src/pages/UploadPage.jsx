@@ -280,14 +280,10 @@ const PhotosPage = () => {
 
   if (!hasProjects) {
     return (
-      <div
-        style={{
-          padding: 'var(--space-xl)',
-          width: '100%',
-          boxSizing: 'border-box',
-        }}
-      >
-        <h2 style={{ color: 'var(--color-text-primary)' }}>Photos</h2>
+      <div style={{ width: '100%', boxSizing: 'border-box' }}>
+        <div className="page-header">
+          <h2 className="page-header__title">Photos</h2>
+        </div>
         <p style={{ color: 'var(--color-text-secondary)' }}>
           Select or create a project to view its photos.
         </p>
@@ -296,22 +292,8 @@ const PhotosPage = () => {
   }
 
   return (
-    <div
-      style={{
-        width: '100%',
-        padding: 'var(--space-md) var(--space-lg)',
-        boxSizing: 'border-box',
-        position: 'relative',
-      }}
-    >
-      <div
-        style={{
-          position: 'absolute',
-          zIndex: 3,
-          top: 'var(--space-sm)',
-          left: 'var(--space-sm)',
-        }}
-      >
+    <div style={{ width: '100%', boxSizing: 'border-box' }}>
+      <div className="page-header">
         <select
           className="btn-format-1"
           ref={projectSelectRef}
@@ -334,273 +316,262 @@ const PhotosPage = () => {
             </option>
           ))}
         </select>
-      </div>
-
-      <div
-        style={{
-          width: 'min(1200px, 100%)',
-          margin: '0 auto',
-          paddingTop: 44,
-        }}
-      >
         <div
-          className="page-header"
-          style={{ marginBottom: 'var(--space-md)' }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-sm)',
+            flex: 1,
+          }}
         >
-          <div
+          <h2 className="page-header__title" style={{ flex: 'none' }}>
+            Photos
+          </h2>
+          <span
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-md)',
+              color: 'var(--color-text-secondary)',
+              fontSize: 'var(--font-size-sm)',
             }}
           >
-            <h2 className="page-header__title">Photos</h2>
-            <span
-              style={{
-                color: 'var(--color-text-secondary)',
-                fontSize: 'var(--font-size-sm)',
-              }}
-            >
-              {normalisedPhotos.length} items
-            </span>
-          </div>
-          <BatchUploader
-            variant="compact"
-            onUploaded={() => fetchPhotos(activeProjectId)}
-          />
+            {normalisedPhotos.length} items
+          </span>
         </div>
+        <BatchUploader
+          variant="compact"
+          onUploaded={() => fetchPhotos(activeProjectId)}
+        />
+      </div>
 
-        {selectionMode ? (
-          <div className="photo-actions-bar">
-            <span
-              style={{
-                fontSize: 'var(--font-size-sm)',
-                color: 'var(--color-text-primary)',
-              }}
-            >
-              {selectedIds.size} selected
-            </span>
-            <button
-              type="button"
-              className="btn-secondary"
+      {selectionMode ? (
+        <div className="photo-actions-bar">
+          <span
+            style={{
+              fontSize: 'var(--font-size-sm)',
+              color: 'var(--color-text-primary)',
+            }}
+          >
+            {selectedIds.size} selected
+          </span>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              const allIds = (normalisedPhotos || [])
+                .map(photo => photo?.id)
+                .filter(Boolean);
+              setSelectedIds(new Set(allIds));
+            }}
+            disabled={!normalisedPhotos.length}
+          >
+            Select all
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => downloadPhotos([...selectedIds], normalisedPhotos)}
+            disabled={isDownloading}
+          >
+            {isDownloading ? 'Downloading…' : 'Download selected'}
+          </button>
+          <button
+            type="button"
+            className="btn-critical"
+            onClick={() => deletePhotos([...selectedIds])}
+          >
+            Delete selected
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              setSelectionMode(false);
+              setSelectedIds(new Set());
+            }}
+          >
+            Done
+          </button>
+        </div>
+      ) : null}
+
+      {error ? <div className="page-error">{error}</div> : null}
+      {isLoading ? <div className="page-empty">Loading photos...</div> : null}
+
+      <div className="photo-grid" ref={cardsRef}>
+        {normalisedPhotos.map(photo => {
+          const missingGps = !(photo?.exif_data && photo.exif_data.gps);
+          const isSelected = selectedIds.has(photo.id);
+          return (
+            <div
+              key={photo.id}
+              className="photo-grid-card"
               onClick={() => {
-                const allIds = (normalisedPhotos || [])
-                  .map(photo => photo?.id)
-                  .filter(Boolean);
-                setSelectedIds(new Set(allIds));
-              }}
-              disabled={!normalisedPhotos.length}
-            >
-              Select all
-            </button>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => downloadPhotos([...selectedIds], normalisedPhotos)}
-              disabled={isDownloading}
-            >
-              {isDownloading ? 'Downloading…' : 'Download selected'}
-            </button>
-            <button
-              type="button"
-              className="btn-destructive"
-              onClick={() => deletePhotos([...selectedIds])}
-            >
-              Delete selected
-            </button>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => {
-                setSelectionMode(false);
-                setSelectedIds(new Set());
+                if (!selectionMode) {
+                  navigate(`/photos/${photo.id}/options`);
+                }
               }}
             >
-              Done
-            </button>
-          </div>
-        ) : null}
-
-        {error ? <div className="page-error">{error}</div> : null}
-        {isLoading ? <div className="page-empty">Loading photos...</div> : null}
-
-        <div className="photo-grid" ref={cardsRef}>
-          {normalisedPhotos.map(photo => {
-            const missingGps = !(photo?.exif_data && photo.exif_data.gps);
-            const isSelected = selectedIds.has(photo.id);
-            return (
-              <div
-                key={photo.id}
-                className="photo-grid-card"
-                onClick={() => {
-                  if (!selectionMode) {
-                    navigate(`/photos/${photo.id}/options`);
-                  }
-                }}
-              >
-                {selectionMode ? (
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggleSelect(photo.id)}
-                    style={{
-                      position: 'absolute',
-                      top: 'var(--space-sm)',
-                      left: 'var(--space-sm)',
-                      zIndex: 2,
-                      width: 18,
-                      height: 18,
-                      accentColor: 'var(--color-primary)',
-                    }}
-                  />
-                ) : null}
-                <div
-                  className="photo-menu"
+              {selectionMode ? (
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleSelect(photo.id)}
                   style={{
                     position: 'absolute',
                     top: 'var(--space-sm)',
-                    right: 'var(--space-sm)',
+                    left: 'var(--space-sm)',
                     zIndex: 2,
+                    width: 18,
+                    height: 18,
+                    accentColor: 'var(--color-primary)',
                   }}
-                >
-                  <button
-                    type="button"
-                    aria-label="Photo actions"
-                    onClick={e => {
-                      e.stopPropagation();
-                      setOpenMenuId(prev =>
-                        prev === photo.id ? null : photo.id
-                      );
-                    }}
-                    className="btn-secondary btn-icon-sm"
-                  >
-                    ⋮
-                  </button>
-                  {openMenuId === photo.id ? (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 34,
-                        right: 0,
-                        background: 'var(--color-surface-primary)',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 'var(--radius-lg)',
-                        boxShadow: 'var(--shadow-lg)',
-                        zIndex: 5,
-                        minWidth: 180,
-                        padding: 'var(--space-xs) 0',
-                      }}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        className="btn-menu-item"
-                        onClick={() => {
-                          setOpenMenuId(null);
-                          downloadPhotos([photo.id], normalisedPhotos);
-                        }}
-                      >
-                        Download
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-menu-item"
-                        onClick={() => {
-                          setOpenMenuId(null);
-                          setSelectionMode(true);
-                          setSelectedIds(prev => {
-                            const next = new Set(prev);
-                            next.add(photo.id);
-                            return next;
-                          });
-                        }}
-                      >
-                        More
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-menu-item btn-menu-item-destructive"
-                        onClick={() => {
-                          setOpenMenuId(null);
-                          deletePhotos([photo.id]);
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-                <div
-                  style={{
-                    width: '100%',
-                    overflow: 'hidden',
-                    background: 'var(--color-surface-secondary)',
-                    aspectRatio: '4 / 3',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                />
+              ) : null}
+              <div
+                className="photo-menu"
+                style={{
+                  position: 'absolute',
+                  top: 'var(--space-sm)',
+                  right: 'var(--space-sm)',
+                  zIndex: 2,
+                }}
+              >
+                <button
+                  type="button"
+                  aria-label="Photo actions"
+                  onClick={e => {
+                    e.stopPropagation();
+                    setOpenMenuId(prev =>
+                      prev === photo.id ? null : photo.id
+                    );
                   }}
+                  className="btn-secondary btn-icon-sm"
                 >
-                  <img
-                    src={photo.thumbnailUrl || photo.url}
-                    alt={photo.caption || photo.file_name || 'Photo'}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      display: 'block',
-                    }}
-                    onError={e => {
-                      if (
-                        photo.fallbackUrl &&
-                        e.target.src !== photo.fallbackUrl
-                      ) {
-                        // eslint-disable-next-line no-param-reassign
-                        e.target.src = photo.fallbackUrl;
-                      } else {
-                        // eslint-disable-next-line no-param-reassign
-                        e.target.style.display = 'none';
-                      }
-                    }}
-                  />
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: 'var(--space-sm)',
-                    borderTop: '1px solid var(--color-border)',
-                    background: 'var(--color-surface-primary)',
-                  }}
-                >
+                  ⋮
+                </button>
+                {openMenuId === photo.id ? (
                   <div
                     style={{
-                      color: 'var(--color-text-secondary)',
-                      fontSize: 'var(--font-size-sm)',
+                      position: 'absolute',
+                      top: 34,
+                      right: 0,
+                      background: 'var(--color-surface-primary)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-lg)',
+                      boxShadow: 'var(--shadow-lg)',
+                      zIndex: 5,
+                      minWidth: 180,
+                      padding: 'var(--space-xs) 0',
                     }}
+                    onClick={e => e.stopPropagation()}
                   >
-                    {photo.createdAt || 'Date unknown'}
-                  </div>
-                  {missingGps ? (
-                    <span
-                      style={{
-                        fontSize: 'var(--font-size-xs)',
-                        color: 'var(--color-accent)',
-                        background: 'var(--color-surface-secondary)',
-                        borderRadius: 'var(--radius-pill)',
-                        padding: '2px var(--space-sm)',
-                        fontWeight: 'var(--font-weight-semibold)',
+                    <button
+                      type="button"
+                      className="btn-menu-item"
+                      onClick={() => {
+                        setOpenMenuId(null);
+                        downloadPhotos([photo.id], normalisedPhotos);
                       }}
                     >
-                      No GPS
-                    </span>
-                  ) : null}
-                </div>
+                      Download
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-menu-item"
+                      onClick={() => {
+                        setOpenMenuId(null);
+                        setSelectionMode(true);
+                        setSelectedIds(prev => {
+                          const next = new Set(prev);
+                          next.add(photo.id);
+                          return next;
+                        });
+                      }}
+                    >
+                      More
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-menu-item btn-menu-item-destructive"
+                      onClick={() => {
+                        setOpenMenuId(null);
+                        deletePhotos([photo.id]);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ) : null}
               </div>
-            );
-          })}
-        </div>
+              <div
+                style={{
+                  width: '100%',
+                  overflow: 'hidden',
+                  background: 'var(--color-surface-secondary)',
+                  aspectRatio: '4 / 3',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <img
+                  src={photo.thumbnailUrl || photo.url}
+                  alt={photo.caption || photo.file_name || 'Photo'}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
+                  onError={e => {
+                    if (
+                      photo.fallbackUrl &&
+                      e.target.src !== photo.fallbackUrl
+                    ) {
+                      // eslint-disable-next-line no-param-reassign
+                      e.target.src = photo.fallbackUrl;
+                    } else {
+                      // eslint-disable-next-line no-param-reassign
+                      e.target.style.display = 'none';
+                    }
+                  }}
+                />
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: 'var(--space-sm)',
+                  borderTop: '1px solid var(--color-border)',
+                  background: 'var(--color-surface-primary)',
+                }}
+              >
+                <div
+                  style={{
+                    color: 'var(--color-text-secondary)',
+                    fontSize: 'var(--font-size-sm)',
+                  }}
+                >
+                  {photo.createdAt || 'Date unknown'}
+                </div>
+                {missingGps ? (
+                  <span
+                    style={{
+                      fontSize: 'var(--font-size-xs)',
+                      color: 'var(--color-accent)',
+                      background: 'var(--color-surface-secondary)',
+                      borderRadius: 'var(--radius-pill)',
+                      padding: '2px var(--space-sm)',
+                      fontWeight: 'var(--font-weight-semibold)',
+                    }}
+                  >
+                    No GPS
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

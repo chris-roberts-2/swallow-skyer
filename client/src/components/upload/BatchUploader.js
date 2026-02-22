@@ -127,73 +127,39 @@ const BatchUploader = ({ onForbidden, onUploaded, variant = 'full' }) => {
   const triggerFileSelect = () => inputRef.current?.click();
 
   if (variant === 'compact') {
-    const activeBorder = isDragging
-      ? '2px solid var(--color-mid-sky-blue)'
-      : '1px solid var(--color-cool-gray-feather)';
     return (
       <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-sm)',
+        data-testid="compact-drop"
+        className="btn-primary btn-icon"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={triggerFileSelect}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            triggerFileSelect();
+          }
         }}
+        style={{
+          boxShadow: isDragging
+            ? '0 0 0 3px rgba(63, 111, 160, 0.18)'
+            : 'var(--shadow-sm)',
+          opacity: isSubmitting ? 0.7 : 1,
+        }}
+        title="Upload photos"
       >
-        <div
-          data-testid="compact-drop"
-          className="btn-secondary btn-icon-sm"
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={triggerFileSelect}
-          role="button"
-          tabIndex={0}
-          onKeyDown={e => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              triggerFileSelect();
-            }
-          }}
-          style={{
-            border: activeBorder,
-            background: isDragging
-              ? 'var(--color-surface-secondary)'
-              : 'var(--color-surface-primary)',
-            fontSize: 'var(--font-size-xl)',
-            boxShadow: isDragging
-              ? '0 0 0 3px rgba(63, 111, 160, 0.18)'
-              : 'var(--shadow-xs)',
-          }}
-          title="Upload photos"
-        >
-          {isSubmitting ? '…' : '+'}
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            style={{ display: 'none' }}
-            onChange={handleInputChange}
-          />
-        </div>
-        {isSubmitting ? (
-          <span
-            style={{
-              fontSize: 'var(--font-size-sm)',
-              color: 'var(--color-text-secondary)',
-            }}
-          >
-            Uploading…
-          </span>
-        ) : (
-          <span
-            style={{
-              fontSize: 'var(--font-size-sm)',
-              color: 'var(--color-text-secondary)',
-            }}
-          >
-            Click or drop to upload
-          </span>
-        )}
+        {isSubmitting ? '…' : '+'}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          style={{ display: 'none' }}
+          onChange={handleInputChange}
+        />
       </div>
     );
   }

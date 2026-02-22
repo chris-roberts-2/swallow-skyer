@@ -233,24 +233,17 @@ const PhotoOptionsPage = () => {
 
   if (!displayPhoto) {
     return (
-      <div
-        style={{
-          padding: 'var(--space-lg)',
-          boxSizing: 'border-box',
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          gap: 'var(--space-md)',
-        }}
-      >
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={() => navigate(backTarget)}
-        >
-          ← Back
-        </button>
+      <div style={{ width: '100%', boxSizing: 'border-box' }}>
+        <div className="page-header">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => navigate(backTarget)}
+          >
+            ← Back
+          </button>
+          <h2 className="page-header__title">Photo Options</h2>
+        </div>
         {error ? (
           <div className="page-error">{error}</div>
         ) : (
@@ -264,26 +257,17 @@ const PhotoOptionsPage = () => {
     <div
       style={{
         width: '100%',
-        padding: 'var(--space-md) var(--space-lg)',
         paddingBottom: 'var(--space-2xl)',
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'flex-start',
         gap: 'var(--space-md)',
         flex: 1,
         minHeight: 0,
         overflowY: 'auto',
       }}
     >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-md)',
-          width: '100%',
-        }}
-      >
+      <div className="page-header">
         <button
           type="button"
           className="btn-secondary"
@@ -291,7 +275,7 @@ const PhotoOptionsPage = () => {
         >
           ← Back
         </button>
-        <h2 style={{ margin: 0 }}>Photo Options</h2>
+        <h2 className="page-header__title">Photo Options</h2>
       </div>
 
       <div
@@ -356,7 +340,7 @@ const PhotoOptionsPage = () => {
             </button>
             <button
               type="button"
-              className="btn-destructive"
+              className="btn-critical"
               onClick={remove}
               disabled={isDeleting}
             >

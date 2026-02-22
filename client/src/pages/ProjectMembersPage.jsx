@@ -166,411 +166,371 @@ const ProjectMembersPage = () => {
   };
 
   return (
-    <div
-      style={{
-        padding: 'var(--space-md) var(--space-lg)',
-        maxWidth: 1100,
-        margin: '0 auto',
-        width: '100%',
-        boxSizing: 'border-box',
-      }}
-    >
-      <div className="page-header" style={{ marginBottom: 'var(--space-md)' }}>
-        <h2 className="page-header__title">Project Members</h2>
-        {canManageMembers ? (
+    <div className="page-container">
+      <div className="page-content">
+        <div className="page-header">
           <button
             type="button"
-            title="Add Member"
-            aria-label="Add Member"
-            onClick={() => setIsAddOpen(true)}
-            className="btn-primary btn-icon"
+            onClick={() => navigate(-1)}
+            className="btn-secondary"
           >
-            +
+            ← Back
           </button>
-        ) : null}
-      </div>
-
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-md)',
-          marginBottom: 'var(--space-md)',
-          flexWrap: 'wrap',
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="btn-secondary"
-        >
-          ← Back
-        </button>
-        <label
+          <h2 className="page-header__title">Project Members</h2>
+          {canManageMembers ? (
+            <button
+              type="button"
+              title="Add Member"
+              aria-label="Add Member"
+              onClick={() => setIsAddOpen(true)}
+              className="btn-primary btn-icon"
+            >
+              +
+            </button>
+          ) : (
+            <div />
+          )}
+        </div>
+        {error ? <div className="page-error">{error}</div> : null}
+        <div
+          className="data-table-container"
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--space-sm)',
-            fontSize: 'var(--font-size-base)',
-            color: 'var(--color-text-primary)',
+            overflowX: 'auto',
+            overflowY: 'visible',
+            position: 'relative',
           }}
         >
-          <span>Project:</span>
-          <select
-            value={currentProjectId || ''}
-            onChange={e => {
-              const nextId = e.target.value;
-              if (nextId) {
-                setActiveProject(nextId);
-                navigate(`/projects/${nextId}/members`);
-              }
-            }}
-            className="form-select"
-            style={{ minWidth: 200 }}
+          <table
+            className="data-table"
+            style={{ minWidth: 640, tableLayout: 'fixed' }}
           >
-            <option value="">Select a project</option>
-            {projects.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      {error ? <div className="page-error">{error}</div> : null}
-      <div
-        className="data-table-container"
-        style={{
-          overflowX: 'auto',
-          overflowY: 'visible',
-          position: 'relative',
-        }}
-      >
-        <table
-          className="data-table"
-          style={{ minWidth: 640, tableLayout: 'fixed' }}
-        >
-          <colgroup>
-            <col style={{ width: '25%' }} />
-            <col style={{ width: '20%' }} />
-            <col style={{ width: '30%' }} />
-            <col style={{ width: '17%' }} />
-            <col style={{ width: '8%' }} />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Company</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>&nbsp;</th>
-            </tr>
-          </thead>
-          <tbody>
-            {members.map(member => {
-              const name = [member.first_name, member.last_name]
-                .filter(Boolean)
-                .join(' ')
-                .trim();
-              const registrationIncomplete =
-                !member.first_name && !member.last_name;
-              const canShowActions =
-                canManageMembers &&
-                member.user_id !== user?.id &&
-                member.user_id !== project?.owner_id;
-              return (
-                <tr key={member.user_id}>
-                  <td style={{ position: 'relative', overflow: 'visible' }}>
-                    {registrationIncomplete ? (
-                      <span
-                        style={{
-                          color: 'var(--color-swallow-rust)',
-                          fontStyle: 'italic',
-                        }}
-                      >
-                        Registration Incomplete
-                      </span>
-                    ) : (
-                      name || ''
-                    )}
-                  </td>
-                  <td>{registrationIncomplete ? '' : member.company || ''}</td>
-                  <td
-                    style={
-                      registrationIncomplete
-                        ? { color: 'var(--color-swallow-rust)' }
-                        : undefined
-                    }
-                  >
-                    {member.email || ''}
-                  </td>
-                  <td
-                    style={{
-                      textTransform: 'capitalize',
-                      ...(registrationIncomplete
-                        ? { color: 'var(--color-swallow-rust)' }
-                        : {}),
-                    }}
-                  >
-                    {member.role || 'Viewer'}
-                  </td>
-                  <td>
-                    {canShowActions ? (
-                      <div
-                        className="member-row-menu"
-                        style={{
-                          position: 'relative',
-                          display: 'inline-block',
-                        }}
-                      >
-                        <button
-                          type="button"
-                          aria-label="Member actions"
-                          onClick={e => {
-                            e.stopPropagation();
-                            const rect =
-                              e.currentTarget.getBoundingClientRect();
-                            const menuWidth = 160;
-                            const padding = 8;
-                            const left = Math.min(
-                              rect.left,
-                              window.innerWidth - menuWidth - padding
-                            );
-                            setMenuPosition({
-                              top: rect.bottom + 6,
-                              left: Math.max(padding, left),
-                            });
-                            setMenuContextMember(member);
-                            setMenuOpenId(prev => {
-                              const next =
-                                prev === member.user_id ? null : member.user_id;
-                              if (!next) {
-                                setMenuContextMember(null);
-                              }
-                              return next;
-                            });
+            <colgroup>
+              <col style={{ width: '25%' }} />
+              <col style={{ width: '20%' }} />
+              <col style={{ width: '30%' }} />
+              <col style={{ width: '17%' }} />
+              <col style={{ width: '8%' }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Company</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>&nbsp;</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map(member => {
+                const name = [member.first_name, member.last_name]
+                  .filter(Boolean)
+                  .join(' ')
+                  .trim();
+                const registrationIncomplete =
+                  !member.first_name && !member.last_name;
+                const canShowActions =
+                  canManageMembers &&
+                  member.user_id !== user?.id &&
+                  member.user_id !== project?.owner_id;
+                return (
+                  <tr key={member.user_id}>
+                    <td style={{ position: 'relative', overflow: 'visible' }}>
+                      {registrationIncomplete ? (
+                        <span
+                          style={{
+                            color: 'var(--color-swallow-rust)',
+                            fontStyle: 'italic',
                           }}
-                          className="btn-secondary btn-icon-sm"
                         >
-                          ⋮
-                        </button>
-                      </div>
-                    ) : null}
+                          Registration Incomplete
+                        </span>
+                      ) : (
+                        name || ''
+                      )}
+                    </td>
+                    <td>
+                      {registrationIncomplete ? '' : member.company || ''}
+                    </td>
+                    <td
+                      style={
+                        registrationIncomplete
+                          ? { color: 'var(--color-swallow-rust)' }
+                          : undefined
+                      }
+                    >
+                      {member.email || ''}
+                    </td>
+                    <td
+                      style={{
+                        textTransform: 'capitalize',
+                        ...(registrationIncomplete
+                          ? { color: 'var(--color-swallow-rust)' }
+                          : {}),
+                      }}
+                    >
+                      {member.role || 'Viewer'}
+                    </td>
+                    <td>
+                      {canShowActions ? (
+                        <div
+                          className="member-row-menu"
+                          style={{
+                            position: 'relative',
+                            display: 'inline-block',
+                          }}
+                        >
+                          <button
+                            type="button"
+                            aria-label="Member actions"
+                            onClick={e => {
+                              e.stopPropagation();
+                              const rect =
+                                e.currentTarget.getBoundingClientRect();
+                              const menuWidth = 160;
+                              const padding = 8;
+                              const left = Math.min(
+                                rect.left,
+                                window.innerWidth - menuWidth - padding
+                              );
+                              setMenuPosition({
+                                top: rect.bottom + 6,
+                                left: Math.max(padding, left),
+                              });
+                              setMenuContextMember(member);
+                              setMenuOpenId(prev => {
+                                const next =
+                                  prev === member.user_id
+                                    ? null
+                                    : member.user_id;
+                                if (!next) {
+                                  setMenuContextMember(null);
+                                }
+                                return next;
+                              });
+                            }}
+                            className="btn-secondary btn-icon-sm"
+                          >
+                            ⋮
+                          </button>
+                        </div>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
+              {!members.length ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    style={{ color: 'var(--color-text-secondary)' }}
+                  >
+                    No members
                   </td>
                 </tr>
-              );
-            })}
-            {!members.length ? (
-              <tr>
-                <td
-                  colSpan={5}
-                  style={{ color: 'var(--color-text-secondary)' }}
-                >
-                  No members
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
-
-      {isAddOpen ? (
-        <div
-          className="modal-overlay"
-          onClick={() => {
-            if (!isSubmitting) setIsAddOpen(false);
-          }}
-        >
-          <div className="modal-body" onClick={e => e.stopPropagation()}>
-            <h3 className="modal-header">Add Member</h3>
-            <div className="modal-form">
-              <label className="form-label">
-                Email
-                <input
-                  type="email"
-                  value={addForm.email}
-                  onChange={e =>
-                    setAddForm(prev => ({ ...prev, email: e.target.value }))
-                  }
-                  placeholder="person@example.com"
-                  required
-                  className="form-input"
-                />
-              </label>
-              <label className="form-label">
-                Role
-                <select
-                  value={addForm.role}
-                  onChange={e =>
-                    setAddForm(prev => ({ ...prev, role: e.target.value }))
-                  }
-                  className="form-select"
-                >
-                  {roleOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <div className="modal-footer">
-              <button
-                type="button"
-                onClick={() => setIsAddOpen(false)}
-                disabled={isSubmitting}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleAddMember}
-                disabled={isSubmitting}
-                className="btn-primary"
-              >
-                {isSubmitting ? 'Adding...' : 'Add Member'}
-              </button>
-            </div>
-          </div>
+              ) : null}
+            </tbody>
+          </table>
         </div>
-      ) : null}
 
-      {isEditOpen ? (
-        <div
-          className="modal-overlay"
-          onClick={() => {
-            if (!isSubmitting) {
-              setIsEditOpen(false);
-              setEditingMember(null);
-            }
-          }}
-        >
-          <div className="modal-body" onClick={e => e.stopPropagation()}>
-            <h3 className="modal-header">Edit Member</h3>
-            <div className="modal-form">
-              <label className="form-label">
-                Email
-                <input
-                  type="email"
-                  value={editingMember?.email || ''}
-                  disabled
-                  className="form-input"
-                />
-              </label>
-              <label className="form-label">
-                Role
-                <select
-                  value={editForm.role}
-                  onChange={e =>
-                    setEditForm(prev => ({ ...prev, role: e.target.value }))
-                  }
-                  className="form-select"
-                >
-                  {roleOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <div className="modal-footer">
-              <button
-                type="button"
-                onClick={() => setIsEditOpen(false)}
-                disabled={isSubmitting}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleUpdateMember}
-                disabled={isSubmitting}
-                className="btn-primary"
-              >
-                {isSubmitting ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {isDeleteOpen ? (
-        <div
-          className="modal-overlay"
-          onClick={() => {
-            if (!isSubmitting) {
-              setIsDeleteOpen(false);
-              setDeletingMember(null);
-            }
-          }}
-        >
-          <div className="modal-body" onClick={e => e.stopPropagation()}>
-            <h3 className="modal-header">Remove Member</h3>
-            <p style={{ marginTop: 0, color: 'var(--color-text-secondary)' }}>
-              Remove {deletingMember?.email || 'this member'} from the project?
-            </p>
-            <div className="modal-footer">
-              <button
-                type="button"
-                onClick={() => setIsDeleteOpen(false)}
-                disabled={isSubmitting}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteMember}
-                disabled={isSubmitting}
-                className="btn-destructive"
-              >
-                {isSubmitting ? 'Removing...' : 'Remove'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {menuOpenId && menuContextMember ? (
-        <div
-          style={{
-            position: 'fixed',
-            top: menuPosition.top,
-            left: menuPosition.left,
-            background: 'var(--color-surface-primary)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-lg)',
-            boxShadow: 'var(--shadow-lg)',
-            zIndex: 2000,
-            minWidth: 160,
-            padding: 'var(--space-xs) 0',
-          }}
-          onClick={e => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            className="btn-menu-item"
-            onClick={() => handleEditMember(menuContextMember)}
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            className="btn-menu-item btn-menu-item-destructive"
+        {isAddOpen ? (
+          <div
+            className="modal-overlay"
             onClick={() => {
-              setDeletingMember(menuContextMember);
-              setIsDeleteOpen(true);
-              setMenuOpenId(null);
-              setMenuContextMember(null);
+              if (!isSubmitting) setIsAddOpen(false);
             }}
           >
-            Delete
-          </button>
-        </div>
-      ) : null}
+            <div className="modal-body" onClick={e => e.stopPropagation()}>
+              <h3 className="modal-header">Add Member</h3>
+              <div className="modal-form">
+                <label className="form-label">
+                  Email
+                  <input
+                    type="email"
+                    value={addForm.email}
+                    onChange={e =>
+                      setAddForm(prev => ({ ...prev, email: e.target.value }))
+                    }
+                    placeholder="person@example.com"
+                    required
+                    className="form-input"
+                  />
+                </label>
+                <label className="form-label">
+                  Role
+                  <select
+                    value={addForm.role}
+                    onChange={e =>
+                      setAddForm(prev => ({ ...prev, role: e.target.value }))
+                    }
+                    className="form-select"
+                  >
+                    {roleOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  onClick={() => setIsAddOpen(false)}
+                  disabled={isSubmitting}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddMember}
+                  disabled={isSubmitting}
+                  className="btn-primary"
+                >
+                  {isSubmitting ? 'Adding...' : 'Add Member'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {isEditOpen ? (
+          <div
+            className="modal-overlay"
+            onClick={() => {
+              if (!isSubmitting) {
+                setIsEditOpen(false);
+                setEditingMember(null);
+              }
+            }}
+          >
+            <div className="modal-body" onClick={e => e.stopPropagation()}>
+              <h3 className="modal-header">Edit Member</h3>
+              <div className="modal-form">
+                <label className="form-label">
+                  Email
+                  <input
+                    type="email"
+                    value={editingMember?.email || ''}
+                    disabled
+                    className="form-input"
+                  />
+                </label>
+                <label className="form-label">
+                  Role
+                  <select
+                    value={editForm.role}
+                    onChange={e =>
+                      setEditForm(prev => ({ ...prev, role: e.target.value }))
+                    }
+                    className="form-select"
+                  >
+                    {roleOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  onClick={() => setIsEditOpen(false)}
+                  disabled={isSubmitting}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUpdateMember}
+                  disabled={isSubmitting}
+                  className="btn-primary"
+                >
+                  {isSubmitting ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {isDeleteOpen ? (
+          <div
+            className="modal-overlay"
+            onClick={() => {
+              if (!isSubmitting) {
+                setIsDeleteOpen(false);
+                setDeletingMember(null);
+              }
+            }}
+          >
+            <div className="modal-body" onClick={e => e.stopPropagation()}>
+              <h3 className="modal-header">Remove Member</h3>
+              <p style={{ marginTop: 0, color: 'var(--color-text-secondary)' }}>
+                Remove {deletingMember?.email || 'this member'} from the
+                project?
+              </p>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteOpen(false)}
+                  disabled={isSubmitting}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteMember}
+                  disabled={isSubmitting}
+                  className="btn-destructive"
+                >
+                  {isSubmitting ? 'Removing...' : 'Remove'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {menuOpenId && menuContextMember ? (
+          <div
+            style={{
+              position: 'fixed',
+              top: menuPosition.top,
+              left: menuPosition.left,
+              background: 'var(--color-surface-primary)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: 'var(--shadow-lg)',
+              zIndex: 2000,
+              minWidth: 160,
+              padding: 'var(--space-xs) 0',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="btn-menu-item"
+              onClick={() => handleEditMember(menuContextMember)}
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              className="btn-menu-item btn-menu-item-destructive"
+              onClick={() => {
+                setDeletingMember(menuContextMember);
+                setIsDeleteOpen(true);
+                setMenuOpenId(null);
+                setMenuContextMember(null);
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 };

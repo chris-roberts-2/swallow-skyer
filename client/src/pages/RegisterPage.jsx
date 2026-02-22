@@ -48,10 +48,6 @@ const RegisterPage = () => {
 
   return (
     <div className="auth-page-wrapper">
-      <div className="auth-brand">
-        <span className="auth-brand-name">Swallow Robotics</span>
-        <span className="auth-brand-tagline">Flight Operations Platform</span>
-      </div>
       <div className="auth-page">
         <h2>Create an account</h2>
         <form onSubmit={handleSubmit} className="auth-form">
