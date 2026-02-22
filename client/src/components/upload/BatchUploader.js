@@ -131,7 +131,13 @@ const BatchUploader = ({ onForbidden, onUploaded, variant = 'full' }) => {
       ? '2px solid var(--color-mid-sky-blue)'
       : '1px solid var(--color-cool-gray-feather)';
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-sm)',
+        }}
+      >
         <div
           data-testid="compact-drop"
           className="btn-secondary btn-icon-sm"

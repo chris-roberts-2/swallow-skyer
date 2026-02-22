@@ -155,7 +155,7 @@ const ProjectsPage = () => {
         </div>
         {error && <div className="page-error">{error}</div>}
         {isLoading && !user ? (
-          <div>Loading...</div>
+          <div className="page-empty">Loading...</div>
         ) : (
           <ProjectList
             projects={projects}

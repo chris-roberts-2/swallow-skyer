@@ -175,78 +175,68 @@ const ProjectMembersPage = () => {
         boxSizing: 'border-box',
       }}
     >
+      <div className="page-header" style={{ marginBottom: 'var(--space-md)' }}>
+        <h2 className="page-header__title">Project Members</h2>
+        {canManageMembers ? (
+          <button
+            type="button"
+            title="Add Member"
+            aria-label="Add Member"
+            onClick={() => setIsAddOpen(true)}
+            className="btn-primary btn-icon"
+          >
+            +
+          </button>
+        ) : null}
+      </div>
+
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 'var(--space-md)',
           marginBottom: 'var(--space-md)',
+          flexWrap: 'wrap',
         }}
       >
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="btn-secondary"
-          >
-            ← Back
-          </button>
-        </div>
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-sm)',
-              fontSize: 'var(--font-size-base)',
-              color: 'var(--color-text-primary)',
-            }}
-          >
-            <span>Project:</span>
-            <select
-              value={currentProjectId || ''}
-              onChange={e => {
-                const nextId = e.target.value;
-                if (nextId) {
-                  setActiveProject(nextId);
-                  navigate(`/projects/${nextId}/members`);
-                }
-              }}
-              className="form-select"
-              style={{ minWidth: 200 }}
-            >
-              <option value="">Select a project</option>
-              {projects.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <div
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="btn-secondary"
+        >
+          ← Back
+        </button>
+        <label
           style={{
-            flex: 1,
             display: 'flex',
-            justifyContent: 'flex-end',
+            alignItems: 'center',
             gap: 'var(--space-sm)',
+            fontSize: 'var(--font-size-base)',
+            color: 'var(--color-text-primary)',
           }}
         >
-          {canManageMembers ? (
-            <button
-              type="button"
-              title="Add Member"
-              aria-label="Add Member"
-              onClick={() => setIsAddOpen(true)}
-              className="btn-primary btn-icon"
-            >
-              +
-            </button>
-          ) : null}
-        </div>
+          <span>Project:</span>
+          <select
+            value={currentProjectId || ''}
+            onChange={e => {
+              const nextId = e.target.value;
+              if (nextId) {
+                setActiveProject(nextId);
+                navigate(`/projects/${nextId}/members`);
+              }
+            }}
+            className="form-select"
+            style={{ minWidth: 200 }}
+          >
+            <option value="">Select a project</option>
+            {projects.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
-
-      <h2 style={{ marginTop: 0 }}>Project Members</h2>
       {error ? <div className="page-error">{error}</div> : null}
       <div
         className="data-table-container"

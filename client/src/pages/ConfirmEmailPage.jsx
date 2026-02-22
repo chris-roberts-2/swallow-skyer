@@ -44,7 +44,17 @@ const ConfirmEmailPage = () => {
           Signup successful. Please check your email to confirm your account
           before logging in.
         </p>
-        {status ? <p>{status}</p> : null}
+        {status ? (
+          <p
+            style={{
+              color: 'var(--color-primary-dark)',
+              fontSize: 'var(--font-size-base)',
+              marginBottom: 0,
+            }}
+          >
+            {status}
+          </p>
+        ) : null}
         <div className="auth-actions">
           <button
             type="button"

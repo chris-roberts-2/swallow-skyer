@@ -383,7 +383,6 @@ const PhotosPage = () => {
             <button
               type="button"
               className="btn-secondary"
-              style={{ padding: '6px 10px' }}
               onClick={() => {
                 const allIds = (normalisedPhotos || [])
                   .map(photo => photo?.id)
@@ -397,7 +396,6 @@ const PhotosPage = () => {
             <button
               type="button"
               className="btn-secondary"
-              style={{ padding: '6px 10px' }}
               onClick={() => downloadPhotos([...selectedIds], normalisedPhotos)}
               disabled={isDownloading}
             >
@@ -406,7 +404,6 @@ const PhotosPage = () => {
             <button
               type="button"
               className="btn-destructive"
-              style={{ padding: '6px 10px' }}
               onClick={() => deletePhotos([...selectedIds])}
             >
               Delete selected
@@ -414,7 +411,6 @@ const PhotosPage = () => {
             <button
               type="button"
               className="btn-secondary"
-              style={{ padding: '6px 10px' }}
               onClick={() => {
                 setSelectionMode(false);
                 setSelectedIds(new Set());
@@ -426,7 +422,7 @@ const PhotosPage = () => {
         ) : null}
 
         {error ? <div className="page-error">{error}</div> : null}
-        {isLoading ? <div>Loading photos...</div> : null}
+        {isLoading ? <div className="page-empty">Loading photos...</div> : null}
 
         <div className="photo-grid" ref={cardsRef}>
           {normalisedPhotos.map(photo => {

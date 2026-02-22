@@ -249,12 +249,12 @@ const PhotoOptionsPage = () => {
           className="btn-secondary"
           onClick={() => navigate(backTarget)}
         >
-          Back
+          ← Back
         </button>
         {error ? (
-          <div style={{ color: 'var(--color-accent)' }}>{error}</div>
+          <div className="page-error">{error}</div>
         ) : (
-          <div>Loading photo...</div>
+          <div className="page-empty">Loading photo...</div>
         )}
       </div>
     );
@@ -278,11 +278,10 @@ const PhotoOptionsPage = () => {
     >
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'auto 1fr',
+          display: 'flex',
           alignItems: 'center',
+          gap: 'var(--space-md)',
           width: '100%',
-          columnGap: 'var(--space-md)',
         }}
       >
         <button
@@ -290,25 +289,9 @@ const PhotoOptionsPage = () => {
           className="btn-secondary"
           onClick={() => navigate(backTarget)}
         >
-          Back
+          ← Back
         </button>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            width: '100%',
-          }}
-        >
-          <div
-            style={{
-              width: 'min(1200px, 100%)',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <h2 style={{ margin: 0, padding: 0 }}>Photo Options</h2>
-          </div>
-        </div>
+        <h2 style={{ margin: 0 }}>Photo Options</h2>
       </div>
 
       <div
@@ -403,14 +386,7 @@ const PhotoOptionsPage = () => {
               className="surface-card"
               style={{ padding: 'var(--space-sm) var(--space-md)' }}
             >
-              <div
-                style={{
-                  fontWeight: 'var(--font-weight-semibold)',
-                  fontSize: 'var(--font-size-base)',
-                }}
-              >
-                Information
-              </div>
+              <h6 style={{ margin: '0 0 var(--space-xs)' }}>Information</h6>
               <dl
                 style={{
                   margin: 0,
@@ -516,14 +492,12 @@ const PhotoOptionsPage = () => {
                 style={{
                   padding: 'var(--space-sm) var(--space-md)',
                   borderBottom: '1px solid var(--color-border)',
-                  fontWeight: 'var(--font-weight-semibold)',
-                  fontSize: 'var(--font-size-base)',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                 }}
               >
-                <span>Location</span>
+                <h6 style={{ margin: 0 }}>Location</h6>
                 <button
                   type="button"
                   className="btn-secondary"

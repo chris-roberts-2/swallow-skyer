@@ -872,7 +872,7 @@
 .profile-card__inputs {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
+  gap: var(--space-sm);
   width: 100%;
 }
 

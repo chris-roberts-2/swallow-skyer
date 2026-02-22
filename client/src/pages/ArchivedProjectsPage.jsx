@@ -113,7 +113,7 @@ const ArchivedProjectsPage = () => {
         </div>
         {error ? <div className="page-error">{error}</div> : null}
         {isLoading ? (
-          <div>Loading...</div>
+          <div className="page-empty">Loading...</div>
         ) : (
           <ProjectList
             projects={projects}
