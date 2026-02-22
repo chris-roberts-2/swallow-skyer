@@ -260,7 +260,6 @@ const PhotoOptionsPage = () => {
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
-        gap: 'var(--space-md)',
         flex: 1,
         minHeight: 0,
         overflowY: 'auto',
