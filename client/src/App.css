@@ -1416,12 +1416,10 @@
 .page-container {
   width: 100%;
   box-sizing: border-box;
-  display: flex;
-  justify-content: center;
 }
 
 .page-content {
-  width: min(1200px, 100%);
+  width: 100%;
 }
 
 .page-header {

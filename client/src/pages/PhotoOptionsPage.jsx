@@ -257,7 +257,6 @@ const PhotoOptionsPage = () => {
     <div
       style={{
         width: '100%',
-        paddingBottom: 'var(--space-2xl)',
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',

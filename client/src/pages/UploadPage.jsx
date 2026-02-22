@@ -292,13 +292,7 @@ const PhotosPage = () => {
   }
 
   return (
-    <div
-      style={{
-        width: '100%',
-        boxSizing: 'border-box',
-        paddingBottom: 'var(--space-xl)',
-      }}
-    >
+    <div style={{ width: '100%', boxSizing: 'border-box' }}>
       <div
         className="page-header"
         style={{ justifyContent: 'space-between', position: 'relative' }}
