@@ -193,7 +193,6 @@ const PhotosPage = () => {
         const item = items[0];
         const url = resolveUrl(item);
         if (!url) throw new Error('No URL to download');
-        // Prefer direct browser download to avoid CORS on fetch.
         downloadDirect(url, resolveName(item));
       } else {
         const { default: JSZip } = await import('jszip');
@@ -249,6 +248,7 @@ const PhotosPage = () => {
     setSelectionMode(false);
     fetchPhotos(activeProjectId);
   };
+
   const normalisedPhotos = useMemo(() => {
     return (photos || [])
       .map(photo => {
@@ -344,13 +344,8 @@ const PhotosPage = () => {
         }}
       >
         <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 'var(--space-md)',
-            gap: 'var(--space-md)',
-          }}
+          className="page-header"
+          style={{ marginBottom: 'var(--space-md)' }}
         >
           <div
             style={{
@@ -359,9 +354,7 @@ const PhotosPage = () => {
               gap: 'var(--space-md)',
             }}
           >
-            <h2 style={{ margin: 0, color: 'var(--color-text-primary)' }}>
-              Photos
-            </h2>
+            <h2 className="page-header__title">Photos</h2>
             <span
               style={{
                 color: 'var(--color-text-secondary)',
@@ -378,14 +371,7 @@ const PhotosPage = () => {
         </div>
 
         {selectionMode ? (
-          <div
-            style={{
-              display: 'flex',
-              gap: 'var(--space-sm)',
-              alignItems: 'center',
-              marginBottom: 'var(--space-sm)',
-            }}
-          >
+          <div className="photo-actions-bar">
             <span
               style={{
                 fontSize: 'var(--font-size-sm)',
@@ -439,45 +425,17 @@ const PhotosPage = () => {
           </div>
         ) : null}
 
-        {error ? (
-          <div
-            style={{
-              color: 'var(--color-accent)',
-              marginBottom: 'var(--space-md)',
-            }}
-          >
-            {error}
-          </div>
-        ) : null}
+        {error ? <div className="page-error">{error}</div> : null}
         {isLoading ? <div>Loading photos...</div> : null}
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-            gap: 'var(--space-md)',
-          }}
-          ref={cardsRef}
-        >
+        <div className="photo-grid" ref={cardsRef}>
           {normalisedPhotos.map(photo => {
             const missingGps = !(photo?.exif_data && photo.exif_data.gps);
             const isSelected = selectedIds.has(photo.id);
             return (
               <div
                 key={photo.id}
-                className="photo-card"
-                style={{
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-xl)',
-                  padding: 0,
-                  background: 'var(--color-surface-primary)',
-                  boxShadow: 'var(--shadow-sm)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  transition: 'all 0.2s ease',
-                }}
+                className="photo-grid-card"
                 onClick={() => {
                   if (!selectionMode) {
                     navigate(`/photos/${photo.id}/options`);
@@ -497,8 +455,6 @@ const PhotosPage = () => {
                       width: 18,
                       height: 18,
                       accentColor: 'var(--color-primary)',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--color-border)',
                     }}
                   />
                 ) : null}
@@ -536,7 +492,7 @@ const PhotosPage = () => {
                         boxShadow: 'var(--shadow-lg)',
                         zIndex: 5,
                         minWidth: 180,
-                        padding: '6px 0',
+                        padding: 'var(--space-xs) 0',
                       }}
                       onClick={e => e.stopPropagation()}
                     >
@@ -581,7 +537,6 @@ const PhotosPage = () => {
                 <div
                   style={{
                     width: '100%',
-                    borderRadius: 0,
                     overflow: 'hidden',
                     background: 'var(--color-surface-secondary)',
                     aspectRatio: '4 / 3',

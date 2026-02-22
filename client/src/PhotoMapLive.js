@@ -112,10 +112,10 @@ class BasemapToggleControl {
     const container = document.createElement('div');
     container.className = 'maplibregl-ctrl';
     container.style.display = 'flex';
-    container.style.background = '#ffffff';
-    container.style.border = '1px solid #D1D6DA';
-    container.style.borderRadius = '8px';
-    container.style.boxShadow = '0 1px 2px rgba(31,58,95,0.06)';
+    container.style.background = 'var(--color-surface-primary)';
+    container.style.border = '1px solid var(--color-border)';
+    container.style.borderRadius = 'var(--radius-lg)';
+    container.style.boxShadow = 'var(--shadow-xs)';
     container.style.overflow = 'hidden';
 
     const addButton = (label, value) => {
@@ -123,14 +123,14 @@ class BasemapToggleControl {
       btn.type = 'button';
       btn.textContent = label;
       btn.style.padding = '6px 14px';
-      btn.style.fontSize = '13px';
-      btn.style.fontWeight = '500';
-      btn.style.fontFamily = "'Inter', system-ui, -apple-system, sans-serif";
+      btn.style.fontSize = 'var(--font-size-base)';
+      btn.style.fontWeight = 'var(--font-weight-medium)';
+      btn.style.fontFamily = 'var(--font-family-sans)';
       btn.style.border = 'none';
       btn.style.borderRadius = '0';
       btn.style.cursor = 'pointer';
       btn.style.transition = 'background 150ms ease, color 150ms ease';
-      btn.style.lineHeight = '1.4';
+      btn.style.lineHeight = 'var(--line-height-snug)';
       btn.style.whiteSpace = 'nowrap';
       btn.onclick = () => this._onSelect(value);
       btn.onmouseenter = () => {
@@ -140,8 +140,8 @@ class BasemapToggleControl {
       };
       btn.onmouseleave = () => {
         if (this._getActive() !== value) {
-          btn.style.background = '#ffffff';
-          btn.style.color = '#2A2E34';
+          btn.style.background = 'var(--color-surface-primary)';
+          btn.style.color = 'var(--color-text-primary)';
         }
       };
       container.appendChild(btn);
@@ -152,7 +152,7 @@ class BasemapToggleControl {
 
     const divider = document.createElement('div');
     divider.style.width = '1px';
-    divider.style.background = '#D1D6DA';
+    divider.style.background = 'var(--color-border)';
     divider.style.alignSelf = 'stretch';
     container.appendChild(divider);
 
@@ -173,13 +173,21 @@ class BasemapToggleControl {
     const active = this._getActive();
     if (this._standardBtn) {
       const isActive = active === 'standard';
-      this._standardBtn.style.background = isActive ? '#3F6FA0' : '#ffffff';
-      this._standardBtn.style.color = isActive ? '#ffffff' : '#2A2E34';
+      this._standardBtn.style.background = isActive
+        ? 'var(--color-primary)'
+        : 'var(--color-surface-primary)';
+      this._standardBtn.style.color = isActive
+        ? 'var(--color-surface-primary)'
+        : 'var(--color-text-primary)';
     }
     if (this._satelliteBtn) {
       const isActive = active === 'satellite';
-      this._satelliteBtn.style.background = isActive ? '#3F6FA0' : '#ffffff';
-      this._satelliteBtn.style.color = isActive ? '#ffffff' : '#2A2E34';
+      this._satelliteBtn.style.background = isActive
+        ? 'var(--color-primary)'
+        : 'var(--color-surface-primary)';
+      this._satelliteBtn.style.color = isActive
+        ? 'var(--color-surface-primary)'
+        : 'var(--color-text-primary)';
     }
   }
 
@@ -1096,26 +1104,26 @@ const PhotoMapLive = () => {
 
       const inner = createMarkerInner(20);
       inner.style.borderRadius = '50%';
-      inner.style.background = '#3F6FA0';
-      inner.style.border = '2px solid #ffffff';
-      inner.style.boxShadow = '0 2px 6px rgba(31,58,95,0.22)';
+      inner.style.background = 'var(--color-primary)';
+      inner.style.border = '2px solid var(--color-surface-primary)';
+      inner.style.boxShadow = 'var(--shadow-sm)';
       inner.style.transition = 'transform 150ms ease, box-shadow 150ms ease';
 
       const innerDot = document.createElement('div');
       innerDot.style.width = '5px';
       innerDot.style.height = '5px';
       innerDot.style.borderRadius = '50%';
-      innerDot.style.background = '#ffffff';
+      innerDot.style.background = 'var(--color-surface-primary)';
       inner.appendChild(innerDot);
       container.appendChild(inner);
 
       container.addEventListener('mouseenter', () => {
         inner.style.transform = 'scale(1.07)';
-        inner.style.boxShadow = '0 4px 10px rgba(31,58,95,0.3)';
+        inner.style.boxShadow = 'var(--shadow-md)';
       });
       container.addEventListener('mouseleave', () => {
         inner.style.transform = 'scale(1)';
-        inner.style.boxShadow = '0 2px 6px rgba(31,58,95,0.22)';
+        inner.style.boxShadow = 'var(--shadow-sm)';
       });
 
       const root = document.createElement('div');
@@ -1123,13 +1131,13 @@ const PhotoMapLive = () => {
       root.style.maxWidth = '320px';
       root.style.width = '320px';
       root.style.padding = '12px 12px 14px';
-      root.style.background = '#ffffff';
-      root.style.borderRadius = '12px';
-      root.style.boxShadow = '0 8px 24px rgba(31,58,95,0.16)';
+      root.style.background = 'var(--color-surface-primary)';
+      root.style.borderRadius = 'var(--radius-xl)';
+      root.style.boxShadow = 'var(--shadow-lg)';
       root.style.display = 'flex';
       root.style.flexDirection = 'column';
       root.style.gap = '10px';
-      root.style.fontFamily = "'Inter', system-ui, -apple-system, sans-serif";
+      root.style.fontFamily = 'var(--font-family-sans)';
       root.addEventListener('click', evt => {
         evt.stopPropagation();
       });
@@ -1150,12 +1158,12 @@ const PhotoMapLive = () => {
       closeBtn.style.background = 'transparent';
       closeBtn.style.border = 'none';
       closeBtn.style.boxShadow = 'none';
-      closeBtn.style.color = '#2A2E34';
+      closeBtn.style.color = 'var(--color-text-primary)';
       closeBtn.style.cursor = 'pointer';
-      closeBtn.style.borderRadius = '4px';
+      closeBtn.style.borderRadius = 'var(--radius-sm)';
       closeBtn.style.transition = 'background 150ms ease';
       closeBtn.onmouseenter = () => {
-        closeBtn.style.background = '#F5F7F6';
+        closeBtn.style.background = 'var(--color-background)';
       };
       closeBtn.onmouseleave = () => {
         closeBtn.style.background = 'transparent';
@@ -1176,8 +1184,8 @@ const PhotoMapLive = () => {
       thumb.style.width = '120px';
       thumb.style.height = '120px';
       thumb.style.objectFit = 'cover';
-      thumb.style.borderRadius = '8px';
-      thumb.style.background = '#D1D6DA';
+      thumb.style.borderRadius = 'var(--radius-lg)';
+      thumb.style.background = 'var(--color-border)';
       thumb.onerror = () => {
         if (photo.fallbackUrl && thumb.src !== photo.fallbackUrl) {
           thumb.src = photo.fallbackUrl;
@@ -1212,17 +1220,17 @@ const PhotoMapLive = () => {
 
       const date = document.createElement('div');
       date.textContent = dateLabel;
-      date.style.fontSize = '13px';
-      date.style.color = '#2A2E34';
-      date.style.fontWeight = '600';
-      date.style.lineHeight = '1.4';
+      date.style.fontSize = 'var(--font-size-base)';
+      date.style.color = 'var(--color-text-primary)';
+      date.style.fontWeight = 'var(--font-weight-semibold)';
+      date.style.lineHeight = 'var(--line-height-snug)';
 
       const time = document.createElement('div');
       time.textContent = timeLabel;
-      time.style.fontSize = '12px';
-      time.style.color = '#5A5F66';
-      time.style.fontWeight = '400';
-      time.style.lineHeight = '1.4';
+      time.style.fontSize = 'var(--font-size-sm)';
+      time.style.color = 'var(--color-text-secondary)';
+      time.style.fontWeight = 'var(--font-weight-regular)';
+      time.style.lineHeight = 'var(--line-height-snug)';
 
       const dl = document.createElement('a');
       dl.textContent = '⤓';
@@ -1230,30 +1238,30 @@ const PhotoMapLive = () => {
       dl.href = photo.primaryUrl || photo.url || photo.fallbackUrl || '#';
       dl.target = '_blank';
       dl.rel = 'noopener noreferrer';
-      dl.style.fontSize = '18px';
-      dl.style.color = '#3F6FA0';
+      dl.style.fontSize = 'var(--font-size-xl)';
+      dl.style.color = 'var(--color-primary)';
       dl.style.textDecoration = 'none';
-      dl.style.fontWeight = '600';
+      dl.style.fontWeight = 'var(--font-weight-semibold)';
       dl.style.display = 'inline-flex';
       dl.style.alignItems = 'center';
       dl.style.justifyContent = 'center';
       dl.style.width = '32px';
       dl.style.height = '32px';
-      dl.style.borderRadius = '6px';
-      dl.style.border = '1px solid #D1D6DA';
-      dl.style.background = '#ffffff';
-      dl.style.boxShadow = '0 1px 2px rgba(31,58,95,0.06)';
+      dl.style.borderRadius = 'var(--radius-md)';
+      dl.style.border = '1px solid var(--color-border)';
+      dl.style.background = 'var(--color-surface-primary)';
+      dl.style.boxShadow = 'var(--shadow-xs)';
       dl.style.transition =
         'background 150ms ease, border-color 150ms ease, box-shadow 150ms ease';
       dl.onmouseover = () => {
-        dl.style.background = '#edf1f5';
-        dl.style.borderColor = '#b5bfc8';
-        dl.style.boxShadow = '0 2px 4px rgba(31,58,95,0.08)';
+        dl.style.background = 'var(--color-surface-hover)';
+        dl.style.borderColor = 'var(--color-border-hover)';
+        dl.style.boxShadow = 'var(--shadow-sm)';
       };
       dl.onmouseout = () => {
-        dl.style.background = '#ffffff';
-        dl.style.borderColor = '#D1D6DA';
-        dl.style.boxShadow = '0 1px 2px rgba(31,58,95,0.06)';
+        dl.style.background = 'var(--color-surface-primary)';
+        dl.style.borderColor = 'var(--color-border)';
+        dl.style.boxShadow = 'var(--shadow-xs)';
       };
       dl.onclick = evt => {
         if (dl.href === '#') {
@@ -1349,26 +1357,26 @@ const PhotoMapLive = () => {
 
       const inner = createMarkerInner(24);
       inner.style.borderRadius = '50%';
-      inner.style.background = '#1F3A5F';
-      inner.style.border = '2px solid #ffffff';
-      inner.style.boxShadow = '0 3px 8px rgba(31,58,95,0.28)';
+      inner.style.background = 'var(--color-primary-dark)';
+      inner.style.border = '2px solid var(--color-surface-primary)';
+      inner.style.boxShadow = 'var(--shadow-md)';
       inner.style.transition = 'transform 150ms ease, box-shadow 150ms ease';
 
       const core = document.createElement('div');
       core.style.width = '5px';
       core.style.height = '5px';
       core.style.borderRadius = '50%';
-      core.style.background = '#ffffff';
+      core.style.background = 'var(--color-surface-primary)';
       inner.appendChild(core);
       container.appendChild(inner);
 
       container.addEventListener('mouseenter', () => {
         inner.style.transform = 'scale(1.07)';
-        inner.style.boxShadow = '0 5px 12px rgba(31,58,95,0.36)';
+        inner.style.boxShadow = 'var(--shadow-lg)';
       });
       container.addEventListener('mouseleave', () => {
         inner.style.transform = 'scale(1)';
-        inner.style.boxShadow = '0 3px 8px rgba(31,58,95,0.28)';
+        inner.style.boxShadow = 'var(--shadow-md)';
       });
 
       const openCluster = evt => {
@@ -1471,13 +1479,13 @@ const PhotoMapLive = () => {
     root.style.maxWidth = '320px';
     root.style.width = '320px';
     root.style.padding = '12px 12px 14px';
-    root.style.background = '#ffffff';
-    root.style.borderRadius = '12px';
-    root.style.boxShadow = '0 8px 24px rgba(31,58,95,0.16)';
+    root.style.background = 'var(--color-surface-primary)';
+    root.style.borderRadius = 'var(--radius-xl)';
+    root.style.boxShadow = 'var(--shadow-lg)';
     root.style.display = 'flex';
     root.style.flexDirection = 'column';
     root.style.gap = '10px';
-    root.style.fontFamily = "'Inter', system-ui, -apple-system, sans-serif";
+    root.style.fontFamily = 'var(--font-family-sans)';
     root.addEventListener('click', evt => {
       evt.stopPropagation();
     });
@@ -1494,14 +1502,14 @@ const PhotoMapLive = () => {
 
     const title = document.createElement('div');
     title.textContent = 'Grouped Photos';
-    title.style.fontWeight = '600';
-    title.style.fontSize = '15px';
-    title.style.color = '#2A2E34';
+    title.style.fontWeight = 'var(--font-weight-semibold)';
+    title.style.fontSize = 'var(--font-size-md)';
+    title.style.color = 'var(--color-text-primary)';
 
     const count = document.createElement('div');
     count.textContent = `${activeStack.photos.length} items`;
-    count.style.fontSize = '12px';
-    count.style.color = '#5A5F66';
+    count.style.fontSize = 'var(--font-size-sm)';
+    count.style.color = 'var(--color-text-secondary)';
 
     titleRow.appendChild(title);
     titleRow.appendChild(count);
@@ -1519,12 +1527,12 @@ const PhotoMapLive = () => {
     closeBtn.style.background = 'transparent';
     closeBtn.style.border = 'none';
     closeBtn.style.boxShadow = 'none';
-    closeBtn.style.color = '#2A2E34';
+    closeBtn.style.color = 'var(--color-text-primary)';
     closeBtn.style.cursor = 'pointer';
-    closeBtn.style.borderRadius = '4px';
+    closeBtn.style.borderRadius = 'var(--radius-sm)';
     closeBtn.style.transition = 'background 150ms ease';
     closeBtn.onmouseenter = () => {
-      closeBtn.style.background = '#F5F7F6';
+      closeBtn.style.background = 'var(--color-background)';
     };
     closeBtn.onmouseleave = () => {
       closeBtn.style.background = 'transparent';
@@ -1540,7 +1548,7 @@ const PhotoMapLive = () => {
 
     const headerDivider = document.createElement('div');
     headerDivider.style.height = '1px';
-    headerDivider.style.background = '#D1D6DA';
+    headerDivider.style.background = 'var(--color-border)';
     headerDivider.style.marginTop = '-2px';
     root.appendChild(headerDivider);
 
@@ -1564,8 +1572,8 @@ const PhotoMapLive = () => {
       row.style.alignItems = 'center';
       row.style.gap = '12px';
       row.style.padding = '10px';
-      row.style.background = '#F5F7F6';
-      row.style.borderRadius = '8px';
+      row.style.background = 'var(--color-background)';
+      row.style.borderRadius = 'var(--radius-lg)';
 
       const thumb = document.createElement('img');
       thumb.alt = photo.caption || `Photo ${index + 1}`;
@@ -1579,8 +1587,8 @@ const PhotoMapLive = () => {
       thumb.style.width = '120px';
       thumb.style.height = '120px';
       thumb.style.objectFit = 'cover';
-      thumb.style.borderRadius = '8px';
-      thumb.style.background = '#D1D6DA';
+      thumb.style.borderRadius = 'var(--radius-lg)';
+      thumb.style.background = 'var(--color-border)';
       thumb.style.cursor = 'pointer';
       thumb.onerror = () => {
         thumb.style.display = 'none';
@@ -1602,17 +1610,17 @@ const PhotoMapLive = () => {
 
       const date = document.createElement('div');
       date.textContent = dateLabel;
-      date.style.fontSize = '13px';
-      date.style.color = '#2A2E34';
-      date.style.fontWeight = '600';
-      date.style.lineHeight = '1.4';
+      date.style.fontSize = 'var(--font-size-base)';
+      date.style.color = 'var(--color-text-primary)';
+      date.style.fontWeight = 'var(--font-weight-semibold)';
+      date.style.lineHeight = 'var(--line-height-snug)';
 
       const time = document.createElement('div');
       time.textContent = timeLabel;
-      time.style.fontSize = '12px';
-      time.style.color = '#5A5F66';
-      time.style.fontWeight = '400';
-      time.style.lineHeight = '1.4';
+      time.style.fontSize = 'var(--font-size-sm)';
+      time.style.color = 'var(--color-text-secondary)';
+      time.style.fontWeight = 'var(--font-weight-regular)';
+      time.style.lineHeight = 'var(--line-height-snug)';
 
       meta.appendChild(date);
       meta.appendChild(time);
@@ -1621,30 +1629,30 @@ const PhotoMapLive = () => {
       dl.textContent = '⤓';
       dl.setAttribute('aria-label', 'Download photo');
       dl.href = '#';
-      dl.style.fontSize = '18px';
-      dl.style.color = '#3F6FA0';
+      dl.style.fontSize = 'var(--font-size-xl)';
+      dl.style.color = 'var(--color-primary)';
       dl.style.textDecoration = 'none';
-      dl.style.fontWeight = '600';
+      dl.style.fontWeight = 'var(--font-weight-semibold)';
       dl.style.display = 'inline-flex';
       dl.style.alignItems = 'center';
       dl.style.justifyContent = 'center';
       dl.style.width = '32px';
       dl.style.height = '32px';
-      dl.style.borderRadius = '6px';
-      dl.style.border = '1px solid #D1D6DA';
-      dl.style.background = '#ffffff';
-      dl.style.boxShadow = '0 1px 2px rgba(31,58,95,0.06)';
+      dl.style.borderRadius = 'var(--radius-md)';
+      dl.style.border = '1px solid var(--color-border)';
+      dl.style.background = 'var(--color-surface-primary)';
+      dl.style.boxShadow = 'var(--shadow-xs)';
       dl.style.transition =
         'background 150ms ease, border-color 150ms ease, box-shadow 150ms ease';
       dl.onmouseover = () => {
-        dl.style.background = '#edf1f5';
-        dl.style.borderColor = '#b5bfc8';
-        dl.style.boxShadow = '0 2px 4px rgba(31,58,95,0.08)';
+        dl.style.background = 'var(--color-surface-hover)';
+        dl.style.borderColor = 'var(--color-border-hover)';
+        dl.style.boxShadow = 'var(--shadow-sm)';
       };
       dl.onmouseout = () => {
-        dl.style.background = '#ffffff';
-        dl.style.borderColor = '#D1D6DA';
-        dl.style.boxShadow = '0 1px 2px rgba(31,58,95,0.06)';
+        dl.style.background = 'var(--color-surface-primary)';
+        dl.style.borderColor = 'var(--color-border)';
+        dl.style.boxShadow = 'var(--shadow-xs)';
       };
       dl.onclick = evt => {
         evt.preventDefault();

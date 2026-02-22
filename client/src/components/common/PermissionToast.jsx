@@ -22,17 +22,7 @@ export const usePermissionToast = () => {
     <div
       role="alert"
       data-testid="permission-toast"
-      style={{
-        position: 'fixed',
-        top: 16,
-        right: 16,
-        background: '#323232',
-        color: '#fff',
-        padding: '8px 12px',
-        borderRadius: 6,
-        boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-        zIndex: 9999,
-      }}
+      className="toast-notification"
     >
       {toastMessage}
     </div>

@@ -25,8 +25,11 @@
   --color-text-primary: var(--color-charcoal-slate);
   --color-text-secondary: #5a5f66;
   --color-border: var(--color-cool-gray-feather);
+  --color-border-hover: #b5bfc8;
   --color-surface-primary: #ffffff;
   --color-surface-secondary: var(--color-pale-feather-blue);
+  --color-surface-hover: #edf1f5;
+  --color-surface-active: #e0e7ee;
   --color-background: var(--color-warm-feather-white);
 
   /* Spacing System (8px base rhythm) */

@@ -119,7 +119,6 @@ const ProjectsPage = () => {
         await refreshProjects({ redirectWhenEmpty: false, force: true });
         setActiveProject(project);
         setIsModalOpen(false);
-        // Stay on Projects page after creating a new project
       } catch (err) {
         setError(
           err?.payload?.error ||
@@ -141,28 +140,10 @@ const ProjectsPage = () => {
   }, [navigate]);
 
   return (
-    <div
-      className="projects-page"
-      style={{
-        width: '100%',
-        padding: 'var(--space-md) var(--space-lg)',
-        boxSizing: 'border-box',
-        display: 'flex',
-        justifyContent: 'center',
-      }}
-    >
-      <div style={{ width: 'min(1200px, 100%)' }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 'var(--space-md)',
-          }}
-        >
-          <h2 style={{ margin: 0, color: 'var(--color-text-primary)' }}>
-            Projects
-          </h2>
+    <div className="projects-page page-container">
+      <div className="page-content">
+        <div className="page-header">
+          <h2 className="page-header__title">Projects</h2>
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
@@ -172,16 +153,7 @@ const ProjectsPage = () => {
             +
           </button>
         </div>
-        {error && (
-          <div
-            style={{
-              marginBottom: 'var(--space-md)',
-              color: 'var(--color-accent)',
-            }}
-          >
-            {error}
-          </div>
-        )}
+        {error && <div className="page-error">{error}</div>}
         {isLoading && !user ? (
           <div>Loading...</div>
         ) : (
@@ -197,12 +169,7 @@ const ProjectsPage = () => {
           />
         )}
         {!userHasProjects && (
-          <p
-            style={{
-              marginTop: 'var(--space-md)',
-              color: 'var(--color-text-secondary)',
-            }}
-          >
+          <p className="page-empty">
             You have no projects yet. Create one to start uploading and viewing
             photos.
           </p>

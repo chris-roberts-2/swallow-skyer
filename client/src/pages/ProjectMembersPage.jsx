@@ -197,7 +197,7 @@ const ProjectMembersPage = () => {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
+              gap: 'var(--space-sm)',
               fontSize: 'var(--font-size-base)',
               color: 'var(--color-text-primary)',
             }}
@@ -212,14 +212,8 @@ const ProjectMembersPage = () => {
                   navigate(`/projects/${nextId}/members`);
                 }
               }}
-              style={{
-                minWidth: 200,
-                border: '1px solid var(--color-border)',
-                borderRadius: 6,
-                padding: '6px 10px',
-                background: 'var(--color-surface-primary)',
-                fontSize: 'var(--font-size-base)',
-              }}
+              className="form-select"
+              style={{ minWidth: 200 }}
             >
               <option value="">Select a project</option>
               {projects.map(p => (
@@ -235,7 +229,7 @@ const ProjectMembersPage = () => {
             flex: 1,
             display: 'flex',
             justifyContent: 'flex-end',
-            gap: 10,
+            gap: 'var(--space-sm)',
           }}
         >
           {canManageMembers ? (
@@ -253,16 +247,7 @@ const ProjectMembersPage = () => {
       </div>
 
       <h2 style={{ marginTop: 0 }}>Project Members</h2>
-      {error ? (
-        <div
-          style={{
-            color: 'var(--color-accent)',
-            marginBottom: 'var(--space-md)',
-          }}
-        >
-          {error}
-        </div>
-      ) : null}
+      {error ? <div className="page-error">{error}</div> : null}
       <div
         className="data-table-container"
         style={{
@@ -299,7 +284,6 @@ const ProjectMembersPage = () => {
                 .trim();
               const registrationIncomplete =
                 !member.first_name && !member.last_name;
-              const RUST = '#9B4A2F';
               const canShowActions =
                 canManageMembers &&
                 member.user_id !== user?.id &&
@@ -308,7 +292,12 @@ const ProjectMembersPage = () => {
                 <tr key={member.user_id}>
                   <td style={{ position: 'relative', overflow: 'visible' }}>
                     {registrationIncomplete ? (
-                      <span style={{ color: RUST, fontStyle: 'italic' }}>
+                      <span
+                        style={{
+                          color: 'var(--color-swallow-rust)',
+                          fontStyle: 'italic',
+                        }}
+                      >
                         Registration Incomplete
                       </span>
                     ) : (
@@ -317,14 +306,20 @@ const ProjectMembersPage = () => {
                   </td>
                   <td>{registrationIncomplete ? '' : member.company || ''}</td>
                   <td
-                    style={registrationIncomplete ? { color: RUST } : undefined}
+                    style={
+                      registrationIncomplete
+                        ? { color: 'var(--color-swallow-rust)' }
+                        : undefined
+                    }
                   >
                     {member.email || ''}
                   </td>
                   <td
                     style={{
                       textTransform: 'capitalize',
-                      ...(registrationIncomplete ? { color: RUST } : {}),
+                      ...(registrationIncomplete
+                        ? { color: 'var(--color-swallow-rust)' }
+                        : {}),
                     }}
                   >
                     {member.role || 'Viewer'}
@@ -398,23 +393,9 @@ const ProjectMembersPage = () => {
         >
           <div className="modal-body" onClick={e => e.stopPropagation()}>
             <h3 className="modal-header">Add Member</h3>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 'var(--space-md)',
-              }}
-            >
-              <label
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'var(--space-xs)',
-                }}
-              >
-                <span style={{ fontWeight: 'var(--font-weight-semibold)' }}>
-                  Email
-                </span>
+            <div className="modal-form">
+              <label className="form-label">
+                Email
                 <input
                   type="email"
                   value={addForm.email}
@@ -423,37 +404,17 @@ const ProjectMembersPage = () => {
                   }
                   placeholder="person@example.com"
                   required
-                  style={{
-                    padding: 'var(--space-sm) var(--space-md)',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--color-border)',
-                    fontSize: 'var(--font-size-base)',
-                    boxSizing: 'border-box',
-                    width: '100%',
-                  }}
+                  className="form-input"
                 />
               </label>
-              <label
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'var(--space-xs)',
-                }}
-              >
-                <span style={{ fontWeight: 'var(--font-weight-semibold)' }}>
-                  Role
-                </span>
+              <label className="form-label">
+                Role
                 <select
                   value={addForm.role}
                   onChange={e =>
                     setAddForm(prev => ({ ...prev, role: e.target.value }))
                   }
-                  style={{
-                    padding: 'var(--space-sm) var(--space-md)',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--color-border)',
-                    fontSize: 'var(--font-size-base)',
-                  }}
+                  className="form-select"
                 >
                   {roleOptions.map(option => (
                     <option key={option.value} value={option.value}>
@@ -497,60 +458,24 @@ const ProjectMembersPage = () => {
         >
           <div className="modal-body" onClick={e => e.stopPropagation()}>
             <h3 className="modal-header">Edit Member</h3>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 'var(--space-md)',
-              }}
-            >
-              <label
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'var(--space-xs)',
-                }}
-              >
-                <span style={{ fontWeight: 'var(--font-weight-semibold)' }}>
-                  Email
-                </span>
+            <div className="modal-form">
+              <label className="form-label">
+                Email
                 <input
                   type="email"
                   value={editingMember?.email || ''}
                   disabled
-                  style={{
-                    padding: 'var(--space-sm) var(--space-md)',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--color-border)',
-                    fontSize: 'var(--font-size-base)',
-                    background: 'var(--color-background)',
-                    color: 'var(--color-text-secondary)',
-                    boxSizing: 'border-box',
-                    width: '100%',
-                  }}
+                  className="form-input"
                 />
               </label>
-              <label
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'var(--space-xs)',
-                }}
-              >
-                <span style={{ fontWeight: 'var(--font-weight-semibold)' }}>
-                  Role
-                </span>
+              <label className="form-label">
+                Role
                 <select
                   value={editForm.role}
                   onChange={e =>
                     setEditForm(prev => ({ ...prev, role: e.target.value }))
                   }
-                  style={{
-                    padding: 'var(--space-sm) var(--space-md)',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--color-border)',
-                    fontSize: 'var(--font-size-base)',
-                  }}
+                  className="form-select"
                 >
                   {roleOptions.map(option => (
                     <option key={option.value} value={option.value}>

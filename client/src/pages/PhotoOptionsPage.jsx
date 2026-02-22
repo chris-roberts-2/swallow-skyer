@@ -162,7 +162,7 @@ const PhotoOptionsPage = () => {
       mapMarkerRef.current = null;
     }
 
-    mapMarkerRef.current = new maplibregl.Marker({ color: '#1e88e5' })
+    mapMarkerRef.current = new maplibregl.Marker({ color: '#3f6fa0' })
       .setLngLat([lon, lat])
       .addTo(mapInstance.current);
   }, [
@@ -400,15 +400,8 @@ const PhotoOptionsPage = () => {
             }}
           >
             <div
-              style={{
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-xl)',
-                padding: 'var(--space-sm) var(--space-md)',
-                background: 'var(--color-surface-primary)',
-                boxShadow: 'var(--shadow-sm)',
-                display: 'grid',
-                gap: 'var(--space-xs)',
-              }}
+              className="surface-card"
+              style={{ padding: 'var(--space-sm) var(--space-md)' }}
             >
               <div
                 style={{
@@ -516,13 +509,8 @@ const PhotoOptionsPage = () => {
             </div>
 
             <div
-              style={{
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-xl)',
-                overflow: 'hidden',
-                background: 'var(--color-surface-primary)',
-                boxShadow: 'var(--shadow-sm)',
-              }}
+              className="surface-card"
+              style={{ padding: 0, overflow: 'hidden' }}
             >
               <div
                 style={{
@@ -540,7 +528,7 @@ const PhotoOptionsPage = () => {
                   type="button"
                   className="btn-secondary"
                   style={{
-                    padding: '4px 8px',
+                    padding: 'var(--space-xs) var(--space-sm)',
                     fontSize: 'var(--font-size-sm)',
                   }}
                   onClick={() => navigate('/map')}

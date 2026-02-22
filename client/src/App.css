@@ -206,13 +206,13 @@
 }
 
 .profile-menu__action-btn:hover {
-  background: #edf1f5;
-  border-color: #b5bfc8;
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
   box-shadow: var(--shadow-sm);
 }
 
 .profile-menu__action-btn:active {
-  background: #e0e7ee;
+  background: var(--color-surface-active);
   box-shadow: none;
 }
 
@@ -296,11 +296,11 @@
 }
 
 .maplibregl-ctrl-group button:hover:not(:disabled) {
-  background: #edf1f5 !important;
+  background: var(--color-surface-hover) !important;
 }
 
 .maplibregl-ctrl-group button:active:not(:disabled) {
-  background: #e0e7ee !important;
+  background: var(--color-surface-active) !important;
 }
 
 .maplibregl-ctrl-group button:disabled {
@@ -622,13 +622,13 @@
 }
 
 .profile-section__edit:hover {
-  background: #edf1f5;
-  border-color: #b5bfc8;
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
   box-shadow: var(--shadow-sm);
 }
 
 .profile-section__edit:active {
-  background: #e0e7ee;
+  background: var(--color-surface-active);
   box-shadow: none;
 }
 
@@ -715,14 +715,14 @@
 
 .btn-secondary:hover:not(:disabled),
 .btn-format-1:hover:not(:disabled) {
-  background: #edf1f5;
-  border-color: #b5bfc8;
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
   box-shadow: var(--shadow-sm);
 }
 
 .btn-secondary:active:not(:disabled),
 .btn-format-1:active:not(:disabled) {
-  background: #e0e7ee;
+  background: var(--color-surface-active);
   box-shadow: none;
 }
 
@@ -909,13 +909,13 @@
 }
 
 .profile-card__logout:hover {
-  background: #edf1f5;
-  border-color: #b5bfc8;
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
   box-shadow: var(--shadow-sm);
 }
 
 .profile-card__logout:active {
-  background: #e0e7ee;
+  background: var(--color-surface-active);
   box-shadow: none;
 }
 
@@ -937,7 +937,7 @@
 .auth-user {
   margin-left: 8px;
   font-size: var(--font-size-base);
-  color: #ccc;
+  color: var(--color-cool-gray-feather);
 }
 
 /* Map Marker Styles */
@@ -1029,13 +1029,13 @@
 }
 
 .toggle-btn:hover {
-  background: #edf1f5;
-  border-color: #b5bfc8;
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
   box-shadow: var(--shadow-sm);
 }
 
 .toggle-btn:active {
-  background: #e0e7ee;
+  background: var(--color-surface-active);
   box-shadow: none;
 }
 
@@ -1175,9 +1175,13 @@
   background: var(--color-surface-primary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   padding: var(--space-lg);
   box-sizing: border-box;
+}
+
+.surface-card--flush {
+  padding: 0;
 }
 
 /* Secondary surface — grouped or supporting sections */
@@ -1263,4 +1267,222 @@
 
 .data-table td:last-child {
   text-align: right;
+}
+
+/* ===========================
+   TOAST NOTIFICATION
+   =========================== */
+
+.toast-notification {
+  position: fixed;
+  top: var(--space-md);
+  right: var(--space-md);
+  background: var(--color-charcoal-slate);
+  color: var(--color-surface-primary);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-base);
+  z-index: 9999;
+}
+
+/* ===========================
+   SHARED FORM SYSTEM
+   =========================== */
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.form-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.form-input {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-base);
+  box-sizing: border-box;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.form-input:hover {
+  border-color: var(--color-mid-sky-blue);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(63, 111, 160, 0.15);
+}
+
+.form-input:disabled {
+  background: var(--color-background);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.form-select {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-base);
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+
+.form-select:hover {
+  border-color: var(--color-mid-sky-blue);
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(63, 111, 160, 0.15);
+}
+
+/* ===========================
+   PAGE LAYOUT UTILITIES
+   =========================== */
+
+.page-container {
+  width: 100%;
+  padding: var(--space-md) var(--space-lg);
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+}
+
+.page-content {
+  width: min(1200px, 100%);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.page-header__title {
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.page-error {
+  margin-bottom: var(--space-md);
+  color: var(--color-accent);
+}
+
+.page-empty {
+  margin-top: var(--space-md);
+  color: var(--color-text-secondary);
+}
+
+/* ===========================
+   PHOTO GRID SYSTEM
+   =========================== */
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-md);
+}
+
+.photo-grid-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: 0;
+  background: var(--color-surface-primary);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.photo-grid-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+}
+
+.photo-actions-bar {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+/* ===========================
+   DROPZONE
+   =========================== */
+
+.dropzone {
+  border: 2px dashed var(--color-cool-gray-feather);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+  background: var(--color-surface-primary);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.dropzone--active {
+  border-color: var(--color-primary);
+  background: var(--color-surface-secondary);
+}
+
+/* ===========================
+   PROJECT LIST LAYOUT
+   =========================== */
+
+.project-list-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.project-list-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-md);
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .project-list-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .project-list-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
 }

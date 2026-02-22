@@ -34,7 +34,7 @@ const ProjectList = ({
   const activeProject = safeProjects.find(p => p.id === activeProjectId);
   const otherProjects = safeProjects.filter(p => p.id !== activeProjectId);
 
-  const cardStyle = (isActive, isMenuOpen) => ({
+  const getCardStyle = (isActive, isMenuOpen) => ({
     border: '1px solid var(--color-border)',
     borderRadius: 'var(--radius-xl)',
     padding: 'var(--space-lg)',
@@ -81,7 +81,7 @@ const ProjectList = ({
             }
           }
         }}
-        style={cardStyle(isActive, isMenuOpen)}
+        style={getCardStyle(isActive, isMenuOpen)}
         onMouseEnter={e => {
           e.currentTarget.style.transform = 'translateY(-2px)';
           e.currentTarget.style.boxShadow = 'var(--shadow-md)';
@@ -154,18 +154,16 @@ const ProjectList = ({
                 onClick={e => e.stopPropagation()}
               >
                 {isArchivedView ? (
-                  <>
-                    <button
-                      type="button"
-                      className="btn-menu-item"
-                      onClick={() => {
-                        closeMenu();
-                        onUnarchive(project);
-                      }}
-                    >
-                      Unarchive
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    className="btn-menu-item"
+                    onClick={() => {
+                      closeMenu();
+                      onUnarchive(project);
+                    }}
+                  >
+                    Unarchive
+                  </button>
                 ) : canManageProject ? (
                   <>
                     <button
@@ -275,34 +273,10 @@ const ProjectList = ({
   };
 
   return (
-    <div
-      data-testid="project-list"
-      style={{
-        width: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'var(--space-md)',
-      }}
-    >
-      {activeProject ? (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(1, minmax(0, 1fr))',
-          }}
-        >
-          {renderCard(activeProject, true)}
-        </div>
-      ) : null}
+    <div data-testid="project-list" className="project-list-container">
+      {activeProject ? <div>{renderCard(activeProject, true)}</div> : null}
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-          gap: 'var(--space-md)',
-          width: '100%',
-        }}
-      >
+      <div className="project-list-grid">
         {otherProjects.map(project => renderCard(project, false))}
       </div>
     </div>

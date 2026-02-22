@@ -26,60 +26,25 @@ const CreateProjectModal = ({ open, onClose, onSubmit }) => {
     <div role="dialog" aria-modal="true" className="modal-overlay">
       <div className="modal-body">
         <h3 className="modal-header">Create Project</h3>
-        <form
-          onSubmit={handleSubmit}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--space-md)',
-          }}
-        >
-          <label
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--space-xs)',
-            }}
-          >
+        <form onSubmit={handleSubmit} className="modal-form">
+          <label className="form-label">
             Name (required)
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
               required
-              style={{
-                width: '100%',
-                padding: 'var(--space-sm) var(--space-md)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border)',
-                fontSize: 'var(--font-size-base)',
-                transition: 'border-color 0.2s ease',
-                boxSizing: 'border-box',
-              }}
+              className="form-input"
             />
           </label>
-          <label
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--space-xs)',
-            }}
-          >
+          <label className="form-label">
             Address (optional)
             <input
               type="text"
               value={address}
               onChange={e => setAddress(e.target.value)}
               placeholder="Street, city, etc."
-              style={{
-                width: '100%',
-                padding: 'var(--space-sm) var(--space-md)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border)',
-                fontSize: 'var(--font-size-base)',
-                transition: 'border-color 0.2s ease',
-                boxSizing: 'border-box',
-              }}
+              className="form-input"
             />
           </label>
           <div className="modal-footer">

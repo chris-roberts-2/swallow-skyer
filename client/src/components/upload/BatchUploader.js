@@ -200,13 +200,7 @@ const BatchUploader = ({ onForbidden, onUploaded, variant = 'full' }) => {
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          style={{
-            border: '2px dashed #999',
-            padding: 16,
-            marginBottom: 12,
-            background: isDragging ? '#f0f6ff' : '#fff',
-            cursor: 'pointer',
-          }}
+          className={`dropzone${isDragging ? ' dropzone--active' : ''}`}
           onClick={() => inputRef.current?.click()}
         >
           <p style={{ margin: 0 }}>
