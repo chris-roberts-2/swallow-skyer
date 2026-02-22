@@ -123,7 +123,7 @@ const ProfilePage = () => {
           </div>
         )}
 
-        <div className="profile-section">
+        <div className="profile-section" style={{ marginTop: 0 }}>
           <div className="profile-section__header">
             <h3>User</h3>
             {!isEditingUser ? (
@@ -337,7 +337,12 @@ const ProfilePage = () => {
           </div>
         </div>
 
-        <button type="button" className="btn-critical" onClick={handleLogout}>
+        <button
+          type="button"
+          className="btn-critical"
+          onClick={handleLogout}
+          style={{ marginTop: 'var(--space-lg)' }}
+        >
           Logout
         </button>
       </div>

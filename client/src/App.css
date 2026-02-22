@@ -347,7 +347,8 @@
 
 /* Full-viewport centering shell for auth pages */
 .auth-page-wrapper {
-  min-height: 100vh;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -355,6 +356,7 @@
   padding: var(--space-lg) var(--space-md);
   background-color: var(--color-warm-feather-white);
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* Brand mark above the card */
@@ -582,15 +584,12 @@
 .profile-page {
   max-width: 620px;
   width: 100%;
+  margin: 0 auto;
   padding: var(--space-xl);
   background: var(--color-surface-primary);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   box-sizing: border-box;
-}
-
-.profile-page h2 {
-  margin-top: 0;
 }
 
 .profile-section {

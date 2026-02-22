@@ -292,8 +292,17 @@ const PhotosPage = () => {
   }
 
   return (
-    <div style={{ width: '100%', boxSizing: 'border-box' }}>
-      <div className="page-header">
+    <div
+      style={{
+        width: '100%',
+        boxSizing: 'border-box',
+        paddingBottom: 'var(--space-xl)',
+      }}
+    >
+      <div
+        className="page-header"
+        style={{ justifyContent: 'space-between', position: 'relative' }}
+      >
         <select
           className="btn-format-1"
           ref={projectSelectRef}
@@ -318,13 +327,15 @@ const PhotosPage = () => {
         </select>
         <div
           style={{
+            position: 'absolute',
+            left: '50%',
+            transform: 'translateX(-50%)',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'baseline',
             gap: 'var(--space-sm)',
-            flex: 1,
           }}
         >
-          <h2 className="page-header__title" style={{ flex: 'none' }}>
+          <h2 style={{ margin: 0, color: 'var(--color-text-primary)' }}>
             Photos
           </h2>
           <span
@@ -539,11 +550,12 @@ const PhotosPage = () => {
               <div
                 style={{
                   display: 'flex',
-                  justifyContent: 'space-between',
+                  justifyContent: 'center',
                   alignItems: 'center',
                   padding: 'var(--space-sm)',
                   borderTop: '1px solid var(--color-border)',
                   background: 'var(--color-surface-primary)',
+                  position: 'relative',
                 }}
               >
                 <div
@@ -557,6 +569,8 @@ const PhotosPage = () => {
                 {missingGps ? (
                   <span
                     style={{
+                      position: 'absolute',
+                      right: 'var(--space-sm)',
                       fontSize: 'var(--font-size-xs)',
                       color: 'var(--color-accent)',
                       background: 'var(--color-surface-secondary)',
