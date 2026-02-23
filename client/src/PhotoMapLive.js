@@ -110,21 +110,52 @@ class BasemapToggleControl {
   onAdd(map) {
     this._map = map;
     const container = document.createElement('div');
-    container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+    container.className = 'maplibregl-ctrl';
+    container.style.display = 'flex';
+    container.style.background = 'var(--color-surface-primary)';
+    container.style.border = '1px solid var(--color-border)';
+    container.style.borderRadius = 'var(--radius-lg)';
+    container.style.boxShadow = 'var(--shadow-xs)';
+    container.style.overflow = 'hidden';
 
     const addButton = (label, value) => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.textContent = label;
-      btn.style.padding = '0 8px';
-      btn.style.fontSize = '12px';
-      btn.style.minWidth = '64px';
+      btn.style.padding = '6px 14px';
+      btn.style.fontSize = 'var(--font-size-base)';
+      btn.style.fontWeight = 'var(--font-weight-medium)';
+      btn.style.fontFamily = 'var(--font-family-sans)';
+      btn.style.border = 'none';
+      btn.style.borderRadius = '0';
+      btn.style.cursor = 'pointer';
+      btn.style.transition = 'background 150ms ease, color 150ms ease';
+      btn.style.lineHeight = 'var(--line-height-snug)';
+      btn.style.whiteSpace = 'nowrap';
       btn.onclick = () => this._onSelect(value);
+      btn.onmouseenter = () => {
+        if (this._getActive() !== value) {
+          btn.style.background = 'rgba(183,205,230,0.28)';
+        }
+      };
+      btn.onmouseleave = () => {
+        if (this._getActive() !== value) {
+          btn.style.background = 'var(--color-surface-primary)';
+          btn.style.color = 'var(--color-text-primary)';
+        }
+      };
       container.appendChild(btn);
       return btn;
     };
 
     this._standardBtn = addButton('Standard', 'standard');
+
+    const divider = document.createElement('div');
+    divider.style.width = '1px';
+    divider.style.background = 'var(--color-border)';
+    divider.style.alignSelf = 'stretch';
+    container.appendChild(divider);
+
     this._satelliteBtn = addButton('Satellite', 'satellite');
     this._container = container;
     this._updateActive();
@@ -140,12 +171,23 @@ class BasemapToggleControl {
 
   _updateActive() {
     const active = this._getActive();
-    const activeClass = 'maplibregl-ctrl-active';
     if (this._standardBtn) {
-      this._standardBtn.classList.toggle(activeClass, active === 'standard');
+      const isActive = active === 'standard';
+      this._standardBtn.style.background = isActive
+        ? 'var(--color-primary)'
+        : 'var(--color-surface-primary)';
+      this._standardBtn.style.color = isActive
+        ? 'var(--color-surface-primary)'
+        : 'var(--color-text-primary)';
     }
     if (this._satelliteBtn) {
-      this._satelliteBtn.classList.toggle(activeClass, active === 'satellite');
+      const isActive = active === 'satellite';
+      this._satelliteBtn.style.background = isActive
+        ? 'var(--color-primary)'
+        : 'var(--color-surface-primary)';
+      this._satelliteBtn.style.color = isActive
+        ? 'var(--color-surface-primary)'
+        : 'var(--color-text-primary)';
     }
   }
 
@@ -1054,38 +1096,48 @@ const PhotoMapLive = () => {
       bounds.extend(lngLat);
 
       const container = document.createElement('div');
-      applyMarkerRootStyles(container, 18);
+      applyMarkerRootStyles(container, 20);
       container.style.cursor = 'pointer';
       container.title = photo.caption || 'View photo';
       container.setAttribute('role', 'button');
       container.setAttribute('tabindex', '0');
 
-      const inner = createMarkerInner(18);
+      const inner = createMarkerInner(20);
       inner.style.borderRadius = '50%';
-      inner.style.background = '#61dafb';
-      inner.style.border = '1px solid #61dafb';
-      inner.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
+      inner.style.background = 'var(--color-primary)';
+      inner.style.border = '2px solid var(--color-surface-primary)';
+      inner.style.boxShadow = 'var(--shadow-sm)';
+      inner.style.transition = 'transform 150ms ease, box-shadow 150ms ease';
 
       const innerDot = document.createElement('div');
-      innerDot.style.width = '6px';
-      innerDot.style.height = '6px';
+      innerDot.style.width = '5px';
+      innerDot.style.height = '5px';
       innerDot.style.borderRadius = '50%';
-      innerDot.style.background = '#2ca7e5';
-      innerDot.style.boxShadow = '0 0 0 2px rgba(44,167,229,0.18)';
+      innerDot.style.background = 'var(--color-surface-primary)';
       inner.appendChild(innerDot);
       container.appendChild(inner);
+
+      container.addEventListener('mouseenter', () => {
+        inner.style.transform = 'scale(1.07)';
+        inner.style.boxShadow = 'var(--shadow-md)';
+      });
+      container.addEventListener('mouseleave', () => {
+        inner.style.transform = 'scale(1)';
+        inner.style.boxShadow = 'var(--shadow-sm)';
+      });
 
       const root = document.createElement('div');
       root.style.position = 'relative';
       root.style.maxWidth = '320px';
       root.style.width = '320px';
-      root.style.padding = '10px 10px 12px';
-      root.style.background = '#ffffff';
-      root.style.borderRadius = '12px';
-      root.style.boxShadow = '0 8px 18px rgba(0,0,0,0.12)';
+      root.style.padding = '12px 12px 14px';
+      root.style.background = 'var(--color-surface-primary)';
+      root.style.borderRadius = 'var(--radius-xl)';
+      root.style.boxShadow = 'var(--shadow-lg)';
       root.style.display = 'flex';
       root.style.flexDirection = 'column';
       root.style.gap = '10px';
+      root.style.fontFamily = 'var(--font-family-sans)';
       root.addEventListener('click', evt => {
         evt.stopPropagation();
       });
@@ -1096,19 +1148,26 @@ const PhotoMapLive = () => {
       closeBtn.style.position = 'absolute';
       closeBtn.style.top = '8px';
       closeBtn.style.right = '8px';
-      closeBtn.style.width = '22px';
-      closeBtn.style.height = '22px';
+      closeBtn.style.width = '24px';
+      closeBtn.style.height = '24px';
       closeBtn.style.fontSize = '18px';
       closeBtn.style.lineHeight = '1';
       closeBtn.style.padding = '0';
       closeBtn.style.display = 'grid';
       closeBtn.style.placeItems = 'center';
-      // No circle around the close icon (avoid cross-browser font centering quirks).
       closeBtn.style.background = 'transparent';
       closeBtn.style.border = 'none';
       closeBtn.style.boxShadow = 'none';
-      closeBtn.style.color = '#111827';
+      closeBtn.style.color = 'var(--color-text-primary)';
       closeBtn.style.cursor = 'pointer';
+      closeBtn.style.borderRadius = 'var(--radius-sm)';
+      closeBtn.style.transition = 'background 150ms ease';
+      closeBtn.onmouseenter = () => {
+        closeBtn.style.background = 'var(--color-background)';
+      };
+      closeBtn.onmouseleave = () => {
+        closeBtn.style.background = 'transparent';
+      };
       closeBtn.onclick = evt => {
         evt.stopPropagation();
         closePhotoPopup();
@@ -1125,8 +1184,8 @@ const PhotoMapLive = () => {
       thumb.style.width = '120px';
       thumb.style.height = '120px';
       thumb.style.objectFit = 'cover';
-      thumb.style.borderRadius = '8px';
-      thumb.style.background = '#e5e7eb';
+      thumb.style.borderRadius = 'var(--radius-lg)';
+      thumb.style.background = 'var(--color-border)';
       thumb.onerror = () => {
         if (photo.fallbackUrl && thumb.src !== photo.fallbackUrl) {
           thumb.src = photo.fallbackUrl;
@@ -1161,17 +1220,17 @@ const PhotoMapLive = () => {
 
       const date = document.createElement('div');
       date.textContent = dateLabel;
-      date.style.fontSize = '13px';
-      date.style.color = '#1f2937';
-      date.style.fontWeight = '700';
-      date.style.lineHeight = '18px';
+      date.style.fontSize = 'var(--font-size-base)';
+      date.style.color = 'var(--color-text-primary)';
+      date.style.fontWeight = 'var(--font-weight-semibold)';
+      date.style.lineHeight = 'var(--line-height-snug)';
 
       const time = document.createElement('div');
       time.textContent = timeLabel;
-      time.style.fontSize = '13px';
-      time.style.color = '#1f2937';
-      time.style.fontWeight = '700';
-      time.style.lineHeight = '18px';
+      time.style.fontSize = 'var(--font-size-sm)';
+      time.style.color = 'var(--color-text-secondary)';
+      time.style.fontWeight = 'var(--font-weight-regular)';
+      time.style.lineHeight = 'var(--line-height-snug)';
 
       const dl = document.createElement('a');
       dl.textContent = '⤓';
@@ -1179,23 +1238,30 @@ const PhotoMapLive = () => {
       dl.href = photo.primaryUrl || photo.url || photo.fallbackUrl || '#';
       dl.target = '_blank';
       dl.rel = 'noopener noreferrer';
-      dl.style.fontSize = '18px';
-      dl.style.color = '#1e88e5';
+      dl.style.fontSize = 'var(--font-size-xl)';
+      dl.style.color = 'var(--color-primary)';
       dl.style.textDecoration = 'none';
-      dl.style.fontWeight = '700';
+      dl.style.fontWeight = 'var(--font-weight-semibold)';
       dl.style.display = 'inline-flex';
       dl.style.alignItems = 'center';
       dl.style.justifyContent = 'center';
-      dl.style.padding = '2px 6px';
-      dl.style.borderRadius = '6px';
-      dl.style.transition = 'color 0.15s ease, background 0.15s ease';
+      dl.style.width = '32px';
+      dl.style.height = '32px';
+      dl.style.borderRadius = 'var(--radius-md)';
+      dl.style.border = '1px solid var(--color-border)';
+      dl.style.background = 'var(--color-surface-primary)';
+      dl.style.boxShadow = 'var(--shadow-xs)';
+      dl.style.transition =
+        'background 150ms ease, border-color 150ms ease, box-shadow 150ms ease';
       dl.onmouseover = () => {
-        dl.style.color = '#1565c0';
-        dl.style.background = 'rgba(21,101,192,0.08)';
+        dl.style.background = 'var(--color-surface-hover)';
+        dl.style.borderColor = 'var(--color-border-hover)';
+        dl.style.boxShadow = 'var(--shadow-sm)';
       };
       dl.onmouseout = () => {
-        dl.style.color = '#1e88e5';
-        dl.style.background = 'transparent';
+        dl.style.background = 'var(--color-surface-primary)';
+        dl.style.borderColor = 'var(--color-border)';
+        dl.style.boxShadow = 'var(--shadow-xs)';
       };
       dl.onclick = evt => {
         if (dl.href === '#') {
@@ -1280,7 +1346,7 @@ const PhotoMapLive = () => {
       // Use a div marker (not a <button>) to avoid browser default button layout/metrics
       // interfering with MapLibre's marker anchoring.
       const container = document.createElement('div');
-      applyMarkerRootStyles(container, 22);
+      applyMarkerRootStyles(container, 24);
       container.style.cursor = 'pointer';
       container.setAttribute('role', 'button');
       container.setAttribute('tabindex', '0');
@@ -1289,20 +1355,29 @@ const PhotoMapLive = () => {
         `${cluster.photos.length} photos at this location`
       );
 
-      const inner = createMarkerInner(22);
+      const inner = createMarkerInner(24);
       inner.style.borderRadius = '50%';
-      inner.style.background = '#282c34';
-      inner.style.border = '1px solid #282c34';
-      inner.style.boxShadow = '0 2px 6px rgba(0,0,0,0.16)';
+      inner.style.background = 'var(--color-primary-dark)';
+      inner.style.border = '2px solid var(--color-surface-primary)';
+      inner.style.boxShadow = 'var(--shadow-md)';
+      inner.style.transition = 'transform 150ms ease, box-shadow 150ms ease';
 
       const core = document.createElement('div');
-      core.style.width = '6px';
-      core.style.height = '6px';
+      core.style.width = '5px';
+      core.style.height = '5px';
       core.style.borderRadius = '50%';
-      core.style.background = '#61dafb';
-      core.style.boxShadow = '0 0 0 3px rgba(97,218,251,0.16)';
+      core.style.background = 'var(--color-surface-primary)';
       inner.appendChild(core);
       container.appendChild(inner);
+
+      container.addEventListener('mouseenter', () => {
+        inner.style.transform = 'scale(1.07)';
+        inner.style.boxShadow = 'var(--shadow-lg)';
+      });
+      container.addEventListener('mouseleave', () => {
+        inner.style.transform = 'scale(1)';
+        inner.style.boxShadow = 'var(--shadow-md)';
+      });
 
       const openCluster = evt => {
         evt.stopPropagation();
@@ -1403,13 +1478,14 @@ const PhotoMapLive = () => {
     const root = document.createElement('div');
     root.style.maxWidth = '320px';
     root.style.width = '320px';
-    root.style.padding = '10px 10px 12px';
-    root.style.background = '#ffffff';
-    root.style.borderRadius = '12px';
-    root.style.boxShadow = 'none';
+    root.style.padding = '12px 12px 14px';
+    root.style.background = 'var(--color-surface-primary)';
+    root.style.borderRadius = 'var(--radius-xl)';
+    root.style.boxShadow = 'var(--shadow-lg)';
     root.style.display = 'flex';
     root.style.flexDirection = 'column';
-    root.style.gap = '8px';
+    root.style.gap = '10px';
+    root.style.fontFamily = 'var(--font-family-sans)';
     root.addEventListener('click', evt => {
       evt.stopPropagation();
     });
@@ -1426,14 +1502,14 @@ const PhotoMapLive = () => {
 
     const title = document.createElement('div');
     title.textContent = 'Grouped Photos';
-    title.style.fontWeight = '700';
-    title.style.fontSize = '16px';
-    title.style.color = '#1f2937';
+    title.style.fontWeight = 'var(--font-weight-semibold)';
+    title.style.fontSize = 'var(--font-size-md)';
+    title.style.color = 'var(--color-text-primary)';
 
     const count = document.createElement('div');
     count.textContent = `${activeStack.photos.length} items`;
-    count.style.fontSize = '13px';
-    count.style.color = '#4b5563';
+    count.style.fontSize = 'var(--font-size-sm)';
+    count.style.color = 'var(--color-text-secondary)';
 
     titleRow.appendChild(title);
     titleRow.appendChild(count);
@@ -1441,19 +1517,26 @@ const PhotoMapLive = () => {
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.textContent = '×';
-    closeBtn.style.width = '22px';
-    closeBtn.style.height = '22px';
+    closeBtn.style.width = '24px';
+    closeBtn.style.height = '24px';
     closeBtn.style.fontSize = '18px';
     closeBtn.style.lineHeight = '1';
     closeBtn.style.padding = '0';
     closeBtn.style.display = 'grid';
     closeBtn.style.placeItems = 'center';
-    // No circle around the close icon (avoid cross-browser font centering quirks).
     closeBtn.style.background = 'transparent';
     closeBtn.style.border = 'none';
     closeBtn.style.boxShadow = 'none';
-    closeBtn.style.color = '#111827';
+    closeBtn.style.color = 'var(--color-text-primary)';
     closeBtn.style.cursor = 'pointer';
+    closeBtn.style.borderRadius = 'var(--radius-sm)';
+    closeBtn.style.transition = 'background 150ms ease';
+    closeBtn.onmouseenter = () => {
+      closeBtn.style.background = 'var(--color-background)';
+    };
+    closeBtn.onmouseleave = () => {
+      closeBtn.style.background = 'transparent';
+    };
     closeBtn.onclick = evt => {
       evt.stopPropagation();
       closeStack();
@@ -1462,6 +1545,12 @@ const PhotoMapLive = () => {
     header.appendChild(titleRow);
     header.appendChild(closeBtn);
     root.appendChild(header);
+
+    const headerDivider = document.createElement('div');
+    headerDivider.style.height = '1px';
+    headerDivider.style.background = 'var(--color-border)';
+    headerDivider.style.marginTop = '-2px';
+    root.appendChild(headerDivider);
 
     const list = document.createElement('div');
     list.style.display = 'flex';
@@ -1483,8 +1572,8 @@ const PhotoMapLive = () => {
       row.style.alignItems = 'center';
       row.style.gap = '12px';
       row.style.padding = '10px';
-      row.style.background = '#f8fafc';
-      row.style.borderRadius = '10px';
+      row.style.background = 'var(--color-background)';
+      row.style.borderRadius = 'var(--radius-lg)';
 
       const thumb = document.createElement('img');
       thumb.alt = photo.caption || `Photo ${index + 1}`;
@@ -1498,8 +1587,8 @@ const PhotoMapLive = () => {
       thumb.style.width = '120px';
       thumb.style.height = '120px';
       thumb.style.objectFit = 'cover';
-      thumb.style.borderRadius = '8px';
-      thumb.style.background = '#e5e7eb';
+      thumb.style.borderRadius = 'var(--radius-lg)';
+      thumb.style.background = 'var(--color-border)';
       thumb.style.cursor = 'pointer';
       thumb.onerror = () => {
         thumb.style.display = 'none';
@@ -1521,17 +1610,17 @@ const PhotoMapLive = () => {
 
       const date = document.createElement('div');
       date.textContent = dateLabel;
-      date.style.fontSize = '13px';
-      date.style.color = '#1f2937';
-      date.style.fontWeight = '700';
-      date.style.lineHeight = '18px';
+      date.style.fontSize = 'var(--font-size-base)';
+      date.style.color = 'var(--color-text-primary)';
+      date.style.fontWeight = 'var(--font-weight-semibold)';
+      date.style.lineHeight = 'var(--line-height-snug)';
 
       const time = document.createElement('div');
       time.textContent = timeLabel;
-      time.style.fontSize = '13px';
-      time.style.color = '#1f2937';
-      time.style.fontWeight = '700';
-      time.style.lineHeight = '18px';
+      time.style.fontSize = 'var(--font-size-sm)';
+      time.style.color = 'var(--color-text-secondary)';
+      time.style.fontWeight = 'var(--font-weight-regular)';
+      time.style.lineHeight = 'var(--line-height-snug)';
 
       meta.appendChild(date);
       meta.appendChild(time);
@@ -1540,23 +1629,30 @@ const PhotoMapLive = () => {
       dl.textContent = '⤓';
       dl.setAttribute('aria-label', 'Download photo');
       dl.href = '#';
-      dl.style.fontSize = '18px';
-      dl.style.color = '#1e88e5';
+      dl.style.fontSize = 'var(--font-size-xl)';
+      dl.style.color = 'var(--color-primary)';
       dl.style.textDecoration = 'none';
-      dl.style.fontWeight = '700';
+      dl.style.fontWeight = 'var(--font-weight-semibold)';
       dl.style.display = 'inline-flex';
       dl.style.alignItems = 'center';
       dl.style.justifyContent = 'center';
-      dl.style.padding = '2px 6px';
-      dl.style.borderRadius = '6px';
-      dl.style.transition = 'color 0.15s ease, background 0.15s ease';
+      dl.style.width = '32px';
+      dl.style.height = '32px';
+      dl.style.borderRadius = 'var(--radius-md)';
+      dl.style.border = '1px solid var(--color-border)';
+      dl.style.background = 'var(--color-surface-primary)';
+      dl.style.boxShadow = 'var(--shadow-xs)';
+      dl.style.transition =
+        'background 150ms ease, border-color 150ms ease, box-shadow 150ms ease';
       dl.onmouseover = () => {
-        dl.style.color = '#1565c0';
-        dl.style.background = 'rgba(21,101,192,0.08)';
+        dl.style.background = 'var(--color-surface-hover)';
+        dl.style.borderColor = 'var(--color-border-hover)';
+        dl.style.boxShadow = 'var(--shadow-sm)';
       };
       dl.onmouseout = () => {
-        dl.style.color = '#1e88e5';
-        dl.style.background = 'transparent';
+        dl.style.background = 'var(--color-surface-primary)';
+        dl.style.borderColor = 'var(--color-border)';
+        dl.style.boxShadow = 'var(--shadow-xs)';
       };
       dl.onclick = evt => {
         evt.preventDefault();
@@ -1574,10 +1670,10 @@ const PhotoMapLive = () => {
 
     const downloadAll = document.createElement('button');
     downloadAll.type = 'button';
-    downloadAll.className = 'btn-format-1';
+    downloadAll.className = 'btn-primary';
     downloadAll.textContent = `Download all (${activeStack.photos.length})`;
     downloadAll.style.alignSelf = 'flex-end';
-    downloadAll.style.marginTop = '4px';
+    downloadAll.style.marginTop = '2px';
     downloadAll.onclick = async evt => {
       evt.stopPropagation();
       await downloadPhotos(activeStack.photos);

@@ -23,61 +23,35 @@ const EditProjectModal = ({ open, onClose, onSubmit, initial }) => {
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0,0,0,0.35)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 1000,
-      }}
-    >
-      <div
-        style={{
-          background: '#fff',
-          padding: 24,
-          borderRadius: 8,
-          width: 400,
-          maxWidth: '90%',
-        }}
-      >
-        <h3>Edit Project</h3>
-        <form
-          onSubmit={handleSubmit}
-          style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
-        >
-          <label>
+    <div role="dialog" aria-modal="true" className="modal-overlay">
+      <div className="modal-body">
+        <h3 className="modal-header">Edit Project</h3>
+        <form onSubmit={handleSubmit} className="modal-form">
+          <label className="form-label">
             Name (required)
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
               required
-              style={{ width: '100%' }}
+              className="form-input"
             />
           </label>
-          <label>
+          <label className="form-label">
             Address (optional)
             <input
               type="text"
               value={address}
               onChange={e => setAddress(e.target.value)}
-              style={{ width: '100%' }}
               placeholder="Street, city, etc."
+              className="form-input"
             />
           </label>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button type="button" onClick={onClose} className="btn-format-1">
+          <div className="modal-footer">
+            <button type="button" onClick={onClose} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn-format-1">
+            <button type="submit" className="btn-primary">
               Save
             </button>
           </div>

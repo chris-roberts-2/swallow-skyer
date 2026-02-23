@@ -1,0 +1,24 @@
+/* ===========================================
+   PAGE LAYOUT — Shared authenticated page frame
+   Provides horizontal margins, max-width constraint,
+   vertical padding, and section spacing rhythm.
+   =========================================== */
+
+.page-layout {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--layout-padding-y) var(--layout-margin-x)
+    var(--layout-padding-bottom);
+  box-sizing: border-box;
+}
+
+.page-layout__inner {
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}

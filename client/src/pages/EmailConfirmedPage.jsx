@@ -7,31 +7,33 @@ const EmailConfirmedPage = () => {
   const { user } = useAuth();
 
   return (
-    <div className="auth-page">
-      <h2>Email Confirmed</h2>
-      <p style={{ maxWidth: 560 }}>
-        Your email has been confirmed. You can continue into the portal.
-      </p>
-      <div
-        style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}
-      >
-        {user ? (
-          <button
-            type="button"
-            className="btn-format-1"
-            onClick={() => navigate('/map', { replace: true })}
-          >
-            Continue
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="btn-format-1"
-            onClick={() => navigate('/login', { replace: true })}
-          >
-            Sign In
-          </button>
-        )}
+    <div className="auth-page-wrapper">
+      <div className="auth-brand">
+        <span className="auth-brand-name">Swallow Robotics</span>
+        <span className="auth-brand-tagline">Flight Operations Platform</span>
+      </div>
+      <div className="auth-page">
+        <h2>Email Confirmed</h2>
+        <p>Your email has been confirmed. You can continue into the portal.</p>
+        <div className="auth-actions">
+          {user ? (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => navigate('/map', { replace: true })}
+            >
+              Continue to Portal
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => navigate('/login', { replace: true })}
+            >
+              Sign In
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

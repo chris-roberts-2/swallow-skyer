@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
   Link,
+  NavLink,
   useLocation,
 } from 'react-router-dom';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -12,6 +13,7 @@ import './App.css';
 import { AuthProvider, useAuth } from './context';
 import AuthGuard from './components/auth/AuthGuard';
 import ProfileMenu from './components/auth/ProfileMenu';
+import PageLayout from './components/layout/PageLayout';
 import {
   LoginPage,
   RegisterPage,
@@ -29,35 +31,53 @@ import AuthCallbackPage from './pages/AuthCallbackPage';
 import EmailConfirmedPage from './pages/EmailConfirmedPage';
 
 const Header = () => {
-  const { user, activeProject } = useAuth();
-  const hasActiveProject = !!(activeProject?.id || activeProject);
+  const { user } = useAuth();
 
   return (
     <header className="App-header">
       <div className="App-header__inner">
-        <div className="App-header__brand">
-          <h1>
-            <span className="App-header__brandPrimary">Skyer</span>{' '}
-            <span className="App-header__brandByline">by Swallow Robotics</span>
-          </h1>
-          <nav className="App-nav">
-            {user ? (
-              <>
-                <Link to="/projects">Projects</Link>
-                {hasActiveProject && <Link to="/photos">Photos</Link>}
-                <Link to="/map">Map</Link>
-              </>
-            ) : (
-              <>
-                <Link to="/login">Login</Link>
-                <Link to="/register">Register</Link>
-              </>
-            )}
-          </nav>
-        </div>
+        <Link
+          to="/projects"
+          className="App-header__logoLink"
+          aria-label="Go to Projects"
+        >
+          <img
+            src={`${process.env.PUBLIC_URL}/logo192-white.png`}
+            alt="Swallow Robotics"
+            className="App-header__logo"
+          />
+        </Link>
         {user && <ProfileMenu />}
       </div>
     </header>
+  );
+};
+
+const navLinkClass = ({ isActive }) =>
+  isActive ? 'App-subnav__link App-subnav__link--active' : 'App-subnav__link';
+
+const SecondaryNav = () => {
+  const { user, activeProject } = useAuth();
+  const hasActiveProject = !!(activeProject?.id || activeProject);
+
+  if (!user) return null;
+
+  return (
+    <nav className="App-subnav" aria-label="Primary navigation">
+      <div className="App-subnav__inner">
+        <NavLink to="/projects" className={navLinkClass}>
+          Projects
+        </NavLink>
+        {hasActiveProject && (
+          <NavLink to="/photos" className={navLinkClass}>
+            Photos
+          </NavLink>
+        )}
+        <NavLink to="/map" className={navLinkClass}>
+          Map
+        </NavLink>
+      </div>
+    </nav>
   );
 };
 
@@ -86,6 +106,16 @@ const RootRedirect = () => {
   return <Navigate to={user ? '/map' : '/login'} replace />;
 };
 
+/**
+ * AuthLayout — combines auth protection with the shared page layout frame.
+ * Used for all authenticated routes except the full-screen map view.
+ */
+const AuthLayout = ({ children }) => (
+  <AuthGuard>
+    <PageLayout>{children}</PageLayout>
+  </AuthGuard>
+);
+
 export function AppRoutes() {
   const location = useLocation();
   const showHeader = !(
@@ -96,6 +126,7 @@ export function AppRoutes() {
   return (
     <div className="App">
       {showHeader && <Header />}
+      {showHeader && <SecondaryNav />}
       <main className="App-main">
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -114,50 +145,50 @@ export function AppRoutes() {
           <Route
             path="/photos"
             element={
-              <AuthGuard>
+              <AuthLayout>
                 <PhotosPage />
-              </AuthGuard>
+              </AuthLayout>
             }
           />
           <Route
             path="/photos/:id/options"
             element={
-              <AuthGuard>
+              <AuthLayout>
                 <PhotoOptionsPage />
-              </AuthGuard>
+              </AuthLayout>
             }
           />
           <Route path="/upload" element={<Navigate to="/photos" replace />} />
           <Route
             path="/projects"
             element={
-              <AuthGuard>
+              <AuthLayout>
                 <ProjectsPage />
-              </AuthGuard>
+              </AuthLayout>
             }
           />
           <Route
             path="/projects/archived"
             element={
-              <AuthGuard>
+              <AuthLayout>
                 <ArchivedProjectsPage />
-              </AuthGuard>
+              </AuthLayout>
             }
           />
           <Route
             path="/projects/:id/members"
             element={
-              <AuthGuard>
+              <AuthLayout>
                 <ProjectMembersPage />
-              </AuthGuard>
+              </AuthLayout>
             }
           />
           <Route
             path="/profile"
             element={
-              <AuthGuard>
+              <AuthLayout>
                 <ProfilePage />
-              </AuthGuard>
+              </AuthLayout>
             }
           />
           <Route path="/public/:token" element={<PublicProjectView />} />

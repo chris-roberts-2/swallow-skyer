@@ -33,47 +33,49 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="auth-page">
-      <h2>Login</h2>
-      <form onSubmit={handleSubmit} className="auth-form">
-        <label htmlFor="email">
-          Email
-          <input
-            id="email"
-            name="email"
-            type="email"
-            value={formValues.email}
-            onChange={handleChange}
-            required
-          />
-        </label>
-        <label htmlFor="password">
-          Password
-          <div className="auth-input-with-toggle">
+    <div className="auth-page-wrapper">
+      <div className="auth-page">
+        <h2>Login</h2>
+        <form onSubmit={handleSubmit} className="auth-form">
+          <label htmlFor="email">
+            Email
             <input
-              id="password"
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              value={formValues.password}
+              id="email"
+              name="email"
+              type="email"
+              value={formValues.email}
               onChange={handleChange}
               required
             />
-            <button
-              type="button"
-              className="auth-toggle"
-              onClick={() => setShowPassword(prev => !prev)}
-            >
-              {showPassword ? 'Hide' : 'Show'}
-            </button>
-          </div>
-        </label>
-        {error ? <div className="auth-error">{error}</div> : null}
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Logging in...' : 'Login'}
-        </button>
-      </form>
-      <div className="auth-footer">
-        Need an account? <Link to="/register">Register</Link>
+          </label>
+          <label htmlFor="password">
+            Password
+            <div className="auth-input-with-toggle">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                value={formValues.password}
+                onChange={handleChange}
+                required
+              />
+              <button
+                type="button"
+                className="auth-toggle"
+                onClick={() => setShowPassword(prev => !prev)}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
+          </label>
+          {error ? <div className="auth-error">{error}</div> : null}
+          <button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Logging in...' : 'Login'}
+          </button>
+        </form>
+        <div className="auth-footer">
+          Need an account? <Link to="/register">Register</Link>
+        </div>
       </div>
     </div>
   );

@@ -162,7 +162,7 @@ const PhotoOptionsPage = () => {
       mapMarkerRef.current = null;
     }
 
-    mapMarkerRef.current = new maplibregl.Marker({ color: '#1e88e5' })
+    mapMarkerRef.current = new maplibregl.Marker({ color: '#3f6fa0' })
       .setLngLat([lon, lat])
       .addTo(mapInstance.current);
   }, [
@@ -233,28 +233,26 @@ const PhotoOptionsPage = () => {
 
   if (!displayPhoto) {
     return (
-      <div
-        style={{
-          padding: 24,
-          boxSizing: 'border-box',
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          gap: 12,
-        }}
-      >
-        <button
-          type="button"
-          className="btn-format-1"
-          onClick={() => navigate(backTarget)}
-        >
-          Back
-        </button>
+      <div style={{ width: '100%', boxSizing: 'border-box' }}>
+        <div className="page-header">
+          <div className="page-header__left">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => navigate(backTarget)}
+            >
+              ← Back
+            </button>
+          </div>
+          <div className="page-header__center">
+            <h2 className="page-header__title">Photo Options</h2>
+          </div>
+          <div className="page-header__right" />
+        </div>
         {error ? (
-          <div style={{ color: '#dc2626' }}>{error}</div>
+          <div className="page-error">{error}</div>
         ) : (
-          <div>Loading photo...</div>
+          <div className="page-empty">Loading photo...</div>
         )}
       </div>
     );
@@ -264,57 +262,34 @@ const PhotoOptionsPage = () => {
     <div
       style={{
         width: '100%',
-        padding: '12px 24px 24px',
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'flex-start',
-        gap: 12,
         flex: 1,
         minHeight: 0,
         overflowY: 'auto',
-        paddingBottom: 80,
       }}
     >
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'auto 1fr',
-          alignItems: 'center',
-          width: '100%',
-          columnGap: 12,
-        }}
-      >
-        <button
-          type="button"
-          className="btn-format-1"
-          onClick={() => navigate(backTarget)}
-        >
-          Back
-        </button>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            width: '100%',
-          }}
-        >
-          <div
-            style={{
-              width: 'min(1200px, 100%)',
-              display: 'flex',
-              alignItems: 'center',
-            }}
+      <div className="page-header">
+        <div className="page-header__left">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => navigate(backTarget)}
           >
-            <h2 style={{ margin: 0, padding: 0 }}>Photo Options</h2>
-          </div>
+            ← Back
+          </button>
         </div>
+        <div className="page-header__center">
+          <h2 className="page-header__title">Photo Options</h2>
+        </div>
+        <div className="page-header__right" />
       </div>
 
       <div
         style={{
           display: 'flex',
-          gap: 18,
+          gap: 'var(--space-lg)',
           alignItems: 'flex-start',
           flexWrap: 'wrap',
           width: '100%',
@@ -324,7 +299,7 @@ const PhotoOptionsPage = () => {
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: 10,
+            gap: 'var(--space-sm)',
             alignItems: 'flex-start',
             maxWidth: 'min(520px, 90vw)',
             width: '100%',
@@ -336,8 +311,8 @@ const PhotoOptionsPage = () => {
             style={{
               width: '100%',
               height: 'auto',
-              borderRadius: 12,
-              boxShadow: '0 6px 20px rgba(0,0,0,0.14)',
+              borderRadius: 'var(--radius-xl)',
+              boxShadow: 'var(--shadow-xl)',
               objectFit: 'cover',
               display: 'block',
             }}
@@ -358,14 +333,14 @@ const PhotoOptionsPage = () => {
           <div
             style={{
               display: 'flex',
-              gap: 8,
-              marginTop: 10,
+              gap: 'var(--space-sm)',
+              marginTop: 'var(--space-sm)',
               width: '100%',
             }}
           >
             <button
               type="button"
-              className="btn-format-1"
+              className="btn-secondary"
               onClick={download}
               disabled={isDownloading}
             >
@@ -373,8 +348,7 @@ const PhotoOptionsPage = () => {
             </button>
             <button
               type="button"
-              className="btn-format-1"
-              style={{ color: '#b91c1c', borderColor: '#fca5a5' }}
+              className="btn-critical"
               onClick={remove}
               disabled={isDeleting}
             >
@@ -389,28 +363,22 @@ const PhotoOptionsPage = () => {
             minWidth: 300,
             display: 'flex',
             flexDirection: 'column',
-            gap: 12,
+            gap: 'var(--space-md)',
           }}
         >
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: '1.2fr 1fr',
-              gap: 12,
+              gap: 'var(--space-md)',
               alignItems: 'start',
             }}
           >
             <div
-              style={{
-                border: '1px solid #e5e7eb',
-                borderRadius: 12,
-                padding: '10px 12px',
-                background: '#fff',
-                display: 'grid',
-                gap: 6,
-              }}
+              className="surface-card"
+              style={{ padding: 'var(--space-sm) var(--space-md)' }}
             >
-              <div style={{ fontWeight: 600 }}>Information</div>
+              <h6 style={{ margin: '0 0 var(--space-xs)' }}>Information</h6>
               <dl
                 style={{
                   margin: 0,
@@ -425,9 +393,9 @@ const PhotoOptionsPage = () => {
                 <dt
                   style={{
                     margin: 0,
-                    fontSize: 13,
-                    color: '#6b7280',
-                    fontWeight: 600,
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-secondary)',
+                    fontWeight: 'var(--font-weight-semibold)',
                   }}
                 >
                   Date/Time
@@ -435,8 +403,8 @@ const PhotoOptionsPage = () => {
                 <dd
                   style={{
                     margin: 0,
-                    fontSize: 13,
-                    color: '#374151',
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-primary)',
                     textAlign: 'left',
                   }}
                 >
@@ -446,9 +414,9 @@ const PhotoOptionsPage = () => {
                 <dt
                   style={{
                     margin: 0,
-                    fontSize: 13,
-                    color: '#6b7280',
-                    fontWeight: 600,
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-secondary)',
+                    fontWeight: 'var(--font-weight-semibold)',
                   }}
                 >
                   Project
@@ -456,8 +424,8 @@ const PhotoOptionsPage = () => {
                 <dd
                   style={{
                     margin: 0,
-                    fontSize: 13,
-                    color: '#374151',
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-primary)',
                     textAlign: 'left',
                   }}
                 >
@@ -467,9 +435,9 @@ const PhotoOptionsPage = () => {
                 <dt
                   style={{
                     margin: 0,
-                    fontSize: 13,
-                    color: '#6b7280',
-                    fontWeight: 600,
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-secondary)',
+                    fontWeight: 'var(--font-weight-semibold)',
                   }}
                 >
                   Uploaded By
@@ -477,8 +445,8 @@ const PhotoOptionsPage = () => {
                 <dd
                   style={{
                     margin: 0,
-                    fontSize: 13,
-                    color: '#374151',
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-primary)',
                     textAlign: 'left',
                   }}
                 >
@@ -488,9 +456,9 @@ const PhotoOptionsPage = () => {
                 <dt
                   style={{
                     margin: 0,
-                    fontSize: 13,
-                    color: '#6b7280',
-                    fontWeight: 600,
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-secondary)',
+                    fontWeight: 'var(--font-weight-semibold)',
                   }}
                 >
                   File Size
@@ -498,8 +466,8 @@ const PhotoOptionsPage = () => {
                 <dd
                   style={{
                     margin: 0,
-                    fontSize: 13,
-                    color: '#374151',
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-primary)',
                     textAlign: 'left',
                   }}
                 >
@@ -509,29 +477,26 @@ const PhotoOptionsPage = () => {
             </div>
 
             <div
-              style={{
-                border: '1px solid #e5e7eb',
-                borderRadius: 12,
-                overflow: 'hidden',
-                background: '#fff',
-              }}
+              className="surface-card"
+              style={{ padding: 0, overflow: 'hidden' }}
             >
               <div
                 style={{
-                  padding: '8px 10px',
-                  borderBottom: '1px solid #e5e7eb',
-                  fontWeight: 600,
-                  fontSize: 13,
+                  padding: 'var(--space-sm) var(--space-md)',
+                  borderBottom: '1px solid var(--color-border)',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                 }}
               >
-                <span>Location</span>
+                <h6 style={{ margin: 0 }}>Location</h6>
                 <button
                   type="button"
-                  className="btn-format-1"
-                  style={{ padding: '4px 8px', fontSize: 12 }}
+                  className="btn-secondary"
+                  style={{
+                    padding: 'var(--space-xs) var(--space-sm)',
+                    fontSize: 'var(--font-size-sm)',
+                  }}
                   onClick={() => navigate('/map')}
                 >
                   Open Map

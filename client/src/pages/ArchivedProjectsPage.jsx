@@ -99,39 +99,26 @@ const ArchivedProjectsPage = () => {
   const hasProjects = useMemo(() => projects.length > 0, [projects]);
 
   return (
-    <div
-      className="projects-page"
-      style={{
-        width: '100%',
-        padding: '12px 24px',
-        boxSizing: 'border-box',
-        display: 'flex',
-        justifyContent: 'center',
-      }}
-    >
-      <div style={{ width: 'min(1200px, 100%)' }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 12,
-          }}
-        >
-          <h2 style={{ margin: 0 }}>Archived Projects</h2>
-          <button
-            type="button"
-            onClick={() => navigate('/projects')}
-            className="btn-format-1"
-          >
-            Back to Projects
-          </button>
+    <div className="projects-page page-container">
+      <div className="page-content">
+        <div className="page-header">
+          <div className="page-header__left">
+            <button
+              type="button"
+              onClick={() => navigate('/projects')}
+              className="btn-secondary"
+            >
+              ← Back
+            </button>
+          </div>
+          <div className="page-header__center">
+            <h2 className="page-header__title">Archived Projects</h2>
+          </div>
+          <div className="page-header__right" />
         </div>
-        {error ? (
-          <div style={{ marginBottom: 12, color: 'red' }}>{error}</div>
-        ) : null}
+        {error ? <div className="page-error">{error}</div> : null}
         {isLoading ? (
-          <div>Loading...</div>
+          <div className="page-empty">Loading...</div>
         ) : (
           <ProjectList
             projects={projects}
@@ -147,7 +134,7 @@ const ArchivedProjectsPage = () => {
           />
         )}
         {!hasProjects && !isLoading ? (
-          <p style={{ marginTop: 12 }}>No archived projects yet.</p>
+          <p className="page-empty">No archived projects yet.</p>
         ) : null}
       </div>
     </div>

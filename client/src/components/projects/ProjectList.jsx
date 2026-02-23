@@ -1,16 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
 
-const menuItemStyle = {
-  width: '100%',
-  textAlign: 'left',
-  padding: '8px 12px',
-  background: 'transparent',
-  border: 'none',
-  cursor: 'pointer',
-  fontSize: 14,
-  transition: 'background 120ms ease',
-};
-
 const ProjectList = ({
   projects,
   activeProjectId,
@@ -45,17 +34,19 @@ const ProjectList = ({
   const activeProject = safeProjects.find(p => p.id === activeProjectId);
   const otherProjects = safeProjects.filter(p => p.id !== activeProjectId);
 
-  const cardStyle = (isActive, isMenuOpen) => ({
-    border: '1px solid #e5e7eb',
-    borderRadius: 12,
-    padding: '12px 14px',
+  const getCardStyle = (isActive, isMenuOpen) => ({
+    border: '1px solid var(--color-border)',
+    borderRadius: 'var(--radius-xl)',
+    padding: 'var(--space-lg)',
     textAlign: 'left',
-    background: isActive ? '#f4f7ff' : '#fff',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+    background: isActive
+      ? 'var(--color-surface-secondary)'
+      : 'var(--color-surface-primary)',
+    boxShadow: 'var(--shadow-sm)',
     cursor: 'pointer',
     display: 'flex',
     flexDirection: 'column',
-    gap: 8,
+    gap: 'var(--space-sm)',
     transition: 'transform 120ms ease, box-shadow 120ms ease',
     position: 'relative',
     overflow: 'visible',
@@ -90,14 +81,14 @@ const ProjectList = ({
             }
           }
         }}
-        style={cardStyle(isActive, isMenuOpen)}
+        style={getCardStyle(isActive, isMenuOpen)}
         onMouseEnter={e => {
           e.currentTarget.style.transform = 'translateY(-2px)';
-          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+          e.currentTarget.style.boxShadow = 'var(--shadow-md)';
         }}
         onMouseLeave={e => {
           e.currentTarget.style.transform = 'none';
-          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+          e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
         }}
       >
         <div
@@ -105,15 +96,26 @@ const ProjectList = ({
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'flex-start',
-            gap: 8,
+            gap: 'var(--space-sm)',
           }}
         >
           <div>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>
+            <div
+              style={{
+                fontWeight: 'var(--font-weight-semibold)',
+                fontSize: 'var(--font-size-md)',
+                marginBottom: 'var(--space-xs)',
+              }}
+            >
               {project.name}
             </div>
             {project.address ? (
-              <div style={{ color: '#6b7280', fontSize: 12 }}>
+              <div
+                style={{
+                  color: 'var(--color-text-secondary)',
+                  fontSize: 'var(--font-size-sm)',
+                }}
+              >
                 {project.address}
               </div>
             ) : null}
@@ -131,15 +133,7 @@ const ProjectList = ({
                   prev === project.id ? null : project.id
                 );
               }}
-              style={{
-                border: '1px solid #e5e7eb',
-                borderRadius: '50%',
-                width: 28,
-                height: 28,
-                background: '#fff',
-                cursor: 'pointer',
-                lineHeight: '24px',
-              }}
+              className="btn-secondary btn-icon-sm"
             >
               ⋮
             </button>
@@ -149,46 +143,32 @@ const ProjectList = ({
                   position: 'absolute',
                   top: 32,
                   right: 0,
-                  background: '#fff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 8,
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                  background: 'var(--color-surface-primary)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-lg)',
+                  boxShadow: 'var(--shadow-lg)',
                   zIndex: 70,
                   minWidth: 180,
-                  padding: '6px 0',
+                  padding: 'var(--space-xs) 0',
                 }}
                 onClick={e => e.stopPropagation()}
               >
                 {isArchivedView ? (
-                  <>
-                    <button
-                      type="button"
-                      style={menuItemStyle}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = '#f5f7fb';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                      onClick={() => {
-                        closeMenu();
-                        onUnarchive(project);
-                      }}
-                    >
-                      Unarchive
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    className="btn-menu-item"
+                    onClick={() => {
+                      closeMenu();
+                      onUnarchive(project);
+                    }}
+                  >
+                    Unarchive
+                  </button>
                 ) : canManageProject ? (
                   <>
                     <button
                       type="button"
-                      style={menuItemStyle}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = '#f5f7fb';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
+                      className="btn-menu-item"
                       onClick={() => {
                         closeMenu();
                         onEdit(project);
@@ -198,13 +178,7 @@ const ProjectList = ({
                     </button>
                     <button
                       type="button"
-                      style={menuItemStyle}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = '#f5f7fb';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
+                      className="btn-menu-item"
                       onClick={() => {
                         closeMenu();
                         onMembers(project);
@@ -215,13 +189,7 @@ const ProjectList = ({
                     {isOwner ? (
                       <button
                         type="button"
-                        style={{ ...menuItemStyle, color: '#dc2626' }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background = '#fef2f2';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = 'transparent';
-                        }}
+                        className="btn-menu-item btn-menu-item-destructive"
                         onClick={() => {
                           closeMenu();
                           onDelete(project);
@@ -233,13 +201,7 @@ const ProjectList = ({
                     {!isCreator ? (
                       <button
                         type="button"
-                        style={menuItemStyle}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background = '#f5f7fb';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = 'transparent';
-                        }}
+                        className="btn-menu-item"
                         onClick={() => {
                           closeMenu();
                           onUnjoin(project);
@@ -253,13 +215,7 @@ const ProjectList = ({
                   <>
                     <button
                       type="button"
-                      style={menuItemStyle}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = '#f5f7fb';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
+                      className="btn-menu-item"
                       onClick={() => {
                         closeMenu();
                         onMembers(project);
@@ -270,13 +226,7 @@ const ProjectList = ({
                     {!isCreator ? (
                       <button
                         type="button"
-                        style={menuItemStyle}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background = '#f5f7fb';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = 'transparent';
-                        }}
+                        className="btn-menu-item"
                         onClick={() => {
                           closeMenu();
                           onUnjoin(project);
@@ -298,11 +248,22 @@ const ProjectList = ({
             alignItems: 'center',
           }}
         >
-          <div style={{ fontSize: 12, color: '#6b7280' }}>
+          <div
+            style={{
+              fontSize: 'var(--font-size-sm)',
+              color: 'var(--color-text-secondary)',
+            }}
+          >
             {project.role || 'Viewer'}
           </div>
           {isActive ? (
-            <span style={{ fontSize: 12, color: '#2563eb', fontWeight: 600 }}>
+            <span
+              style={{
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--color-primary)',
+                fontWeight: 'var(--font-weight-semibold)',
+              }}
+            >
               Active
             </span>
           ) : null}
@@ -312,34 +273,10 @@ const ProjectList = ({
   };
 
   return (
-    <div
-      data-testid="project-list"
-      style={{
-        width: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 16,
-      }}
-    >
-      {activeProject ? (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(1, minmax(0, 1fr))',
-          }}
-        >
-          {renderCard(activeProject, true)}
-        </div>
-      ) : null}
+    <div data-testid="project-list" className="project-list-container">
+      {activeProject ? <div>{renderCard(activeProject, true)}</div> : null}
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-          gap: 16,
-          width: '100%',
-        }}
-      >
+      <div className="project-list-grid">
         {otherProjects.map(project => renderCard(project, false))}
       </div>
     </div>

@@ -119,7 +119,6 @@ const ProjectsPage = () => {
         await refreshProjects({ redirectWhenEmpty: false, force: true });
         setActiveProject(project);
         setIsModalOpen(false);
-        // Stay on Projects page after creating a new project
       } catch (err) {
         setError(
           err?.payload?.error ||
@@ -141,57 +140,27 @@ const ProjectsPage = () => {
   }, [navigate]);
 
   return (
-    <div
-      className="projects-page"
-      style={{
-        width: '100%',
-        padding: '12px 24px',
-        boxSizing: 'border-box',
-        display: 'flex',
-        justifyContent: 'center',
-      }}
-    >
-      <div style={{ width: 'min(1200px, 100%)' }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 12,
-          }}
-        >
-          <h2 style={{ margin: 0 }}>Projects</h2>
-          <button
-            type="button"
-            onClick={() => setIsModalOpen(true)}
-            title="Create Project"
-            style={{
-              borderRadius: '50%',
-              width: 36,
-              height: 36,
-              border: '1px solid #e0e0e0',
-              background: '#f7f9fc',
-              fontSize: 20,
-              fontWeight: 600,
-              lineHeight: '32px',
-              cursor: 'pointer',
-            }}
-          >
-            +
-          </button>
-        </div>
-        {error && (
-          <div
-            style={{
-              marginBottom: 12,
-              color: 'red',
-            }}
-          >
-            {error}
+    <div className="projects-page page-container">
+      <div className="page-content">
+        <div className="page-header">
+          <div className="page-header__left" />
+          <div className="page-header__center">
+            <h2 className="page-header__title">Projects</h2>
           </div>
-        )}
+          <div className="page-header__right">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              title="Create Project"
+              className="btn-primary btn-icon"
+            >
+              +
+            </button>
+          </div>
+        </div>
+        {error && <div className="page-error">{error}</div>}
         {isLoading && !user ? (
-          <div>Loading...</div>
+          <div className="page-empty">Loading...</div>
         ) : (
           <ProjectList
             projects={projects}
@@ -205,18 +174,22 @@ const ProjectsPage = () => {
           />
         )}
         {!userHasProjects && (
-          <p style={{ marginTop: 12 }}>
+          <p className="page-empty">
             You have no projects yet. Create one to start uploading and viewing
             photos.
           </p>
         )}
         <div
-          style={{ marginTop: 16, display: 'flex', justifyContent: 'center' }}
+          style={{
+            marginTop: 'var(--space-lg)',
+            display: 'flex',
+            justifyContent: 'center',
+          }}
         >
           <button
             type="button"
             onClick={handleArchived}
-            className="btn-format-1"
+            className="btn-secondary"
           >
             Archived Projects
           </button>

@@ -127,58 +127,39 @@ const BatchUploader = ({ onForbidden, onUploaded, variant = 'full' }) => {
   const triggerFileSelect = () => inputRef.current?.click();
 
   if (variant === 'compact') {
-    const activeBorder = isDragging ? '2px solid #1e88e5' : '1px solid #e5e7eb';
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div
-          data-testid="compact-drop"
-          className="btn-format-1"
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={triggerFileSelect}
-          role="button"
-          tabIndex={0}
-          onKeyDown={e => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              triggerFileSelect();
-            }
-          }}
-          style={{
-            borderRadius: '50%',
-            width: 28,
-            height: 28,
-            minWidth: 28,
-            border: activeBorder,
-            background: isDragging ? '#f1f5f9' : '#f7f9fc',
-            fontSize: 20,
-            fontWeight: 700,
-            lineHeight: '24px',
-            textAlign: 'center',
-            cursor: 'pointer',
-            boxShadow: isDragging ? '0 0 0 3px rgba(30,136,229,0.18)' : 'none',
-            transition: 'all 120ms ease',
-          }}
-          title="Upload photos"
-        >
-          {isSubmitting ? '…' : '+'}
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            style={{ display: 'none' }}
-            onChange={handleInputChange}
-          />
-        </div>
-        {isSubmitting ? (
-          <span style={{ fontSize: 12, color: '#6b7280' }}>Uploading…</span>
-        ) : (
-          <span style={{ fontSize: 12, color: '#6b7280' }}>
-            Click or drop to upload
-          </span>
-        )}
+      <div
+        data-testid="compact-drop"
+        className="btn-primary btn-icon"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={triggerFileSelect}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            triggerFileSelect();
+          }
+        }}
+        style={{
+          boxShadow: isDragging
+            ? '0 0 0 3px rgba(63, 111, 160, 0.18)'
+            : 'var(--shadow-sm)',
+          opacity: isSubmitting ? 0.7 : 1,
+        }}
+        title="Upload photos"
+      >
+        {isSubmitting ? '…' : '+'}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          style={{ display: 'none' }}
+          onChange={handleInputChange}
+        />
       </div>
     );
   }
@@ -191,13 +172,7 @@ const BatchUploader = ({ onForbidden, onUploaded, variant = 'full' }) => {
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          style={{
-            border: '2px dashed #999',
-            padding: 16,
-            marginBottom: 12,
-            background: isDragging ? '#f0f6ff' : '#fff',
-            cursor: 'pointer',
-          }}
+          className={`dropzone${isDragging ? ' dropzone--active' : ''}`}
           onClick={() => inputRef.current?.click()}
         >
           <p style={{ margin: 0 }}>
@@ -212,7 +187,11 @@ const BatchUploader = ({ onForbidden, onUploaded, variant = 'full' }) => {
             onChange={handleInputChange}
           />
         </div>
-        <button type="submit" disabled={isSubmitting || !files.length}>
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={isSubmitting || !files.length}
+        >
           {isSubmitting ? 'Uploading...' : 'Upload'}
         </button>
       </form>
