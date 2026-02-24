@@ -52,6 +52,13 @@ def register_profile():
 
     This endpoint is intentionally unauthenticated because Supabase may require
     email confirmation before a session exists.
+
+    When a placeholder user was created for this email (e.g. the user was
+    invited to a project before they registered), this endpoint migrates all
+    project memberships from the placeholder ID to the new authenticated user
+    ID and removes the placeholder row. The same migration is also handled by
+    the on_auth_user_created DB trigger, so this serves as a belt-and-suspenders
+    fallback (both paths are idempotent).
     """
     payload = request.get_json(silent=True) or {}
     user_id = _clean_text(payload.get("userId") or payload.get("id") or "")
@@ -73,19 +80,22 @@ def register_profile():
 
         resolved_email = auth_email or email
 
-        # When a user is pre-added to a project before registering, a placeholder
-        # row is created in public.users with a generated UUID and just the email.
-        # On registration, auth assigns a new UUID. We must transfer any
-        # project_members references from the old placeholder UUID to the new
-        # auth UUID before upserting, otherwise the unique email constraint blocks
-        # the insert.
+        # Check for a pre-registered placeholder user with the same email.
+        # The DB trigger (on_auth_user_created) may have already handled this;
+        # if so, get_user_by_email returns the current user and no migration
+        # is needed.
         existing = supabase_client.get_user_by_email(resolved_email)
-        if existing and existing.get("id") and existing["id"] != user_id:
-            old_id = existing["id"]
-            client = supabase_client.client  # type: ignore[union-attr]
-            client.table("project_members").update({"user_id": user_id}).eq("user_id", old_id).execute()
-            client.table("users").delete().eq("id", old_id).execute()
+        old_user_id = existing.get("id") if existing and existing.get("id") != user_id else None
 
+        if old_user_id:
+            # Temporarily rename the placeholder's email to free the unique
+            # constraint so we can insert the authenticated user row.
+            supabase_client.client.table("users").update(  # type: ignore[union-attr]
+                {"email": f"__migrating__{old_user_id}"}
+            ).eq("id", old_user_id).execute()
+
+        # Upsert the authenticated user — must happen BEFORE updating
+        # project_members so the FK constraint is satisfied.
         updates = {
             "id": user_id,
             "email": resolved_email,
@@ -94,6 +104,18 @@ def register_profile():
             "company": company or None,
         }
         supabase_client.client.table("users").upsert(updates).execute()  # type: ignore[union-attr]
+
+        if old_user_id:
+            # Re-assign project memberships from the placeholder to the real user.
+            supabase_client.client.table("project_members").update(  # type: ignore[union-attr]
+                {"user_id": user_id}
+            ).eq("user_id", old_user_id).execute()
+
+            # Remove the now-orphaned placeholder row.
+            supabase_client.client.table("users").delete().eq(  # type: ignore[union-attr]
+                "id", old_user_id
+            ).execute()
+
         row = supabase_client.get_user_metadata(user_id)
         return jsonify({"profile": row}), 200
     except Exception as exc:
