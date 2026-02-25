@@ -23,6 +23,7 @@ import {
   ProjectsPage,
   ArchivedProjectsPage,
   ProjectMembersPage,
+  DashboardPage,
 } from './pages';
 import PhotoOptionsPage from './pages/PhotoOptionsPage';
 import PublicProjectView from './pages/PublicProjectView';
@@ -68,6 +69,11 @@ const SecondaryNav = () => {
         <NavLink to="/projects" className={navLinkClass}>
           Projects
         </NavLink>
+        {hasActiveProject && (
+          <NavLink to="/dashboard" className={navLinkClass}>
+            Dashboard
+          </NavLink>
+        )}
         {hasActiveProject && (
           <NavLink to="/photos" className={navLinkClass}>
             Photos
@@ -140,6 +146,14 @@ export function AppRoutes() {
               <AuthGuard>
                 <MapPage />
               </AuthGuard>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <AuthLayout>
+                <DashboardPage />
+              </AuthLayout>
             }
           />
           <Route

@@ -119,6 +119,7 @@ const ProjectsPage = () => {
         await refreshProjects({ redirectWhenEmpty: false, force: true });
         setActiveProject(project);
         setIsModalOpen(false);
+        navigate('/dashboard');
       } catch (err) {
         setError(
           err?.payload?.error ||

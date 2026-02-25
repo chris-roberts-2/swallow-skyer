@@ -7,11 +7,43 @@ from flask import Blueprint, jsonify, request, g
 from app.middleware.auth_middleware import jwt_required
 from app.services.auth.permissions import require_role, ROLE_ORDER
 from app.services.storage.supabase_client import supabase_client
+import app.services.project_service as project_service
 
 projects_bp = Blueprint("projects", __name__, url_prefix="/api/v1/projects")
 VIEW_ROLES = set(ROLE_ORDER)
 MANAGE_ROLES = {"Owner", "Administrator"}
 OWNER_ONLY_ROLES = {"Owner"}
+
+
+def _parse_coords(address, raw_lat, raw_lng):
+    """
+    Validate and parse coordinate inputs from a request payload.
+
+    Returns (lat, lng, None) on success, or (None, None, error_message) on failure.
+    Enforces that address and coordinates are mutually exclusive.
+    """
+    has_lat = raw_lat is not None
+    has_lng = raw_lng is not None
+
+    if not has_lat and not has_lng:
+        return None, None, None
+
+    if address and (has_lat or has_lng):
+        return None, None, "Provide either address or coordinates, not both."
+
+    if has_lat != has_lng:
+        return None, None, "Both lat and lng are required when providing coordinates."
+
+    try:
+        lat = float(raw_lat)
+        lng = float(raw_lng)
+    except (TypeError, ValueError):
+        return None, None, "lat and lng must be numeric values."
+
+    if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
+        return None, None, "Coordinates are out of valid range."
+
+    return lat, lng, None
 
 
 def _require_auth():
@@ -36,19 +68,30 @@ def create_project():
 
     payload = request.get_json() or {}
     name = (payload.get("name") or "").strip()
-    address = payload.get("address")
-    email = payload.get("email") or payload.get("owner_email")
+    address = payload.get("address") or None
+    raw_lat = payload.get("lat")
+    raw_lng = payload.get("lng")
 
     if not name:
         return jsonify({"error": "Project name is required"}), 400
 
+    lat, lng, coord_err = _parse_coords(address, raw_lat, raw_lng)
+    if coord_err:
+        return jsonify({"error": coord_err}), 400
+
+    project, err = project_service.create_project_with_location(
+        name=name,
+        owner_id=user_id,
+        address=address,
+        lat=lat,
+        lng=lng,
+    )
+    if err:
+        geocode_err = err.get("geocode_error")
+        status = 422 if geocode_err else 500
+        return jsonify(err), status
+
     try:
-        project = supabase_client.create_project(
-            name=name,
-            description=None,
-            owner_id=user_id,
-            address=address,
-        )
         supabase_client.add_project_member(
             project_id=project["id"],
             user_id=user_id,
@@ -116,26 +159,35 @@ def update_project(project_id):
 
     payload = request.get_json() or {}
     name = payload.get("name")
-    description = None  # deprecated
     address = payload.get("address")
+    raw_lat = payload.get("lat")
+    raw_lng = payload.get("lng")
     show_on_projects = payload.get("show_on_projects")
+
     if name is not None:
         name = name.strip()
         if not name:
             return jsonify({"error": "Project name cannot be empty"}), 400
 
-    try:
-        updated = supabase_client.update_project(
-            project_id=project_id,
-            name=name,
-            address=address,
-            show_on_projects=show_on_projects,
-        )
-        if not updated:
-            return jsonify({"error": "Project not found"}), 404
-        return jsonify(updated)
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    lat, lng, coord_err = _parse_coords(address, raw_lat, raw_lng)
+    if coord_err:
+        return jsonify({"error": coord_err}), 400
+
+    updated, err = project_service.update_project_with_location(
+        project_id=project_id,
+        name=name,
+        address=address,
+        lat=lat,
+        lng=lng,
+        show_on_projects=show_on_projects,
+    )
+    if err:
+        geocode_err = err.get("geocode_error")
+        status = 422 if geocode_err else 500
+        return jsonify(err), status
+    if not updated:
+        return jsonify({"error": "Project not found"}), 404
+    return jsonify(updated)
 
 
 @projects_bp.route("/<project_id>", methods=["DELETE"])
@@ -272,6 +324,45 @@ def unjoin_project(project_id):
         return jsonify({"status": "removed" if removed else "not_found"})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
+
+
+@projects_bp.route("/<project_id>/summary", methods=["GET"])
+@jwt_required
+def project_summary(project_id):
+    try:
+        user_id = _require_auth()
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 401
+
+    permission = require_role(project_id, VIEW_ROLES, user_id=user_id)
+    if isinstance(permission, tuple):
+        payload, status_code = permission
+        return jsonify(payload), status_code
+
+    project = supabase_client.get_project(project_id)
+    if not project:
+        return jsonify({"error": "Project not found"}), 404
+
+    members = []
+    try:
+        members = supabase_client.list_project_members_with_profile(project_id)
+    except Exception:
+        pass
+
+    photo_count, location_count = 0, 0
+    try:
+        photo_count, location_count = supabase_client.get_project_stats(project_id)
+    except Exception:
+        pass
+
+    return jsonify(
+        {
+            "project": project,
+            "photo_count": photo_count,
+            "location_count": location_count,
+            "members": members,
+        }
+    )
 
 
 @projects_bp.route("/<project_id>/access", methods=["POST"])

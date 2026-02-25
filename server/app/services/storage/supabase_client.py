@@ -904,6 +904,7 @@ class SupabaseClient:
         owner_id: str,
         description: Optional[str] = None,
         address: Optional[str] = None,
+        address_coord: Optional[Dict[str, Any]] = None,
         show_on_projects: Optional[bool] = None,
     ):
         if not self.client:
@@ -914,27 +915,13 @@ class SupabaseClient:
         except Exception:
             # Non-fatal: if ensure fails, we still attempt creation and let Supabase error bubble
             pass
-        payload = {
-            "name": name,
-            "owner_id": owner_id,
-        }
+        payload: Dict[str, Any] = {"name": name, "owner_id": owner_id}
         if description is not None:
             payload["description"] = description
         if address is not None:
-            addr = address.strip()
-            payload["address"] = addr
-            try:
-                from app.services.geocoding.forward_geocoder import forward_geocoder
-
-                if addr:
-                    coord = forward_geocoder.geocode(addr)
-                    if coord:
-                        payload["address_coord"] = coord
-                else:
-                    payload["address_coord"] = None
-            except Exception:
-                # Non-fatal geocode failure
-                payload["address_coord"] = None
+            payload["address"] = address.strip()
+        if address_coord is not None:
+            payload["address_coord"] = address_coord
         if show_on_projects is not None:
             payload["show_on_projects"] = show_on_projects
         response = self.client.table("projects").insert(payload).execute()
@@ -948,6 +935,65 @@ class SupabaseClient:
         if show_on_projects is not None:
             project["show_on_projects"] = show_on_projects
         return project
+
+    def create_project_location(
+        self, project_id: str, lat: float, lng: float
+    ) -> Dict[str, Any]:
+        """Insert a project-pin marker into public.locations."""
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        payload = {
+            "latitude": lat,
+            "longitude": lng,
+            "project_id": project_id,
+            "marker": "project",
+            "number": 1,
+        }
+        response = self.client.table("locations").insert(payload).execute()
+        if not response.data:
+            raise RuntimeError("Failed to create project location")
+        return response.data[0]
+
+    def upsert_project_location(
+        self, project_id: str, lat: float, lng: float
+    ) -> Dict[str, Any]:
+        """
+        Update the existing project-pin location for a project, or create one if absent.
+        """
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        existing = (
+            self.client.table("locations")
+            .select("id")
+            .eq("project_id", project_id)
+            .eq("marker", "project")
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            loc_id = existing.data[0]["id"]
+            response = (
+                self.client.table("locations")
+                .update({"latitude": lat, "longitude": lng})
+                .eq("id", loc_id)
+                .execute()
+            )
+            return response.data[0] if response.data else existing.data[0]
+        return self.create_project_location(project_id, lat, lng)
+
+    def get_project_location(self, project_id: str) -> Optional[Dict[str, Any]]:
+        """Return the project-pin location row for a project, or None if absent."""
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        response = (
+            self.client.table("locations")
+            .select("*")
+            .eq("project_id", project_id)
+            .eq("marker", "project")
+            .limit(1)
+            .execute()
+        )
+        return response.data[0] if response.data else None
 
     def ensure_user_exists(self, user_id: str, email: Optional[str] = None):
         """
@@ -1108,27 +1154,17 @@ class SupabaseClient:
         project_id: str,
         name: Optional[str] = None,
         address: Optional[str] = None,
+        address_coord: Optional[Dict[str, Any]] = None,
         show_on_projects: Optional[bool] = None,
     ) -> Optional[Dict[str, Any]]:
         if not self.client:
             raise RuntimeError("Supabase client not initialized")
-        fields = {}
+        fields: Dict[str, Any] = {}
         if name is not None:
             fields["name"] = name
         if address is not None:
-            addr = address.strip()
-            fields["address"] = addr
-            try:
-                from app.services.geocoding.forward_geocoder import forward_geocoder
-
-                if addr:
-                    coord = forward_geocoder.geocode(addr)
-                    fields["address_coord"] = coord if coord else None
-                else:
-                    fields["address_coord"] = None
-            except Exception:
-                # Non-fatal geocode failure
-                fields["address_coord"] = None
+            fields["address"] = address.strip()
+            fields["address_coord"] = address_coord
         if show_on_projects is not None:
             fields["show_on_projects"] = show_on_projects
         if not fields:
@@ -1253,6 +1289,58 @@ class SupabaseClient:
             .execute()
         )
         return getattr(response, "count", 0) or 0
+
+    def get_project_stats(self, project_id: str) -> tuple:
+        """Return (photo_count, location_count) for a project.
+
+        location_count excludes project-pin markers (marker='project') when the
+        marker column is present; falls back to counting all locations otherwise.
+        """
+        if not self.client:
+            return 0, 0
+
+        photo_count = 0
+        try:
+            resp = (
+                self.client.table("photos")
+                .select("id", count="exact")
+                .eq("project_id", project_id)
+                .execute()
+            )
+            photo_count = getattr(resp, "count", None)
+            if photo_count is None:
+                photo_count = len(resp.data or [])
+        except Exception as exc:
+            print(f"Error fetching photo count: {exc}")
+
+        location_count = 0
+        try:
+            resp = (
+                self.client.table("locations")
+                .select("id", count="exact")
+                .eq("project_id", project_id)
+                .neq("marker", "project")
+                .execute()
+            )
+            location_count = getattr(resp, "count", None)
+            if location_count is None:
+                location_count = len(resp.data or [])
+        except Exception as exc:
+            # Fallback: marker column may not exist yet; count all locations.
+            try:
+                resp = (
+                    self.client.table("locations")
+                    .select("id", count="exact")
+                    .eq("project_id", project_id)
+                    .execute()
+                )
+                location_count = getattr(resp, "count", None)
+                if location_count is None:
+                    location_count = len(resp.data or [])
+            except Exception:
+                pass
+
+        return photo_count, location_count
 
     def store_user_metadata(
         self, user_data: Dict[str, Any]
