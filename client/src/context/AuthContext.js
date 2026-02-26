@@ -204,6 +204,7 @@ export const AuthProvider = ({ children }) => {
         setProfileState(profile);
         return profile;
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error('Failed to load profile', err);
         return null;
       } finally {
@@ -292,6 +293,7 @@ export const AuthProvider = ({ children }) => {
           });
           setProfileState(normalizeProfile(profileResp?.profile || null));
         } catch (profileErr) {
+          // eslint-disable-next-line no-console
           console.error('Failed to sync profile email', profileErr);
         }
       }
@@ -355,6 +357,7 @@ export const AuthProvider = ({ children }) => {
 
         // Redirect removed to avoid unexpected tab switches; callers can handle UI.
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error('Failed to load projects', err);
       } finally {
         isFetchingProjects.current = false;
@@ -373,6 +376,7 @@ export const AuthProvider = ({ children }) => {
           return;
         }
         if (error) {
+          // eslint-disable-next-line no-console
           console.error('Failed to restore Supabase session', error);
           syncSession(null);
         } else {
@@ -383,6 +387,7 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (err) {
         if (isMounted) {
+          // eslint-disable-next-line no-console
           console.error('Unexpected Supabase auth error', err);
           syncSession(null);
         }
@@ -610,6 +615,7 @@ export const AuthProvider = ({ children }) => {
       authState.session,
       authState.projectRoles,
       authState.profile,
+      authState.user,
       isLoading,
       login,
       signup,

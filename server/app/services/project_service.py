@@ -42,7 +42,13 @@ def _resolve_location(
     if address and address.strip():
         result = forward_geocode(address.strip())
         if "type" in result:
-            return None, {"error": result["message"], "geocode_error": result["type"]}
+            err: Dict[str, Any] = {
+                "error": result["message"],
+                "geocode_error": result["type"],
+            }
+            if "candidates" in result:
+                err["candidates"] = result["candidates"]
+            return None, err
         return result, None
 
     if lat is not None and lng is not None:

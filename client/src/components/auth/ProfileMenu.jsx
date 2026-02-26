@@ -22,7 +22,7 @@ const ProfileMenu = () => {
   const displayName = useMemo(() => {
     const nameParts = [profile?.firstName, profile?.lastName].filter(Boolean);
     return nameParts.length ? nameParts.join(' ') : '';
-  }, [profile, user]);
+  }, [profile]);
 
   useEffect(() => {
     const handleOutsideClick = event => {

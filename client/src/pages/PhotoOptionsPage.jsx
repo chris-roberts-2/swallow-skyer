@@ -56,7 +56,7 @@ const PhotoOptionsPage = () => {
     () => (location.state?.from === 'map' ? '/map' : '/photos'),
     [location.state]
   );
-  const { activeProject, projects } = useAuth();
+  const { projects } = useAuth();
   const [photo, setPhoto] = useState(null);
   const [error, setError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -64,8 +64,6 @@ const PhotoOptionsPage = () => {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const mapMarkerRef = useRef(null);
-
-  const projectId = activeProject?.id || activeProject || null;
 
   const fetchPhoto = async () => {
     setError('');
@@ -150,6 +148,7 @@ const PhotoOptionsPage = () => {
           interactive: false,
         });
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error('Error initializing map:', error);
         return;
       }
@@ -165,6 +164,7 @@ const PhotoOptionsPage = () => {
     mapMarkerRef.current = new maplibregl.Marker({ color: '#3f6fa0' })
       .setLngLat([lon, lat])
       .addTo(mapInstance.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     displayPhoto?.latitude,
     displayPhoto?.longitude,

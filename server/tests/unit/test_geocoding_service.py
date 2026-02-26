@@ -9,7 +9,13 @@ from unittest.mock import MagicMock
 import pytest
 import requests as requests_lib
 
-from app.services.geocoding.nominatim_client import forward_geocode, reverse_geocode
+from app.services.geocoding.nominatim_client import (
+    forward_geocode,
+    reverse_geocode,
+    _is_ambiguous,
+    _extract_candidates,
+    _haversine_km,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -154,6 +160,160 @@ class TestForwardGeocode:
         assert "message" in result
         assert isinstance(result["type"], str)
         assert isinstance(result["message"], str)
+
+    def test_ambiguous_address_returns_ambiguous_type(self, monkeypatch):
+        """Two results >50 km apart → ambiguous_address error."""
+        ambiguous_payload = [
+            {
+                "lat": "39.7817",
+                "lon": "-89.6501",
+                "display_name": "Springfield, Illinois, United States",
+                "address": {"city": "Springfield", "state": "Illinois", "country": "United States"},
+            },
+            {
+                "lat": "37.2090",
+                "lon": "-93.2923",
+                "display_name": "Springfield, Missouri, United States",
+                "address": {"city": "Springfield", "state": "Missouri", "country": "United States"},
+            },
+        ]
+        monkeypatch.setattr(
+            "app.services.geocoding.nominatim_client.requests.get",
+            lambda *a, **kw: _mock_ok(ambiguous_payload),
+        )
+        result = forward_geocode("Springfield")
+        assert result["type"] == "ambiguous_address"
+        assert "candidates" in result
+        assert isinstance(result["candidates"], list)
+        assert len(result["candidates"]) >= 2
+
+    def test_ambiguous_address_candidates_have_required_fields(self, monkeypatch):
+        """Each candidate must include address, lat, and lng."""
+        ambiguous_payload = [
+            {
+                "lat": "39.7817",
+                "lon": "-89.6501",
+                "display_name": "Springfield, IL",
+                "address": {"city": "Springfield", "state": "Illinois", "country": "US"},
+            },
+            {
+                "lat": "37.2090",
+                "lon": "-93.2923",
+                "display_name": "Springfield, MO",
+                "address": {"city": "Springfield", "state": "Missouri", "country": "US"},
+            },
+        ]
+        monkeypatch.setattr(
+            "app.services.geocoding.nominatim_client.requests.get",
+            lambda *a, **kw: _mock_ok(ambiguous_payload),
+        )
+        result = forward_geocode("Springfield")
+        assert result["type"] == "ambiguous_address"
+        for c in result["candidates"]:
+            assert "address" in c
+            assert "lat" in c
+            assert "lng" in c
+            assert isinstance(c["lat"], float)
+            assert isinstance(c["lng"], float)
+
+    def test_nearby_results_not_flagged_ambiguous(self, monkeypatch):
+        """Two results <50 km apart → not ambiguous, returns first result."""
+        nearby_payload = [
+            {
+                "lat": "37.7749",
+                "lon": "-122.4194",
+                "display_name": "San Francisco, CA",
+                "address": {"city": "San Francisco", "state": "California", "country": "US"},
+            },
+            {
+                "lat": "37.8044",
+                "lon": "-122.2712",
+                "display_name": "Oakland, CA",
+                "address": {"city": "Oakland", "state": "California", "country": "US"},
+            },
+        ]
+        monkeypatch.setattr(
+            "app.services.geocoding.nominatim_client.requests.get",
+            lambda *a, **kw: _mock_ok(nearby_payload),
+        )
+        result = forward_geocode("Bay Area, CA")
+        assert "type" not in result
+        assert result["lat"] == pytest.approx(37.7749)
+
+
+# ---------------------------------------------------------------------------
+# Ambiguity detection helpers
+# ---------------------------------------------------------------------------
+
+
+class TestAmbiguityHelpers:
+    def test_haversine_distance_same_point(self):
+        assert _haversine_km(37.77, -122.42, 37.77, -122.42) == pytest.approx(0.0)
+
+    def test_haversine_distance_known_pair(self):
+        # SF to Oakland ≈ 14 km
+        dist = _haversine_km(37.7749, -122.4194, 37.8044, -122.2712)
+        assert 10 < dist < 20
+
+    def test_is_ambiguous_far_apart_returns_true(self):
+        far = [
+            {"lat": "39.78", "lon": "-89.65"},
+            {"lat": "37.21", "lon": "-93.29"},
+        ]
+        assert _is_ambiguous(far) is True
+
+    def test_is_ambiguous_close_together_returns_false(self):
+        close = [
+            {"lat": "37.7749", "lon": "-122.4194"},
+            {"lat": "37.8044", "lon": "-122.2712"},
+        ]
+        assert _is_ambiguous(close) is False
+
+    def test_is_ambiguous_single_result_returns_false(self):
+        assert _is_ambiguous([{"lat": "37.77", "lon": "-122.41"}]) is False
+
+    def test_is_ambiguous_empty_returns_false(self):
+        assert _is_ambiguous([]) is False
+
+    def test_is_ambiguous_malformed_returns_false(self):
+        assert _is_ambiguous([{"bad": "data"}, {"also": "bad"}]) is False
+
+    def test_extract_candidates_returns_deduplicated_list(self):
+        data = [
+            {
+                "lat": "37.77",
+                "lon": "-122.41",
+                "display_name": "SF",
+                "address": {"city": "San Francisco", "state": "CA", "country": "US"},
+            },
+            {
+                "lat": "37.77",
+                "lon": "-122.41",
+                "display_name": "SF duplicate",
+                "address": {"city": "San Francisco", "state": "CA", "country": "US"},
+            },
+            {
+                "lat": "37.21",
+                "lon": "-93.29",
+                "display_name": "Springfield MO",
+                "address": {"city": "Springfield", "state": "MO", "country": "US"},
+            },
+        ]
+        candidates = _extract_candidates(data)
+        assert len(candidates) == 2  # deduplicated by rounded lat/lng
+
+    def test_extract_candidates_skips_malformed_items(self):
+        data = [
+            {"bad_key": "value"},
+            {
+                "lat": "37.77",
+                "lon": "-122.41",
+                "display_name": "SF",
+                "address": {"city": "SF", "state": "CA", "country": "US"},
+            },
+        ]
+        candidates = _extract_candidates(data)
+        assert len(candidates) == 1
 
 
 # ---------------------------------------------------------------------------

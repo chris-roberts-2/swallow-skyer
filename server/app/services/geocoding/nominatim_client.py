@@ -8,6 +8,16 @@ All responses are normalized to { address, lat, lng } on success or
 { type, message } on failure. Raw Nominatim payloads never propagate
 beyond this module.
 
+Error types:
+    invalid_input       — empty / non-numeric input rejected before the network call
+    no_results          — Nominatim returned zero matches
+    ambiguous_address   — multiple geographically distinct results found;
+                          includes a `candidates` list for UI disambiguation
+    timeout             — request exceeded the configured timeout
+    http_error          — non-2xx HTTP response from Nominatim
+    malformed_response  — unexpected JSON shape in the Nominatim response
+    unexpected_error    — uncaught exception during the request
+
 Configuration (environment variables):
     NOMINATIM_BASE_URL   — API base URL (default: https://nominatim.openstreetmap.org)
     NOMINATIM_TIMEOUT    — Request timeout in seconds (default: 10)
@@ -18,7 +28,8 @@ import logging
 import os
 import threading
 import time
-from typing import Union
+from math import atan2, cos, radians, sin, sqrt
+from typing import List, Union
 
 import requests
 
@@ -35,8 +46,13 @@ _MIN_INTERVAL: float = 1.0
 _rate_lock = threading.Lock()
 _last_request_time: float = 0.0
 
+# Kilometres between the top-two results that triggers ambiguity detection.
+_AMBIGUITY_THRESHOLD_KM: float = 50.0
+# Maximum number of candidates to request from Nominatim for ambiguity detection.
+_FORWARD_RESULT_LIMIT: int = 5
+
 GeoSuccess = dict  # { address: str, lat: float, lng: float }
-GeoError = dict  # { type: str, message: str }
+GeoError = dict  # { type: str, message: str, candidates?: list }
 
 
 def _throttle() -> None:
@@ -65,12 +81,60 @@ def _build_address(addr: dict) -> str:
     return ", ".join(p for p in parts if p)
 
 
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Return the great-circle distance in kilometres between two coordinates."""
+    r = 6371.0
+    dlat = radians(lat2 - lat1)
+    dlng = radians(lng2 - lng1)
+    a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlng / 2) ** 2
+    return r * 2 * atan2(sqrt(a), sqrt(max(0.0, 1 - a)))
+
+
+def _extract_candidates(data: list) -> List[dict]:
+    """Build a deduplicated candidate list from Nominatim results."""
+    seen = set()
+    candidates = []
+    for item in data[:_FORWARD_RESULT_LIMIT]:
+        try:
+            lat = float(item["lat"])
+            lng = float(item["lon"])
+            addr_parts = item.get("address") or {}
+            label = _build_address(addr_parts) or item.get("display_name", "")
+            if not label:
+                continue
+            key = (round(lat, 3), round(lng, 3))
+            if key in seen:
+                continue
+            seen.add(key)
+            candidates.append({"address": label, "lat": lat, "lng": lng})
+        except (KeyError, ValueError, TypeError):
+            continue
+    return candidates
+
+
+def _is_ambiguous(data: list) -> bool:
+    """
+    Return True when the top two results are more than _AMBIGUITY_THRESHOLD_KM
+    apart, indicating the address matches places in distinct geographic areas.
+    """
+    if len(data) < 2:
+        return False
+    try:
+        lat1, lng1 = float(data[0]["lat"]), float(data[0]["lon"])
+        lat2, lng2 = float(data[1]["lat"]), float(data[1]["lon"])
+        return _haversine_km(lat1, lng1, lat2, lng2) > _AMBIGUITY_THRESHOLD_KM
+    except (KeyError, ValueError, TypeError):
+        return False
+
+
 def forward_geocode(address: str) -> Union[GeoSuccess, GeoError]:
     """
     Convert an address string to coordinates.
 
     Returns { address: str, lat: float, lng: float } on success.
     Returns { type: str, message: str } on failure.
+    Returns { type: "ambiguous_address", message: str, candidates: list } when
+    multiple geographically distinct results are found.
     """
     if not address or not address.strip():
         return _error("invalid_input", "Address must be a non-empty string.")
@@ -83,7 +147,7 @@ def forward_geocode(address: str) -> Union[GeoSuccess, GeoError]:
             params={
                 "q": address.strip(),
                 "format": "json",
-                "limit": 1,
+                "limit": _FORWARD_RESULT_LIMIT,
                 "addressdetails": 1,
             },
             headers={"User-Agent": _USER_AGENT},
@@ -109,6 +173,17 @@ def forward_geocode(address: str) -> Union[GeoSuccess, GeoError]:
 
     if not data:
         return _error("no_results", f"No results found for address: {address!r}")
+
+    if _is_ambiguous(data):
+        candidates = _extract_candidates(data)
+        return {
+            "type": "ambiguous_address",
+            "message": (
+                f"Multiple locations matched '{address}'. "
+                "Select the correct result or enter coordinates directly."
+            ),
+            "candidates": candidates,
+        }
 
     try:
         first = data[0]

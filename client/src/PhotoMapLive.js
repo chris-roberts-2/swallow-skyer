@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useAuth } from './context';
-import PhotoStack from './components/map/PhotoStack';
+import EditLocationModal from './components/map/EditLocationModal';
 import { getApiCandidates } from './utils/apiEnv';
 import {
   formatLocalDateTime,
@@ -23,8 +23,6 @@ const r2PublicBase =
   process.env.REACT_APP_R2_PUBLIC_URL ||
   process.env.R2_PUBLIC_BASE_URL ||
   '';
-const CACHE_TTL_MS = 0; // disable caching to ensure fresh fetches
-const EARTH_RADIUS_METERS = 6_371_000;
 const toLngLat = (lng, lat) => {
   const lngNum = Number(lng);
   const latNum = Number(lat);
@@ -44,8 +42,6 @@ const SATELLITE_RASTER_SOURCE = {
   attribution:
     'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
 };
-
-const toRadians = value => (value * Math.PI) / 180;
 
 const parseCoordinate = value => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -199,8 +195,13 @@ class BasemapToggleControl {
 const PhotoMapLive = () => {
   configureMaplibreWorker();
   const navigate = useNavigate();
-  const { activeProject, projects, setActiveProject } = useAuth();
+  const { activeProject, projects, setActiveProject, roleForActiveProject } =
+    useAuth();
   const activeProjectId = activeProject?.id || activeProject || null;
+  const role = roleForActiveProject ? roleForActiveProject() : null;
+  const canManage =
+    (role || '').toLowerCase() === 'owner' ||
+    (role || '').toLowerCase() === 'administrator';
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
@@ -208,8 +209,12 @@ const PhotoMapLive = () => {
   const [locations, setLocations] = useState([]);
   const [mapZoom, setMapZoom] = useState(3.5);
   const [activeStack, setActiveStack] = useState(null);
+  const [projectMarker, setProjectMarker] = useState(null);
+  const [editLocationOpen, setEditLocationOpen] = useState(false);
+  const [isDragMode, setIsDragMode] = useState(false);
   const cacheRef = useRef({ data: null, fetchedAt: 0 });
   const locationsCacheRef = useRef({ data: null, fetchedAt: 0 });
+  const projectMarkerCacheRef = useRef({ data: null, projectId: null });
   const markersRef = useRef([]);
   const stackPopupRef = useRef(null);
   const photoPopupRef = useRef(null);
@@ -228,6 +233,37 @@ const PhotoMapLive = () => {
       photoPopupRef.current = null;
     }
   }, []);
+
+  const handleLocationModeChange = useCallback(newMode => {
+    setIsDragMode(newMode === 'drag');
+  }, []);
+
+  const handleLocationSave = useCallback(
+    data => {
+      const newLocation = data.location || null;
+      setProjectMarker(newLocation);
+      projectMarkerCacheRef.current = {
+        data: newLocation,
+        projectId: activeProjectId,
+      };
+      hasAutoFitRef.current = false;
+      userInteractedRef.current = false;
+      setIsDragMode(false);
+      setEditLocationOpen(false);
+      if (newLocation && mapInstance.current) {
+        const newLat = Number(newLocation.latitude);
+        const newLng = Number(newLocation.longitude);
+        if (Number.isFinite(newLat) && Number.isFinite(newLng)) {
+          mapInstance.current.flyTo({
+            center: [newLng, newLat],
+            zoom: Math.max(mapInstance.current.getZoom?.() ?? 10, 13),
+            essential: true,
+          });
+        }
+      }
+    },
+    [activeProjectId]
+  );
 
   const selectedProjectName = useMemo(() => {
     const current =
@@ -311,6 +347,7 @@ const PhotoMapLive = () => {
         },
       });
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error initializing map:', error);
       return;
     }
@@ -344,6 +381,7 @@ const PhotoMapLive = () => {
     };
 
     const handleError = e => {
+      // eslint-disable-next-line no-console
       console.error('Map error:', e);
     };
 
@@ -370,8 +408,6 @@ const PhotoMapLive = () => {
       const bearing = map.getBearing();
       const pitch = map.getPitch();
       activeStyleRef.current = styleKey;
-      const targetStyle = STANDARD_STYLE_URL;
-
       const ensureSatelliteHybrid = () => {
         try {
           const style = map.getStyle();
@@ -729,6 +765,7 @@ const PhotoMapLive = () => {
             continue;
           }
           const list = Array.isArray(data.photos) ? data.photos : [];
+          // eslint-disable-next-line no-console
           console.debug('Fetched photos', list.length);
           if (!isCancelled) {
             setPhotos(list);
@@ -793,6 +830,7 @@ const PhotoMapLive = () => {
             continue;
           }
           const list = Array.isArray(data.locations) ? data.locations : [];
+          // eslint-disable-next-line no-console
           console.debug('Fetched locations', list.length);
           if (!isCancelled) {
             setLocations(list);
@@ -818,6 +856,70 @@ const PhotoMapLive = () => {
       }
     };
     fetchLocations();
+    return () => {
+      isCancelled = true;
+    };
+  }, [refreshCounter, activeProjectId]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const fetchProjectMarker = async () => {
+      if (!activeProjectId) {
+        setProjectMarker(null);
+        return;
+      }
+
+      const cached = projectMarkerCacheRef.current;
+      if (cached.projectId === activeProjectId && cached.data !== null) {
+        setProjectMarker(cached.data);
+        return;
+      }
+
+      const accessToken = localStorage.getItem('access_token') || '';
+      const candidates = envApiBases;
+
+      for (const base of candidates) {
+        try {
+          const url = new URL(
+            `${base}/api/v1/projects/${activeProjectId}/location`
+          );
+          const res = await fetch(url.toString(), {
+            headers: accessToken
+              ? { Authorization: `Bearer ${accessToken}` }
+              : {},
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+          const loc = data.location || null;
+          if (!isCancelled) {
+            setProjectMarker(loc);
+            projectMarkerCacheRef.current = {
+              data: loc,
+              projectId: activeProjectId,
+            };
+            hasAutoFitRef.current = false;
+          }
+          return;
+        } catch {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+      }
+
+      if (!isCancelled) {
+        setProjectMarker(null);
+        projectMarkerCacheRef.current = {
+          data: null,
+          projectId: activeProjectId,
+        };
+      }
+    };
+
+    fetchProjectMarker();
     return () => {
       isCancelled = true;
     };
@@ -1090,8 +1192,6 @@ const PhotoMapLive = () => {
     const createPhotoMarker = photo => {
       const lngLat = toLngLat(photo.mapLongitude, photo.mapLatitude);
       if (!lngLat) return null;
-      const [lng, lat] = lngLat;
-
       // Track bounds using immutable coordinates.
       bounds.extend(lngLat);
 
@@ -1433,39 +1533,131 @@ const PhotoMapLive = () => {
       }
     });
 
-    // Include project address coordinate if present
-    if (selectedProjectCoord) {
-      bounds.extend([selectedProjectCoord.lon, selectedProjectCoord.lat]);
+    // Render project pin marker (marker='project' from public.locations).
+    // Skipped in drag mode — the EditLocationModal manages its own draggable marker.
+    // Added last so it renders on top of photo markers.
+    const pmLat = projectMarker
+      ? parseCoordinate(projectMarker.latitude)
+      : null;
+    const pmLng = projectMarker
+      ? parseCoordinate(projectMarker.longitude)
+      : null;
+    const hasProjectPin = Number.isFinite(pmLat) && Number.isFinite(pmLng);
+
+    if (hasProjectPin && !isDragMode) {
+      const pinLngLat = [pmLng, pmLat];
+
+      const pinEl = document.createElement('div');
+      pinEl.style.width = '24px';
+      pinEl.style.height = '32px';
+      pinEl.style.boxSizing = 'border-box';
+      pinEl.style.padding = '0';
+      pinEl.style.margin = '0';
+      pinEl.style.userSelect = 'none';
+      pinEl.style.lineHeight = '0';
+      pinEl.style.transition = 'none';
+      pinEl.style.animation = 'none';
+      pinEl.style.cursor = 'default';
+      pinEl.style.filter = 'drop-shadow(0 2px 6px rgba(31,58,95,0.35))';
+      pinEl.title = selectedProjectName || 'Project location';
+
+      const ns = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(ns, 'svg');
+      svg.setAttribute('width', '24');
+      svg.setAttribute('height', '32');
+      svg.setAttribute('viewBox', '0 0 24 32');
+      svg.setAttribute('fill', 'none');
+      svg.setAttribute('aria-hidden', 'true');
+
+      const body = document.createElementNS(ns, 'path');
+      body.setAttribute(
+        'd',
+        'M12 1C6.477 1 2 5.477 2 11c0 7.732 10 20 10 20s10-12.268 10-20C22 5.477 17.523 1 12 1z'
+      );
+      body.setAttribute('fill', 'var(--color-accent)');
+      body.setAttribute('stroke', 'var(--color-surface-primary)');
+      body.setAttribute('stroke-width', '1.5');
+
+      const dot = document.createElementNS(ns, 'circle');
+      dot.setAttribute('cx', '12');
+      dot.setAttribute('cy', '11');
+      dot.setAttribute('r', '3.5');
+      dot.setAttribute('fill', 'var(--color-surface-primary)');
+
+      svg.appendChild(body);
+      svg.appendChild(dot);
+      pinEl.appendChild(svg);
+
+      pinEl.addEventListener('mouseenter', () => {
+        pinEl.style.filter = 'drop-shadow(0 3px 8px rgba(31,58,95,0.5))';
+        svg.style.transform = 'scale(1.08)';
+        svg.style.transformOrigin = 'center bottom';
+      });
+      pinEl.addEventListener('mouseleave', () => {
+        pinEl.style.filter = 'drop-shadow(0 2px 6px rgba(31,58,95,0.35))';
+        svg.style.transform = 'scale(1)';
+      });
+
+      const pinMarker = new maplibregl.Marker({
+        element: pinEl,
+        anchor: 'bottom',
+        offset: [0, 0],
+      })
+        .setLngLat(pinLngLat)
+        .addTo(mapInstance.current);
+
+      markersRef.current.push(pinMarker);
     }
 
-    if (
-      !bounds.isEmpty() &&
-      !hasAutoFitRef.current &&
-      !userInteractedRef.current
-    ) {
-      if (clusters.length === 0 && selectedProjectCoord) {
+    // Auto-fit priority:
+    // 1. Project pin present → flyTo pin location
+    // 2. Only photo markers → fitBounds to photo markers
+    // 3. Fallback: project address_coord (for projects pre-dating marker migration)
+    // 4. Neither → stay at default US view
+    // Skipped in drag mode to avoid interrupting the user's interaction.
+    if (!hasAutoFitRef.current && !userInteractedRef.current && !isDragMode) {
+      if (hasProjectPin && clusters.length === 0) {
+        mapInstance.current.flyTo({
+          center: [pmLng, pmLat],
+          zoom: 13,
+          essential: true,
+        });
+        hasAutoFitRef.current = true;
+      } else if (hasProjectPin && clusters.length > 0) {
+        bounds.extend([pmLng, pmLat]);
+        mapInstance.current.fitBounds(bounds, {
+          padding: 60,
+          maxZoom: 19,
+          duration: 800,
+        });
+        hasAutoFitRef.current = true;
+      } else if (!bounds.isEmpty()) {
+        mapInstance.current.fitBounds(bounds, {
+          padding: 60,
+          maxZoom: 19,
+          duration: 800,
+        });
+        hasAutoFitRef.current = true;
+      } else if (selectedProjectCoord) {
         mapInstance.current.flyTo({
           center: [selectedProjectCoord.lon, selectedProjectCoord.lat],
           zoom: 13,
           essential: true,
         });
-      } else {
-        mapInstance.current.fitBounds(bounds, {
-          padding: 60,
-          // Allow zooming into a single-building cluster (NYC, etc.)
-          maxZoom: 19,
-          duration: 800,
-        });
+        hasAutoFitRef.current = true;
       }
-      hasAutoFitRef.current = true;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     clusters,
     clearMarkers,
     closePhotoPopup,
     closeStack,
+    isDragMode,
     isMapReady,
+    projectMarker,
     selectedProjectCoord,
+    selectedProjectName,
   ]);
 
   useEffect(() => {
@@ -1711,8 +1903,10 @@ const PhotoMapLive = () => {
     }
 
     return () => popup.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStack, closeStack, downloadPhotos]);
 
+  // eslint-disable-next-line no-unused-vars
   const handlePhotoSelect = photo => {
     if (!photo) return;
 
@@ -1759,6 +1953,7 @@ const PhotoMapLive = () => {
             const nextId = e.target.value;
             setActiveProject(nextId || null);
             cacheRef.current = { data: null, fetchedAt: 0 };
+            projectMarkerCacheRef.current = { data: null, projectId: null };
             hasAutoFitRef.current = false;
             userInteractedRef.current = false;
             setRefreshCounter(c => c + 1);
@@ -1775,8 +1970,30 @@ const PhotoMapLive = () => {
             </option>
           ))}
         </select>
+        {canManage && activeProjectId && (
+          <button
+            type="button"
+            className="btn-format-1"
+            onClick={() => setEditLocationOpen(true)}
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            Edit Location
+          </button>
+        )}
       </div>
       <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
+      <EditLocationModal
+        open={editLocationOpen}
+        onClose={() => {
+          setEditLocationOpen(false);
+          setIsDragMode(false);
+        }}
+        onSave={handleLocationSave}
+        projectId={activeProjectId}
+        projectMarker={projectMarker}
+        mapInstance={mapInstance}
+        onModeChange={handleLocationModeChange}
+      />
     </div>
   );
 };

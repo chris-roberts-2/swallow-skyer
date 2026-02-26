@@ -49,6 +49,7 @@ const ProfilePage = () => {
     try {
       await logout();
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('Failed to logout', err);
     }
   };

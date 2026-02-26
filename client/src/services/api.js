@@ -71,6 +71,7 @@ class ApiClient {
       if (error.status === 401 && this.logout) {
         this.logout();
       }
+      // eslint-disable-next-line no-console
       console.error('API request failed:', error);
       throw error;
     }

@@ -14,4 +14,5 @@ class PublicService {
   }
 }
 
-export default new PublicService();
+const publicService = new PublicService();
+export default publicService;

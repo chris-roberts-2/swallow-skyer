@@ -365,6 +365,65 @@ def project_summary(project_id):
     )
 
 
+@projects_bp.route("/<project_id>/location", methods=["GET"])
+@jwt_required
+def get_project_location_endpoint(project_id):
+    try:
+        user_id = _require_auth()
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 401
+
+    permission = require_role(project_id, VIEW_ROLES, user_id=user_id)
+    if isinstance(permission, tuple):
+        payload, status_code = permission
+        return jsonify(payload), status_code
+
+    location = supabase_client.get_project_location(project_id)
+    return jsonify({"location": location})
+
+
+@projects_bp.route("/<project_id>/location", methods=["PATCH"])
+@jwt_required
+def update_project_location(project_id):
+    try:
+        user_id = _require_auth()
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 401
+
+    permission = require_role(project_id, MANAGE_ROLES, user_id=user_id)
+    if isinstance(permission, tuple):
+        payload, status_code = permission
+        return jsonify(payload), status_code
+
+    payload = request.get_json() or {}
+    address = payload.get("address") or None
+    raw_lat = payload.get("lat")
+    raw_lng = payload.get("lng")
+
+    if not address and raw_lat is None and raw_lng is None:
+        return jsonify({"error": "Provide address or coordinates."}), 400
+
+    lat, lng, coord_err = _parse_coords(address, raw_lat, raw_lng)
+    if coord_err:
+        return jsonify({"error": coord_err}), 400
+
+    updated, err = project_service.update_project_with_location(
+        project_id=project_id,
+        address=address,
+        lat=lat,
+        lng=lng,
+    )
+    if err:
+        geocode_err = err.get("geocode_error")
+        status = 422 if geocode_err else 500
+        return jsonify(err), status
+    if not updated:
+        return jsonify({"error": "Project not found"}), 404
+
+    location = supabase_client.get_project_location(project_id)
+    return jsonify({"project": updated, "location": location})
+
+
 @projects_bp.route("/<project_id>/access", methods=["POST"])
 @jwt_required
 def touch_project_access(project_id):
