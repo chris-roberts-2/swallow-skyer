@@ -8,6 +8,26 @@ import boto3
 from typing import BinaryIO, Optional
 from botocore.exceptions import ClientError
 
+# Strings that indicate an env var still holds its placeholder/example value.
+_PLACEHOLDER_FRAGMENTS = (
+    "your-account-id",
+    "your-r2-access-key",
+    "your-r2-secret",
+    "your-bucket-name",
+    "your-cloudflare-account-id",
+    "xxxxx",
+    "xxxxxxxxx",
+    "change-me",
+)
+
+
+def _is_placeholder(value: Optional[str]) -> bool:
+    """Return True if *value* looks like an unfilled template placeholder."""
+    if not value:
+        return False
+    lowered = value.lower()
+    return any(frag in lowered for frag in _PLACEHOLDER_FRAGMENTS)
+
 
 class R2Client:
     """Client for interacting with Cloudflare R2 storage."""
@@ -26,14 +46,37 @@ class R2Client:
         self.public_url = raw_public_url.rstrip("/") if raw_public_url else None
 
         self.client = None
-        if all([self.access_key, self.secret_key, self.bucket_name, self.endpoint_url]):
-            self.client = boto3.client(
-                "s3",
-                endpoint_url=self.endpoint_url,
-                region_name="auto",
-                aws_access_key_id=self.access_key,
-                aws_secret_access_key=self.secret_key,
+        self._config_error: Optional[str] = None
+
+        credentials = {
+            "R2_ACCESS_KEY_ID": self.access_key,
+            "R2_SECRET_ACCESS_KEY": self.secret_key,
+            "R2_BUCKET": self.bucket_name,
+            "R2_ENDPOINT_URL / R2_ACCOUNT_ID": self.endpoint_url,
+        }
+
+        missing = [k for k, v in credentials.items() if not v]
+        if missing:
+            self._config_error = f"R2 storage not configured — missing env vars: {', '.join(missing)}"
+            print(f"[r2_client] {self._config_error}")
+            return
+
+        placeholders = [k for k, v in credentials.items() if _is_placeholder(v)]
+        if placeholders:
+            self._config_error = (
+                f"R2 storage not configured — env vars still contain placeholder values: "
+                f"{', '.join(placeholders)}. Set real credentials in your environment."
             )
+            print(f"[r2_client] {self._config_error}")
+            return
+
+        self.client = boto3.client(
+            "s3",
+            endpoint_url=self.endpoint_url,
+            region_name="auto",
+            aws_access_key_id=self.access_key,
+            aws_secret_access_key=self.secret_key,
+        )
 
     def _public_base_with_bucket(self) -> Optional[str]:
         """
@@ -66,6 +109,12 @@ class R2Client:
         
         return base
 
+    def _check_client(self) -> None:
+        """Raise RuntimeError with a descriptive message when the client is unavailable."""
+        if not self.client:
+            msg = self._config_error or "R2 client not initialized — check environment variables"
+            raise RuntimeError(msg)
+
     def upload_file(
         self, file: BinaryIO, key: str, content_type: Optional[str] = None
     ) -> bool:
@@ -80,9 +129,7 @@ class R2Client:
         Returns:
             bool: True if successful, False otherwise
         """
-        if not self.client:
-            print("R2 client not initialized - check environment variables")
-            return False
+        self._check_client()
 
         try:
             extra_args = {"ContentType": content_type} if content_type else None
@@ -92,6 +139,10 @@ class R2Client:
         except ClientError as e:
             print(f"Error uploading file to R2: {e}")
             return False
+        except Exception as e:
+            # Catch SSL / connection errors (e.g. wrong endpoint, network issues)
+            # and re-raise so the upload route can return a useful message.
+            raise RuntimeError(f"R2 connection error — check R2_ENDPOINT_URL and credentials: {e}") from e
 
     def upload_bytes(
         self, data: bytes, key: str, content_type: Optional[str] = None
@@ -114,7 +165,6 @@ class R2Client:
             Optional[str]: Public URL or None if error
         """
         if not self.client:
-            print("R2 client not initialized - check environment variables")
             return None
 
         try:
@@ -141,7 +191,6 @@ class R2Client:
             return None
 
         if not self.client:
-            print("R2 client not initialized - check environment variables")
             return None
 
         if require_signed:
@@ -181,7 +230,6 @@ class R2Client:
             Optional[str]: Presigned URL or None if error
         """
         if not self.client:
-            print("R2 client not initialized - check environment variables")
             return None
 
         try:
@@ -218,7 +266,6 @@ class R2Client:
             bool: True if successful, False otherwise
         """
         if not self.client:
-            print("R2 client not initialized - check environment variables")
             return False
 
         try:
@@ -239,7 +286,6 @@ class R2Client:
             bool: True if file exists, False otherwise
         """
         if not self.client:
-            print("R2 client not initialized - check environment variables")
             return False
 
         try:
@@ -259,7 +305,6 @@ class R2Client:
             Optional[int]: File size in bytes or None if error
         """
         if not self.client:
-            print("R2 client not initialized - check environment variables")
             return None
 
         try:

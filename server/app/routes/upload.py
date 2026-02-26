@@ -78,11 +78,12 @@ def registerUploadRoutes(blueprint):
                 )
 
         if not r2_client.client:
+            config_msg = getattr(r2_client, "_config_error", None) or "Check R2 environment variables."
             return (
                 jsonify(
                     {
                         "status": "error",
-                        "message": "Storage not configured. Check R2 environment variables.",
+                        "message": f"Storage not configured. {config_msg}",
                     }
                 ),
                 500,
