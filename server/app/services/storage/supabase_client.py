@@ -295,6 +295,7 @@ class SupabaseClient:
         
         try:
             # Query locations within bounding box AND same project
+            # CRITICAL: Exclude project markers - only stack at individual/multi markers
             query = (
                 self.client.table("locations")
                 .select("id,latitude,longitude")
@@ -303,10 +304,25 @@ class SupabaseClient:
                 .gte("longitude", longitude - lon_delta)
                 .lte("longitude", longitude + lon_delta)
             )
-            # CRITICAL: Filter by project_id to prevent cross-project grouping
             if project_id:
                 query = query.eq("project_id", project_id)
-            nearby = query.execute()
+            try:
+                # Include legacy "photo" for backwards compatibility
+                query = query.in_("marker", ["individual", "multi", "photo"])
+                nearby = query.execute()
+            except Exception:
+                # Fallback: marker column may not exist
+                nearby = (
+                    self.client.table("locations")
+                    .select("id,latitude,longitude")
+                    .gte("latitude", latitude - lat_delta)
+                    .lte("latitude", latitude + lat_delta)
+                    .gte("longitude", longitude - lon_delta)
+                    .lte("longitude", longitude + lon_delta)
+                )
+                if project_id:
+                    nearby = nearby.eq("project_id", project_id)
+                nearby = nearby.execute()
             
             if nearby.data:
                 # Calculate actual distances using Haversine formula
@@ -337,7 +353,12 @@ class SupabaseClient:
 
         # No nearby location found, create new one
         try:
-            payload = {"latitude": latitude, "longitude": longitude, "number": 1}
+            payload = {
+                "latitude": latitude,
+                "longitude": longitude,
+                "number": 1,
+                "marker": "individual",
+            }
             if elevation is not None:
                 payload["elevation"] = elevation
             if project_id:
@@ -364,34 +385,57 @@ class SupabaseClient:
     def _increment_location_count(self, location_id: str) -> None:
         """
         Increment the number column for a location when a photo is added.
+        Updates marker: "individual" when number=1, "multi" when number>1.
         """
         if not self.client or not location_id:
             return
-        
+
         try:
-            # Fetch current count
-            result = self.client.table("locations").select("number").eq("id", location_id).execute()
+            result = (
+                self.client.table("locations")
+                .select("number")
+                .eq("id", location_id)
+                .execute()
+            )
             if result.data and len(result.data) > 0:
                 current_count = result.data[0].get("number") or 0
                 new_count = current_count + 1
-                self.client.table("locations").update({"number": new_count}).eq("id", location_id).execute()
+                update_payload: Dict[str, Any] = {"number": new_count}
+                update_payload["marker"] = (
+                    "multi" if new_count > 1 else "individual"
+                )
+                self.client.table("locations").update(update_payload).eq(
+                    "id", location_id
+                ).execute()
         except Exception as e:
             print(f"Error incrementing location count: {e}")
     
     def decrement_location_count(self, location_id: str) -> None:
         """
         Decrement the number column for a location when a photo is deleted.
+        Updates marker: "individual" when number=1, "multi" when number>1.
         """
         if not self.client or not location_id:
             return
-        
+
         try:
-            # Fetch current count
-            result = self.client.table("locations").select("number").eq("id", location_id).execute()
+            result = (
+                self.client.table("locations")
+                .select("number")
+                .eq("id", location_id)
+                .execute()
+            )
             if result.data and len(result.data) > 0:
                 current_count = result.data[0].get("number") or 0
                 new_count = max(0, current_count - 1)
-                self.client.table("locations").update({"number": new_count}).eq("id", location_id).execute()
+                update_payload: Dict[str, Any] = {"number": new_count}
+                if new_count >= 1:
+                    update_payload["marker"] = (
+                        "multi" if new_count > 1 else "individual"
+                    )
+                self.client.table("locations").update(update_payload).eq(
+                    "id", location_id
+                ).execute()
         except Exception as e:
             print(f"Error decrementing location count: {e}")
 
@@ -947,7 +991,7 @@ class SupabaseClient:
             "longitude": lng,
             "project_id": project_id,
             "marker": "project",
-            "number": 1,
+            "number": 0,
         }
         response = self.client.table("locations").insert(payload).execute()
         if not response.data:
@@ -974,7 +1018,11 @@ class SupabaseClient:
             loc_id = existing.data[0]["id"]
             response = (
                 self.client.table("locations")
-                .update({"latitude": lat, "longitude": lng})
+                .update({
+                    "latitude": lat,
+                    "longitude": lng,
+                    "number": 0,
+                })
                 .eq("id", loc_id)
                 .execute()
             )
@@ -1293,8 +1341,9 @@ class SupabaseClient:
     def get_project_stats(self, project_id: str) -> tuple:
         """Return (photo_count, location_count) for a project.
 
-        location_count excludes project-pin markers (marker='project') when the
-        marker column is present; falls back to counting all locations otherwise.
+        photo_count = sum of public.locations.number for the project.
+        location_count = count of photo locations (marker='individual' or
+        marker='multi'), excluding project markers.
         """
         if not self.client:
             return 0, 0
@@ -1302,16 +1351,15 @@ class SupabaseClient:
         photo_count = 0
         try:
             resp = (
-                self.client.table("photos")
-                .select("id", count="exact")
+                self.client.table("locations")
+                .select("number")
                 .eq("project_id", project_id)
                 .execute()
             )
-            photo_count = getattr(resp, "count", None)
-            if photo_count is None:
-                photo_count = len(resp.data or [])
+            for row in (resp.data or []):
+                photo_count += int(row.get("number") or 0)
         except Exception as exc:
-            print(f"Error fetching photo count: {exc}")
+            print(f"Error fetching photo count (sum locations.number): {exc}")
 
         location_count = 0
         try:
@@ -1319,19 +1367,20 @@ class SupabaseClient:
                 self.client.table("locations")
                 .select("id", count="exact")
                 .eq("project_id", project_id)
-                .neq("marker", "project")
+                .in_("marker", ["individual", "multi"])
                 .execute()
             )
             location_count = getattr(resp, "count", None)
             if location_count is None:
                 location_count = len(resp.data or [])
         except Exception as exc:
-            # Fallback: marker column may not exist yet; count all locations.
+            # Fallback: marker column may not exist; count all non-project.
             try:
                 resp = (
                     self.client.table("locations")
                     .select("id", count="exact")
                     .eq("project_id", project_id)
+                    .neq("marker", "project")
                     .execute()
                 )
                 location_count = getattr(resp, "count", None)

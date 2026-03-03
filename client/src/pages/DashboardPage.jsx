@@ -1,13 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useNavigate } from 'react-router-dom';
+import maplibregl from 'maplibre-gl';
 import { useAuth } from '../context';
 import apiClient from '../services/api';
-
-const ROLE_LABELS = {
-  owner: 'Owner',
-  administrator: 'Administrator',
-  editor: 'Editor',
-  viewer: 'Viewer',
-};
+import EditProjectModal from '../components/projects/EditProjectModal';
+import { configureMaplibreWorker } from '../utils/maplibreWorker';
+import 'maplibre-gl/dist/maplibre-gl.css';
 
 const StatCard = ({ label, value }) => (
   <div className="surface-card" style={{ textAlign: 'center' }}>
@@ -49,16 +53,44 @@ const parseCoord = raw => {
 };
 
 const DashboardPage = () => {
-  const { activeProject, projects, roleForActiveProject } = useAuth();
+  configureMaplibreWorker();
+  const navigate = useNavigate();
+  const {
+    activeProject,
+    projects,
+    setActiveProject,
+    refreshProjects,
+    roleForActiveProject,
+  } = useAuth();
   const activeProjectId = activeProject?.id || activeProject || null;
   const projectData =
     (projects || []).find(p => p.id === activeProjectId) || null;
-  const role = roleForActiveProject ? roleForActiveProject() : null;
-  const normalizedRole = (role || '').toLowerCase();
 
   const [summary, setSummary] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [editingProject, setEditingProject] = useState(null);
+  const [projectToggleWidth, setProjectToggleWidth] = useState(180);
+  const projectSelectRef = useRef(null);
+  const dashboardMapRef = useRef(null);
+  const dashboardMapInstance = useRef(null);
+  const dashboardMarkerRef = useRef(null);
+
+  const role = roleForActiveProject ? roleForActiveProject() : null;
+  const normalizedRole = (role || '').toLowerCase();
+  const canManage =
+    normalizedRole === 'owner' || normalizedRole === 'administrator';
+
+  useEffect(() => {
+    const selectEl = projectSelectRef.current;
+    if (!selectEl || !projects?.length) return;
+    selectEl.style.width = 'auto';
+    const scrollWidth = selectEl.scrollWidth;
+    const buffer = 18;
+    const computed = scrollWidth + buffer;
+    const clamped = Math.min(Math.max(computed, 140), window.innerWidth * 0.9);
+    setProjectToggleWidth(clamped);
+  }, [projects?.length, activeProjectId]);
 
   useEffect(() => {
     if (!activeProjectId) return;
@@ -83,6 +115,77 @@ const DashboardPage = () => {
     };
   }, [activeProjectId]);
 
+  const handleEditSubmit = useCallback(
+    async values => {
+      if (!editingProject?.id) return;
+      setError('');
+      try {
+        await apiClient.patch(`/v1/projects/${editingProject.id}`, values);
+        setEditingProject(null);
+        await refreshProjects({ redirectWhenEmpty: false, force: true });
+      } catch (err) {
+        setError(
+          err?.payload?.error ||
+            err?.message ||
+            'Unable to update project. Please try again.'
+        );
+      }
+    },
+    [editingProject, refreshProjects]
+  );
+
+  useEffect(() => {
+    if (!dashboardMapRef.current || !addressCoord) return;
+    const lat = Number(addressCoord.lat);
+    const lon = Number(addressCoord.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+    if (!dashboardMapInstance.current) {
+      try {
+        dashboardMapInstance.current = new maplibregl.Map({
+          container: dashboardMapRef.current,
+          style:
+            'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+          center: [lon, lat],
+          zoom: 13,
+          interactive: false,
+        });
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('Error initializing map:', err);
+        return;
+      }
+    } else {
+      dashboardMapInstance.current.setCenter([lon, lat]);
+    }
+
+    if (dashboardMarkerRef.current) {
+      dashboardMarkerRef.current.remove();
+      dashboardMarkerRef.current = null;
+    }
+
+    dashboardMarkerRef.current = new maplibregl.Marker({ color: '#3f6fa0' })
+      .setLngLat([lon, lat])
+      .addTo(dashboardMapInstance.current);
+  }, [addressCoord?.lat, addressCoord?.lng]);
+
+  const project = summary?.project || projectData || {};
+  const addressCoord = parseCoord(project?.address_coord);
+
+  useEffect(
+    () => () => {
+      if (dashboardMarkerRef.current) {
+        dashboardMarkerRef.current.remove();
+        dashboardMarkerRef.current = null;
+      }
+      if (dashboardMapInstance.current) {
+        dashboardMapInstance.current.remove();
+        dashboardMapInstance.current = null;
+      }
+    },
+    []
+  );
+
   if (!activeProjectId) {
     return (
       <div style={{ width: '100%', boxSizing: 'border-box' }}>
@@ -96,36 +199,55 @@ const DashboardPage = () => {
     );
   }
 
-  const project = summary?.project || projectData || {};
   const photoCount = summary != null ? summary.photo_count : '—';
   const locationCount = summary != null ? summary.location_count : '—';
   const members = summary?.members || [];
-  const addressCoord = parseCoord(project.address_coord);
 
   return (
     <div style={{ width: '100%', boxSizing: 'border-box' }}>
       <div className="page-header">
-        <div className="page-header__left" />
+        <div className="page-header__left">
+          <select
+            className="btn-format-1"
+            ref={projectSelectRef}
+            value={activeProjectId || ''}
+            onChange={e => {
+              const nextId = e.target.value;
+              setActiveProject(nextId || null);
+            }}
+            style={{
+              paddingRight: 28,
+              width: `${projectToggleWidth}px`,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {(projects || []).map(p => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="page-header__center">
-          <h2 className="page-header__title">{project.name || 'Dashboard'}</h2>
-          {normalizedRole && (
-            <span
-              style={{
-                fontSize: 'var(--font-size-xs)',
-                fontWeight: 'var(--font-weight-semibold)',
-                color: 'var(--color-text-secondary)',
-                textTransform: 'uppercase',
-                letterSpacing: 'var(--letter-spacing-wide)',
-                background: 'var(--color-surface-secondary)',
-                borderRadius: 'var(--radius-pill)',
-                padding: '2px var(--space-sm)',
-              }}
+          <h2 className="page-header__title">Dashboard</h2>
+        </div>
+        <div className="page-header__right">
+          {canManage && (
+            <button
+              type="button"
+              onClick={() =>
+                setEditingProject({
+                  id: activeProjectId,
+                  name: project.name,
+                  address: project.address,
+                })
+              }
+              className="btn-secondary"
             >
-              {ROLE_LABELS[normalizedRole] || role}
-            </span>
+              Edit
+            </button>
           )}
         </div>
-        <div className="page-header__right" />
       </div>
 
       {error && <div className="page-error">{error}</div>}
@@ -152,36 +274,93 @@ const DashboardPage = () => {
             <StatCard label="Members" value={members.length || '—'} />
           </div>
 
-          {project.address && (
-            <div className="surface-card">
-              <h3
-                style={{
-                  margin: '0 0 var(--space-md) 0',
-                  fontSize: 'var(--font-size-lg)',
-                  fontWeight: 'var(--font-weight-semibold)',
-                }}
-              >
-                Location
-              </h3>
-              <p
-                style={{
-                  margin: '0 0 var(--space-xs) 0',
-                  color: 'var(--color-text-primary)',
-                }}
-              >
-                {project.address}
-              </p>
-              {addressCoord?.lat != null && addressCoord?.lng != null && (
-                <p
+          {(project.address || addressCoord) && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: 'var(--space-md)',
+                alignItems: 'stretch',
+              }}
+            >
+              <div className="surface-card">
+                <h3
                   style={{
-                    margin: 0,
-                    fontSize: 'var(--font-size-sm)',
-                    color: 'var(--color-text-secondary)',
+                    margin: '0 0 var(--space-md) 0',
+                    fontSize: 'var(--font-size-lg)',
+                    fontWeight: 'var(--font-weight-semibold)',
                   }}
                 >
-                  {Number(addressCoord.lat).toFixed(6)},{' '}
-                  {Number(addressCoord.lng).toFixed(6)}
-                </p>
+                  Location
+                </h3>
+                {project.address && (
+                  <p
+                    style={{
+                      margin: '0 0 var(--space-xs) 0',
+                      color: 'var(--color-text-primary)',
+                    }}
+                  >
+                    {project.address}
+                  </p>
+                )}
+                {addressCoord?.lat != null && addressCoord?.lng != null && (
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 'var(--font-size-sm)',
+                      color: 'var(--color-text-secondary)',
+                    }}
+                  >
+                    {Number(addressCoord.lat).toFixed(6)},{' '}
+                    {Number(addressCoord.lng).toFixed(6)}
+                  </p>
+                )}
+              </div>
+              {addressCoord?.lat != null && addressCoord?.lng != null && (
+                <div
+                  className="surface-card"
+                  style={{ padding: 0, overflow: 'hidden' }}
+                >
+                  <div
+                    style={{
+                      padding: 'var(--space-sm) var(--space-md)',
+                      borderBottom: '1px solid var(--color-border)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <h6 style={{ margin: 0 }}>Map</h6>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{
+                        padding: 'var(--space-xs) var(--space-sm)',
+                        fontSize: 'var(--font-size-sm)',
+                      }}
+                      onClick={() => navigate('/map')}
+                    >
+                      Open Map
+                    </button>
+                  </div>
+                  <div
+                    ref={dashboardMapRef}
+                    style={{
+                      height: 180,
+                      width: '100%',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => navigate('/map')}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate('/map');
+                      }
+                    }}
+                  />
+                </div>
               )}
             </div>
           )}
@@ -190,6 +369,9 @@ const DashboardPage = () => {
             <div
               style={{
                 padding: 'var(--space-lg) var(--space-lg) var(--space-md)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
               }}
             >
               <h3
@@ -199,8 +381,19 @@ const DashboardPage = () => {
                   fontWeight: 'var(--font-weight-semibold)',
                 }}
               >
-                Team
+                Project Members
               </h3>
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{
+                  padding: 'var(--space-xs) var(--space-sm)',
+                  fontSize: 'var(--font-size-sm)',
+                }}
+                onClick={() => navigate(`/projects/${activeProjectId}/members`)}
+              >
+                View All
+              </button>
             </div>
             {members.length === 0 ? (
               <div
@@ -219,24 +412,21 @@ const DashboardPage = () => {
               >
                 <thead>
                   <tr>
-                    <th>Member</th>
+                    <th>Name</th>
                     <th>Email</th>
-                    <th style={{ textAlign: 'right' }}>Role</th>
                   </tr>
                 </thead>
                 <tbody>
                   {members.map(m => {
                     const displayName =
                       [m.first_name, m.last_name].filter(Boolean).join(' ') ||
-                      m.email ||
-                      m.user_id;
+                      '—';
                     return (
                       <tr key={m.user_id}>
                         <td>{displayName}</td>
                         <td style={{ color: 'var(--color-text-secondary)' }}>
                           {m.email || '—'}
                         </td>
-                        <td style={{ textAlign: 'right' }}>{m.role || '—'}</td>
                       </tr>
                     );
                   })}
@@ -244,6 +434,13 @@ const DashboardPage = () => {
               </table>
             )}
           </div>
+
+          <EditProjectModal
+            open={!!editingProject}
+            onClose={() => setEditingProject(null)}
+            onSubmit={handleEditSubmit}
+            initial={editingProject || {}}
+          />
         </div>
       )}
     </div>
