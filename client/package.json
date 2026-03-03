@@ -20,7 +20,7 @@
   },
   "scripts": {
     "start": "node ./scripts/bootstrapEnv.js && ESLINT_NO_DEV_ERRORS=true react-scripts start",
-    "build": "react-scripts build",
+    "build": "react-scripts build && cp build/index.html build/404.html",
     "test": "react-scripts test --env=jsdom --setupFilesAfterEnv=./jest.setup.js",
     "eject": "react-scripts eject",
     "lint": "eslint src/",
