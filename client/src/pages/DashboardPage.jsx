@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import { useAuth } from '../context';
@@ -75,6 +69,7 @@ const DashboardPage = () => {
   const dashboardMapRef = useRef(null);
   const dashboardMapInstance = useRef(null);
   const dashboardMarkerRef = useRef(null);
+  const [mapContainerReady, setMapContainerReady] = useState(false);
 
   const role = roleForActiveProject ? roleForActiveProject() : null;
   const normalizedRole = (role || '').toLowerCase();
@@ -138,7 +133,30 @@ const DashboardPage = () => {
   );
 
   useEffect(() => {
-    if (!dashboardMapRef.current || !addressCoord) return;
+    const el = dashboardMapRef.current;
+    if (!addressCoord) {
+      setMapContainerReady(false);
+      return;
+    }
+    const lat = Number(addressCoord.lat);
+    const lon = Number(addressCoord.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+    if (!el) return;
+
+    const observer = new ResizeObserver(entries => {
+      const { width, height } = entries[0]?.contentRect ?? {};
+      if (width > 0 && height > 0) setMapContainerReady(true);
+    });
+    observer.observe(el);
+    if (el.offsetWidth > 0 && el.offsetHeight > 0) setMapContainerReady(true);
+    return () => {
+      observer.disconnect();
+      setMapContainerReady(false);
+    };
+  }, [addressCoord]);
+
+  useEffect(() => {
+    if (!mapContainerReady || !dashboardMapRef.current || !addressCoord) return;
     const lat = Number(addressCoord.lat);
     const lon = Number(addressCoord.lng);
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
@@ -153,6 +171,10 @@ const DashboardPage = () => {
           zoom: 13,
           interactive: false,
         });
+        dashboardMapInstance.current.once('load', () => {
+          if (dashboardMapInstance.current)
+            dashboardMapInstance.current.resize();
+        });
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('Error initializing map:', err);
@@ -160,6 +182,7 @@ const DashboardPage = () => {
       }
     } else {
       dashboardMapInstance.current.setCenter([lon, lat]);
+      dashboardMapInstance.current.resize();
     }
 
     if (dashboardMarkerRef.current) {
@@ -170,7 +193,7 @@ const DashboardPage = () => {
     dashboardMarkerRef.current = new maplibregl.Marker({ color: '#3f6fa0' })
       .setLngLat([lon, lat])
       .addTo(dashboardMapInstance.current);
-  }, [addressCoord?.lat, addressCoord?.lng]);
+  }, [mapContainerReady, addressCoord]);
 
   useEffect(
     () => () => {
@@ -369,31 +392,38 @@ const DashboardPage = () => {
             <div
               style={{
                 padding: 'var(--space-lg) var(--space-lg) var(--space-md)',
-                display: 'flex',
-                justifyContent: 'space-between',
+                display: 'grid',
+                gridTemplateColumns: '1fr auto 1fr',
                 alignItems: 'center',
+                gap: 'var(--space-md)',
               }}
             >
+              <div />
               <h3
                 style={{
                   margin: 0,
                   fontSize: 'var(--font-size-lg)',
                   fontWeight: 'var(--font-weight-semibold)',
+                  textAlign: 'center',
                 }}
               >
                 Project Members
               </h3>
-              <button
-                type="button"
-                className="btn-secondary"
-                style={{
-                  padding: 'var(--space-xs) var(--space-sm)',
-                  fontSize: 'var(--font-size-sm)',
-                }}
-                onClick={() => navigate(`/projects/${activeProjectId}/members`)}
-              >
-                View All
-              </button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{
+                    padding: 'var(--space-xs) var(--space-sm)',
+                    fontSize: 'var(--font-size-sm)',
+                  }}
+                  onClick={() =>
+                    navigate(`/projects/${activeProjectId}/members`)
+                  }
+                >
+                  Add Members
+                </button>
+              </div>
             </div>
             {members.length === 0 ? (
               <div
@@ -407,7 +437,7 @@ const DashboardPage = () => {
               </div>
             ) : (
               <table
-                className="data-table"
+                className="data-table data-table--members"
                 style={{ borderTop: '1px solid var(--color-border)' }}
               >
                 <thead>

@@ -46,7 +46,7 @@
   --layout-margin-x: clamp(16px, 2vw, 32px);
   --banner-padding-x: clamp(16px, 2vw, 24px);
   --layout-padding-y: var(--space-md);
-  --layout-padding-bottom: var(--space-xl);
+  --layout-padding-bottom: var(--space-2xl);
   --section-gap: var(--space-2xl);
 
   /* Border Radius System */

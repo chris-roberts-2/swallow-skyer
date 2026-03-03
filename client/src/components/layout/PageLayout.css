@@ -2,6 +2,8 @@
    PAGE LAYOUT — Shared authenticated page frame
    Provides horizontal margins, max-width constraint,
    vertical padding, and section spacing rhythm.
+   Used for all authenticated pages except the Map page
+   (map uses full viewport; bottom margin not applied there).
    =========================================== */
 
 .page-layout {
@@ -12,6 +14,7 @@
   padding: var(--layout-padding-y) var(--layout-margin-x)
     var(--layout-padding-bottom);
   box-sizing: border-box;
+  overflow-y: auto;
 }
 
 .page-layout__inner {
@@ -21,4 +24,5 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: min-content;
 }

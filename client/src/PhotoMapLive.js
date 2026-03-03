@@ -218,6 +218,7 @@ const PhotoMapLive = () => {
   const markersRef = useRef([]);
   const stackPopupRef = useRef(null);
   const photoPopupRef = useRef(null);
+  const projectLocationPopupRef = useRef(null);
   const hasAutoFitRef = useRef(false);
   const userInteractedRef = useRef(false);
   const [refreshCounter, setRefreshCounter] = useState(0);
@@ -312,6 +313,14 @@ const PhotoMapLive = () => {
   }, [selectedProjectName, projects.length]);
 
   const clearMarkers = useCallback(() => {
+    if (projectLocationPopupRef.current) {
+      try {
+        projectLocationPopupRef.current.remove();
+      } catch {
+        // ignore
+      }
+      projectLocationPopupRef.current = null;
+    }
     markersRef.current.forEach(marker => {
       try {
         marker?.remove?.();
@@ -722,6 +731,14 @@ const PhotoMapLive = () => {
       // Only react to clicks that occur within the map container.
       if (!target.closest(`[data-photo-map-live="1"]`)) return;
 
+      if (projectLocationPopupRef.current) {
+        try {
+          projectLocationPopupRef.current.remove();
+        } catch {
+          // ignore
+        }
+        projectLocationPopupRef.current = null;
+      }
       closeStack();
       closePhotoPopup();
     };
@@ -1557,7 +1574,7 @@ const PhotoMapLive = () => {
       pinEl.style.lineHeight = '0';
       pinEl.style.transition = 'none';
       pinEl.style.animation = 'none';
-      pinEl.style.cursor = 'default';
+      pinEl.style.cursor = canManage ? 'pointer' : 'default';
       pinEl.style.filter = 'drop-shadow(0 2px 6px rgba(31,58,95,0.35))';
       pinEl.title = selectedProjectName || 'Project location';
 
@@ -1605,6 +1622,42 @@ const PhotoMapLive = () => {
       })
         .setLngLat(pinLngLat)
         .addTo(mapInstance.current);
+
+      if (canManage) {
+        const popupRoot = document.createElement('div');
+        popupRoot.style.padding = '12px 14px';
+        popupRoot.style.background = 'var(--color-surface-primary)';
+        popupRoot.style.borderRadius = 'var(--radius-xl)';
+        popupRoot.style.boxShadow = 'var(--shadow-lg)';
+        popupRoot.style.fontFamily = 'var(--font-family-sans)';
+        popupRoot.style.border = '1px solid var(--color-border)';
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'btn-primary';
+        editBtn.textContent = 'Edit Project Location';
+        editBtn.style.whiteSpace = 'nowrap';
+        editBtn.onclick = evt => {
+          evt.stopPropagation();
+          if (projectLocationPopupRef.current) {
+            projectLocationPopupRef.current.remove();
+            projectLocationPopupRef.current = null;
+          }
+          setEditLocationOpen(true);
+        };
+        popupRoot.appendChild(editBtn);
+
+        const projectPopup = new maplibregl.Popup({
+          closeButton: true,
+          closeOnClick: false,
+          offset: 12,
+          maxWidth: 'none',
+          className: 'maplibregl-popup--project-location',
+        })
+          .setDOMContent(popupRoot)
+          .setLngLat(pinLngLat);
+        projectLocationPopupRef.current = projectPopup;
+        pinMarker.setPopup(projectPopup);
+      }
 
       markersRef.current.push(pinMarker);
     }
@@ -1655,6 +1708,7 @@ const PhotoMapLive = () => {
     closeStack,
     isDragMode,
     isMapReady,
+    canManage,
     projectMarker,
     selectedProjectCoord,
     selectedProjectName,
@@ -1970,16 +2024,6 @@ const PhotoMapLive = () => {
             </option>
           ))}
         </select>
-        {canManage && activeProjectId && (
-          <button
-            type="button"
-            className="btn-format-1"
-            onClick={() => setEditLocationOpen(true)}
-            style={{ whiteSpace: 'nowrap' }}
-          >
-            Edit Location
-          </button>
-        )}
       </div>
       <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
       <EditLocationModal

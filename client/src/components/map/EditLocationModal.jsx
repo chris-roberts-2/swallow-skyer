@@ -416,11 +416,11 @@ const EditLocationModal = ({
       style={{
         position: 'absolute',
         top: 0,
-        right: 0,
+        left: 0,
         height: '100%',
         width: '300px',
         background: 'var(--color-surface-primary)',
-        boxShadow: '-4px 0 20px rgba(31,58,95,0.18)',
+        boxShadow: '4px 0 20px rgba(31,58,95,0.18)',
         zIndex: 20,
         display: 'flex',
         flexDirection: 'column',
