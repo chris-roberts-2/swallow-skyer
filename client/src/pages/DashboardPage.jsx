@@ -81,6 +81,9 @@ const DashboardPage = () => {
   const canManage =
     normalizedRole === 'owner' || normalizedRole === 'administrator';
 
+  const project = summary?.project || projectData || {};
+  const addressCoord = parseCoord(project?.address_coord);
+
   useEffect(() => {
     const selectEl = projectSelectRef.current;
     if (!selectEl || !projects?.length) return;
@@ -168,9 +171,6 @@ const DashboardPage = () => {
       .setLngLat([lon, lat])
       .addTo(dashboardMapInstance.current);
   }, [addressCoord?.lat, addressCoord?.lng]);
-
-  const project = summary?.project || projectData || {};
-  const addressCoord = parseCoord(project?.address_coord);
 
   useEffect(
     () => () => {
