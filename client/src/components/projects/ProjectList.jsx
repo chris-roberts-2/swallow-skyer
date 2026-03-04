@@ -57,7 +57,8 @@ const ProjectList = ({
     const role = (project.role || '').toLowerCase();
     const canManageProject = role === 'owner' || role === 'administrator';
     const isOwner = role === 'owner';
-    const isCreator = project.owner_id && currentUserId === project.owner_id;
+    const canUnjoin =
+      role === 'administrator' || role === 'editor' || role === 'viewer';
 
     const isMenuOpen = menuOpenId === project.id;
 
@@ -154,16 +155,32 @@ const ProjectList = ({
                 onClick={e => e.stopPropagation()}
               >
                 {isArchivedView ? (
-                  <button
-                    type="button"
-                    className="btn-menu-item"
-                    onClick={() => {
-                      closeMenu();
-                      onUnarchive(project);
-                    }}
-                  >
-                    Unarchive
-                  </button>
+                  <>
+                    {isOwner ? (
+                      <button
+                        type="button"
+                        className="btn-menu-item"
+                        onClick={() => {
+                          closeMenu();
+                          onUnarchive(project);
+                        }}
+                      >
+                        Unarchive
+                      </button>
+                    ) : null}
+                    {canUnjoin ? (
+                      <button
+                        type="button"
+                        className="btn-menu-item"
+                        onClick={() => {
+                          closeMenu();
+                          onUnjoin(project);
+                        }}
+                      >
+                        Unjoin
+                      </button>
+                    ) : null}
+                  </>
                 ) : canManageProject ? (
                   <>
                     <button
@@ -198,7 +215,7 @@ const ProjectList = ({
                         Archive
                       </button>
                     ) : null}
-                    {!isCreator ? (
+                    {canUnjoin ? (
                       <button
                         type="button"
                         className="btn-menu-item"
@@ -223,7 +240,7 @@ const ProjectList = ({
                     >
                       Project Members
                     </button>
-                    {!isCreator ? (
+                    {canUnjoin ? (
                       <button
                         type="button"
                         className="btn-menu-item"

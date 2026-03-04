@@ -190,7 +190,39 @@ const DashboardPage = () => {
       dashboardMarkerRef.current = null;
     }
 
-    dashboardMarkerRef.current = new maplibregl.Marker({ color: '#3f6fa0' })
+    const pinEl = document.createElement('div');
+    pinEl.style.cssText =
+      'width:24px;height:32px;box-sizing:border-box;padding:0;margin:0;' +
+      'user-select:none;line-height:0;transition:none;animation:none;cursor:default;' +
+      'filter:drop-shadow(0 2px 6px rgba(31,58,95,0.35));';
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('width', '24');
+    svg.setAttribute('height', '32');
+    svg.setAttribute('viewBox', '0 0 24 32');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('aria-hidden', 'true');
+    const pinBody = document.createElementNS(ns, 'path');
+    pinBody.setAttribute(
+      'd',
+      'M12 1C6.477 1 2 5.477 2 11c0 7.732 10 20 10 20s10-12.268 10-20C22 5.477 17.523 1 12 1z'
+    );
+    pinBody.setAttribute('fill', 'var(--color-accent)');
+    pinBody.setAttribute('stroke', 'var(--color-surface-primary)');
+    pinBody.setAttribute('stroke-width', '1.5');
+    const pinDot = document.createElementNS(ns, 'circle');
+    pinDot.setAttribute('cx', '12');
+    pinDot.setAttribute('cy', '11');
+    pinDot.setAttribute('r', '3.5');
+    pinDot.setAttribute('fill', 'var(--color-surface-primary)');
+    svg.appendChild(pinBody);
+    svg.appendChild(pinDot);
+    pinEl.appendChild(svg);
+
+    dashboardMarkerRef.current = new maplibregl.Marker({
+      element: pinEl,
+      anchor: 'bottom',
+    })
       .setLngLat([lon, lat])
       .addTo(dashboardMapInstance.current);
   }, [mapContainerReady, addressCoord]);

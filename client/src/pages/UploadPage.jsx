@@ -41,7 +41,8 @@ const resolvePhotoUrl = photo => {
 const formatTimestamp = value => formatLocalDateTime(value);
 
 const PhotosPage = () => {
-  const { activeProject, projects, setActiveProject } = useAuth();
+  const { activeProject, projects, setActiveProject, roleForActiveProject } =
+    useAuth();
   const navigate = useNavigate();
   const activeProjectId = activeProject?.id || activeProject || null;
   const [photos, setPhotos] = useState([]);
@@ -56,6 +57,18 @@ const PhotosPage = () => {
   const cardsRef = useRef(null);
 
   const hasProjects = (projects || []).length > 0;
+
+  const photoRole = (
+    roleForActiveProject ? roleForActiveProject() : ''
+  ).toLowerCase();
+  const canUploadPhotos =
+    photoRole === 'owner' ||
+    photoRole === 'administrator' ||
+    photoRole === 'editor';
+  const canDeletePhotos =
+    photoRole === 'owner' ||
+    photoRole === 'administrator' ||
+    photoRole === 'editor';
 
   useEffect(() => {
     const selectEl = projectSelectRef.current;
@@ -330,10 +343,12 @@ const PhotosPage = () => {
           </span>
         </div>
         <div className="page-header__right">
-          <BatchUploader
-            variant="compact"
-            onUploaded={() => fetchPhotos(activeProjectId)}
-          />
+          {canUploadPhotos ? (
+            <BatchUploader
+              variant="compact"
+              onUploaded={() => fetchPhotos(activeProjectId)}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -368,13 +383,15 @@ const PhotosPage = () => {
           >
             {isDownloading ? 'Downloading…' : 'Download selected'}
           </button>
-          <button
-            type="button"
-            className="btn-critical"
-            onClick={() => deletePhotos([...selectedIds])}
-          >
-            Delete selected
-          </button>
+          {canDeletePhotos ? (
+            <button
+              type="button"
+              className="btn-critical"
+              onClick={() => deletePhotos([...selectedIds])}
+            >
+              Delete selected
+            </button>
+          ) : null}
           <button
             type="button"
             className="btn-secondary"
@@ -484,16 +501,18 @@ const PhotosPage = () => {
                     >
                       More
                     </button>
-                    <button
-                      type="button"
-                      className="btn-menu-item btn-menu-item-destructive"
-                      onClick={() => {
-                        setOpenMenuId(null);
-                        deletePhotos([photo.id]);
-                      }}
-                    >
-                      Delete
-                    </button>
+                    {canDeletePhotos ? (
+                      <button
+                        type="button"
+                        className="btn-menu-item btn-menu-item-destructive"
+                        onClick={() => {
+                          setOpenMenuId(null);
+                          deletePhotos([photo.id]);
+                        }}
+                      >
+                        Delete
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

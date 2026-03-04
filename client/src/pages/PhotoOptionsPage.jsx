@@ -56,7 +56,14 @@ const PhotoOptionsPage = () => {
     () => (location.state?.from === 'map' ? '/map' : '/photos'),
     [location.state]
   );
-  const { projects } = useAuth();
+  const { projects, roleForActiveProject } = useAuth();
+  const photoRole = (
+    roleForActiveProject ? roleForActiveProject() : ''
+  ).toLowerCase();
+  const canDeletePhoto =
+    photoRole === 'owner' ||
+    photoRole === 'administrator' ||
+    photoRole === 'editor';
   const [photo, setPhoto] = useState(null);
   const [error, setError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -346,14 +353,16 @@ const PhotoOptionsPage = () => {
             >
               {isDownloading ? 'Downloading…' : 'Download'}
             </button>
-            <button
-              type="button"
-              className="btn-critical"
-              onClick={remove}
-              disabled={isDeleting}
-            >
-              {isDeleting ? 'Deleting…' : 'Delete'}
-            </button>
+            {canDeletePhoto ? (
+              <button
+                type="button"
+                className="btn-critical"
+                onClick={remove}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting…' : 'Delete'}
+              </button>
+            ) : null}
           </div>
         </div>
 
