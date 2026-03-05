@@ -2,17 +2,28 @@
 Project CRUD routes with Supabase-backed permissions.
 """
 
+import os
+from uuid import UUID
+
 from flask import Blueprint, jsonify, request, g
+from werkzeug.utils import secure_filename
 
 from app.middleware.auth_middleware import jwt_required
 from app.services.auth.permissions import require_role, ROLE_ORDER
 from app.services.storage.supabase_client import supabase_client
+from app.services.storage.r2_client import r2_client
 import app.services.project_service as project_service
+import app.services.plan_service as plan_service
+from app.services.plan_rasterizer import rasterize_to_png, RasterizeError
 
 projects_bp = Blueprint("projects", __name__, url_prefix="/api/v1/projects")
 VIEW_ROLES = set(ROLE_ORDER)
 MANAGE_ROLES = {"Owner", "Administrator"}
 OWNER_ONLY_ROLES = {"Owner"}
+PLAN_ADMIN_ROLES = {"Owner", "Administrator"}
+ALLOWED_PLAN_EXTENSIONS = {"pdf", "png", "jpeg", "jpg"}
+MAX_PLAN_BYTES = 50 * 1024 * 1024
+PNG_MIME = "image/png"
 
 
 def _parse_coords(address, raw_lat, raw_lng):
@@ -437,3 +448,384 @@ def touch_project_access(project_id):
         return jsonify({"status": "ok"})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
+
+
+def _validate_project_id(project_id):
+    """Validate project_id is a valid UUID. Raises ValueError on failure."""
+    if not project_id:
+        raise ValueError("project_id is required")
+    try:
+        return str(UUID(project_id))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("project_id must be a valid UUID") from exc
+
+
+def _parse_plan_bounds(form):
+    """Parse min_lat, min_lng, max_lat, max_lng from form. Returns (min_lat, min_lng, max_lat, max_lng) or (None, None, None, None) with error."""
+    try:
+        min_lat = float(form.get("min_lat", ""))
+        min_lng = float(form.get("min_lng", ""))
+        max_lat = float(form.get("max_lat", ""))
+        max_lng = float(form.get("max_lng", ""))
+    except (TypeError, ValueError):
+        return None, None, None, None, "Georeferencing bounds (min_lat, min_lng, max_lat, max_lng) are required and must be numeric."
+    if not (-90 <= min_lat <= 90) or not (-90 <= max_lat <= 90):
+        return None, None, None, None, "Latitude must be between -90 and 90."
+    if not (-180 <= min_lng <= 180) or not (-180 <= max_lng <= 180):
+        return None, None, None, None, "Longitude must be between -180 and 180."
+    if min_lat >= max_lat or min_lng >= max_lng:
+        return None, None, None, None, "min_lat must be less than max_lat, min_lng must be less than max_lng."
+    return min_lat, min_lng, max_lat, max_lng, None
+
+
+def _plan_ext_from_filename(filename, mime_type):
+    """Extract plan file extension (pdf, png, jpeg, jpg)."""
+    _, ext = os.path.splitext(filename or "")
+    cleaned = ext.lstrip(".").lower()
+    if not cleaned and mime_type:
+        part = (mime_type.split("/")[-1] if "/" in mime_type else mime_type).lower()
+        if part in ALLOWED_PLAN_EXTENSIONS:
+            cleaned = part
+    cleaned = "".join(c for c in cleaned if c.isalnum())
+    if cleaned == "jpg":
+        cleaned = "jpeg"
+    return cleaned if cleaned in ("pdf", "png", "jpeg") else None
+
+
+def _read_plan_file_bytes(file_storage):
+    """Read file bytes from FileStorage. Raises ValueError on empty."""
+    stream = getattr(file_storage, "stream", None)
+    if stream and hasattr(stream, "seek"):
+        stream.seek(0)
+        data = stream.read()
+    else:
+        data = file_storage.read()
+    if not data:
+        raise ValueError("Plan file is empty")
+    return data
+
+
+@projects_bp.route("/<project_id>/plan", methods=["POST"])
+@jwt_required
+def upload_project_plan(project_id):
+    """Upload a georeferenced project plan. Requires Owner or Administrator."""
+    try:
+        user_id = _require_auth()
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 401
+
+    try:
+        _validate_project_id(project_id)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    permission = require_role(project_id, PLAN_ADMIN_ROLES, user_id=user_id)
+    if isinstance(permission, tuple):
+        payload, status_code = permission
+        return jsonify(payload), status_code
+
+    file_item = request.files.get("file")
+    if not file_item or not getattr(file_item, "filename", None):
+        return jsonify({"error": "Plan file is required", "message": "Include a PDF or PNG file"}), 400
+
+    mime = (getattr(file_item, "mimetype", "") or "").lower()
+    ext = _plan_ext_from_filename(file_item.filename, mime)
+    if not ext:
+        return (
+            jsonify({
+                "error": "invalid_metadata",
+                "message": "Plan must be PDF, PNG, or JPEG",
+            }),
+            400,
+        )
+
+    min_lat, min_lng, max_lat, max_lng, bounds_err = _parse_plan_bounds(request.form)
+    if bounds_err:
+        return jsonify({"error": "invalid_metadata", "message": bounds_err}), 400
+
+    existing = plan_service.get_plan_by_project_id(project_id)
+    if existing:
+        return (
+            jsonify({"error": "plan_already_exists", "message": "Project already has a plan. Use PATCH to replace."}),
+            409,
+        )
+
+    if not r2_client.client:
+        config_msg = getattr(r2_client, "_config_error", None) or "Check R2 environment variables."
+        return jsonify({"error": "Storage not configured", "message": config_msg}), 500
+
+    if not supabase_client.client:
+        return jsonify({"error": "Database not configured", "message": "Check Supabase environment variables."}), 500
+
+    try:
+        file_bytes = _read_plan_file_bytes(file_item)
+    except ValueError as exc:
+        return jsonify({"error": "invalid_file", "message": str(exc)}), 400
+
+    if len(file_bytes) > MAX_PLAN_BYTES:
+        return (
+            jsonify({"error": "invalid_file", "message": f"Plan file too large (max {MAX_PLAN_BYTES // (1024*1024)}MB)"}),
+            413,
+        )
+
+    try:
+        png_bytes, image_width, image_height = rasterize_to_png(
+            file_bytes,
+            filename_hint=file_item.filename or "",
+            mime_hint=mime,
+        )
+    except RasterizeError as e:
+        return jsonify({"error": "invalid_file", "message": e.message}), 400
+
+    try:
+        r2_key = r2_client.upload_project_plan(
+            project_id, png_bytes, "png", content_type=PNG_MIME
+        )
+    except Exception as exc:
+        return jsonify({"error": "Upload failed", "message": str(exc)}), 500
+
+    if not r2_key:
+        return jsonify({"error": "Upload failed", "message": "Failed to upload plan to storage"}), 502
+
+    try:
+        record = plan_service.create_plan_record(
+            project_id=project_id,
+            r2_path=r2_key,
+            file_name="plan.png",
+            file_type=PNG_MIME,
+            file_size=len(png_bytes),
+            user_id=user_id,
+            min_lat=min_lat,
+            min_lng=min_lng,
+            max_lat=max_lat,
+            max_lng=max_lng,
+            image_width=image_width,
+            image_height=image_height,
+        )
+    except Exception as exc:
+        r2_client.delete_file(r2_key)
+        return jsonify({"error": "Database error", "message": str(exc)}), 500
+
+    if not record:
+        r2_client.delete_file(r2_key)
+        return jsonify({"error": "Database error", "message": "Failed to store plan metadata"}), 502
+
+    signed_url = r2_client.generate_presigned_url(r2_key, expires_in=600)
+    response_data = {
+        "project_id": project_id,
+        "r2_path": r2_key,
+        "file_name": record.get("file_name"),
+        "file_type": record.get("file_type"),
+        "file_size": record.get("file_size"),
+        "user_id": record.get("user_id"),
+        "image_width": record.get("image_width"),
+        "image_height": record.get("image_height"),
+        "width": record.get("width"),
+        "height": record.get("height"),
+        "min_lat": min_lat,
+        "min_lng": min_lng,
+        "max_lat": max_lat,
+        "max_lng": max_lng,
+        "image_url": signed_url,
+        "created_at": record.get("created_at"),
+        "updated_at": record.get("updated_at"),
+    }
+    return jsonify(response_data), 201
+
+
+@projects_bp.route("/<project_id>/plan", methods=["GET"])
+@jwt_required
+def get_project_plan(project_id):
+    """Retrieve project plan metadata and signed image URL. Requires project membership."""
+    try:
+        user_id = _require_auth()
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 401
+
+    try:
+        _validate_project_id(project_id)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    permission = require_role(project_id, VIEW_ROLES, user_id=user_id)
+    if isinstance(permission, tuple):
+        payload, status_code = permission
+        return jsonify(payload), status_code
+
+    plan = plan_service.get_plan_by_project_id(project_id)
+    if not plan:
+        return jsonify({"plan": None, "message": "No plan available for this project"}), 200
+
+    r2_path = plan.get("r2_path")
+    signed_url = r2_client.generate_presigned_url(r2_path, expires_in=600) if r2_path and r2_client.client else None
+
+    response_data = {
+        "plan": {
+            "project_id": plan.get("project_id"),
+            "r2_path": r2_path,
+            "file_name": plan.get("file_name"),
+            "file_type": plan.get("file_type"),
+            "file_size": plan.get("file_size"),
+            "user_id": plan.get("user_id"),
+            "image_width": plan.get("image_width"),
+            "image_height": plan.get("image_height"),
+            "width": plan.get("width"),
+            "height": plan.get("height"),
+            "min_lat": plan.get("min_lat"),
+            "min_lng": plan.get("min_lng"),
+            "max_lat": plan.get("max_lat"),
+            "max_lng": plan.get("max_lng"),
+            "image_url": signed_url,
+            "created_at": plan.get("created_at"),
+            "updated_at": plan.get("updated_at"),
+        }
+    }
+    return jsonify(response_data), 200
+
+
+@projects_bp.route("/<project_id>/plan", methods=["PATCH"])
+@jwt_required
+def replace_project_plan(project_id):
+    """Replace the existing project plan. Requires Owner or Administrator."""
+    try:
+        user_id = _require_auth()
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 401
+
+    try:
+        _validate_project_id(project_id)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    permission = require_role(project_id, PLAN_ADMIN_ROLES, user_id=user_id)
+    if isinstance(permission, tuple):
+        payload, status_code = permission
+        return jsonify(payload), status_code
+
+    existing = plan_service.get_plan_by_project_id(project_id)
+    if not existing:
+        return jsonify({"error": "not_found", "message": "No plan exists for this project. Use POST to upload."}), 404
+
+    file_item = request.files.get("file")
+    if not file_item or not getattr(file_item, "filename", None):
+        return jsonify({
+            "error": "Plan file is required",
+            "message": "Include a PDF, PNG, or JPEG file",
+        }), 400
+
+    mime = (getattr(file_item, "mimetype", "") or "").lower()
+    ext = _plan_ext_from_filename(file_item.filename, mime)
+    if not ext:
+        return (
+            jsonify({"error": "invalid_metadata", "message": "Plan must be PDF, PNG, or JPEG"}),
+            400,
+        )
+
+    min_lat, min_lng, max_lat, max_lng, bounds_err = _parse_plan_bounds(request.form)
+    if bounds_err:
+        return jsonify({"error": "invalid_metadata", "message": bounds_err}), 400
+
+    if not r2_client.client:
+        config_msg = getattr(r2_client, "_config_error", None) or "Check R2 environment variables."
+        return jsonify({"error": "Storage not configured", "message": config_msg}), 500
+
+    try:
+        file_bytes = _read_plan_file_bytes(file_item)
+    except ValueError as exc:
+        return jsonify({"error": "invalid_file", "message": str(exc)}), 400
+
+    if len(file_bytes) > MAX_PLAN_BYTES:
+        return (
+            jsonify({"error": "invalid_file", "message": f"Plan file too large (max {MAX_PLAN_BYTES // (1024*1024)}MB)"}),
+            413,
+        )
+
+    try:
+        png_bytes, image_width, image_height = rasterize_to_png(
+            file_bytes,
+            filename_hint=file_item.filename or "",
+            mime_hint=mime,
+        )
+    except RasterizeError as e:
+        return jsonify({"error": "invalid_file", "message": e.message}), 400
+
+    try:
+        r2_key = r2_client.upload_project_plan(
+            project_id, png_bytes, "png", content_type=PNG_MIME
+        )
+    except Exception as exc:
+        return jsonify({"error": "Upload failed", "message": str(exc)}), 500
+
+    if not r2_key:
+        return jsonify({"error": "Upload failed", "message": "Failed to upload plan to storage"}), 502
+
+    try:
+        record = plan_service.replace_plan(
+            project_id=project_id,
+            r2_path=r2_key,
+            file_name="plan.png",
+            file_type=PNG_MIME,
+            file_size=len(png_bytes),
+            user_id=user_id,
+            min_lat=min_lat,
+            min_lng=min_lng,
+            max_lat=max_lat,
+            max_lng=max_lng,
+            image_width=image_width,
+            image_height=image_height,
+        )
+    except Exception as exc:
+        r2_client.delete_file(r2_key)
+        return jsonify({"error": "Database error", "message": str(exc)}), 500
+
+    if not record:
+        r2_client.delete_file(r2_key)
+        return jsonify({"error": "Database error", "message": "Failed to update plan metadata"}), 502
+
+    signed_url = r2_client.generate_presigned_url(r2_key, expires_in=600)
+    response_data = {
+        "project_id": project_id,
+        "r2_path": r2_key,
+        "file_name": record.get("file_name"),
+        "file_type": record.get("file_type"),
+        "file_size": record.get("file_size"),
+        "user_id": record.get("user_id"),
+        "image_width": record.get("image_width"),
+        "image_height": record.get("image_height"),
+        "width": record.get("width"),
+        "height": record.get("height"),
+        "min_lat": min_lat,
+        "min_lng": min_lng,
+        "max_lat": max_lat,
+        "max_lng": max_lng,
+        "image_url": signed_url,
+        "created_at": record.get("created_at"),
+        "updated_at": record.get("updated_at"),
+    }
+    return jsonify(response_data), 200
+
+
+@projects_bp.route("/<project_id>/plan", methods=["DELETE"])
+@jwt_required
+def delete_project_plan(project_id):
+    """Delete the project plan. Requires Owner or Administrator."""
+    try:
+        user_id = _require_auth()
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 401
+
+    try:
+        _validate_project_id(project_id)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    permission = require_role(project_id, PLAN_ADMIN_ROLES, user_id=user_id)
+    if isinstance(permission, tuple):
+        payload, status_code = permission
+        return jsonify(payload), status_code
+
+    deleted = plan_service.delete_plan(project_id)
+    if not deleted:
+        return jsonify({"error": "not_found", "message": "No plan exists for this project"}), 404
+
+    return jsonify({"message": "Plan removed successfully"}), 200

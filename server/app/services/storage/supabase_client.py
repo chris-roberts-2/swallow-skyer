@@ -1043,6 +1043,102 @@ class SupabaseClient:
         )
         return response.data[0] if response.data else None
 
+    # ------------------------------------------------------------------
+    # Project plan helpers
+    # ------------------------------------------------------------------
+
+    def store_project_plan(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Insert a new plan record. Returns inserted record or None."""
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        try:
+            response = self.client.table("project_plans").insert(payload).execute()
+            return response.data[0] if response.data else None
+        except Exception:
+            return None
+
+    def get_project_plan(self, project_id: str) -> Optional[Dict[str, Any]]:
+        """Return the plan record for a project, or None if absent."""
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        try:
+            response = (
+                self.client.table("project_plans")
+                .select("*")
+                .eq("project_id", project_id)
+                .maybe_single()
+                .execute()
+            )
+            return response.data if hasattr(response, "data") else None
+        except Exception:
+            return None
+
+    def delete_project_plan(self, project_id: str) -> bool:
+        """Delete the plan record for a project. Returns True if deleted."""
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        try:
+            response = (
+                self.client.table("project_plans")
+                .delete()
+                .eq("project_id", project_id)
+                .execute()
+            )
+            return bool(response.data)
+        except Exception:
+            return False
+
+    def update_project_plan(
+        self,
+        project_id: str,
+        r2_path: str,
+        file_name: str,
+        file_type: str,
+        file_size: int,
+        user_id: str,
+        min_lat: float,
+        min_lng: float,
+        max_lat: float,
+        max_lng: float,
+        image_width: Optional[int] = None,
+        image_height: Optional[int] = None,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Update the plan record for a project. Returns updated record or None."""
+        if not self.client:
+            raise RuntimeError("Supabase client not initialized")
+        fields: Dict[str, Any] = {
+            "r2_path": r2_path,
+            "file_name": file_name,
+            "file_type": file_type,
+            "file_size": file_size,
+            "user_id": user_id,
+            "min_lat": min_lat,
+            "min_lng": min_lng,
+            "max_lat": max_lat,
+            "max_lng": max_lng,
+            "updated_at": datetime.datetime.utcnow().isoformat() + "Z",
+        }
+        if image_width is not None:
+            fields["image_width"] = image_width
+        if image_height is not None:
+            fields["image_height"] = image_height
+        if width is not None:
+            fields["width"] = width
+        if height is not None:
+            fields["height"] = height
+        try:
+            response = (
+                self.client.table("project_plans")
+                .update(fields)
+                .eq("project_id", project_id)
+                .execute()
+            )
+            return response.data[0] if response.data else None
+        except Exception:
+            return None
+
     def ensure_user_exists(self, user_id: str, email: Optional[str] = None):
         """
         Ensure a user row exists to satisfy FK constraints on projects.owner_id.

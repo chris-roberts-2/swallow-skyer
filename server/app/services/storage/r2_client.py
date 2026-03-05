@@ -202,6 +202,22 @@ class R2Client:
             return url
         return self.generate_presigned_url(key, expires_in=expires_in)
 
+    def upload_project_plan(
+        self,
+        project_id: str,
+        file_bytes: bytes,
+        ext: str,
+        content_type: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Upload a project-scoped plan file and return the object key.
+        Key format: projects/{project_id}/plans/plan.{ext}
+        """
+        cleaned_ext = ext.lstrip(".")
+        key = f"projects/{project_id}/plans/plan.{cleaned_ext}"
+        ok = self.upload_bytes(file_bytes, key, content_type=content_type)
+        return key if ok else None
+
     def upload_project_photo(
         self,
         project_id: str,
