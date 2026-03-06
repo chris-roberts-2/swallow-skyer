@@ -1740,3 +1740,353 @@
     grid-template-columns: repeat(1, minmax(0, 1fr));
   }
 }
+
+/* ===========================
+   CALIBRATION SCREEN
+   Full-screen side-by-side georeferencing interface
+   =========================== */
+
+.calib-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--color-background);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+.calib-screen__header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--color-surface-primary);
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.calib-screen__header-left {
+  flex: 1;
+  min-width: 240px;
+}
+
+.calib-screen__title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.calib-screen__instructions {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: var(--line-height-relaxed);
+}
+
+/* Pin toggle controls */
+.calib-screen__pin-controls {
+  display: flex;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+  align-items: flex-start;
+}
+
+.calib-pin-btn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-secondary);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+  text-align: left;
+  min-width: 110px;
+}
+
+.calib-pin-btn:hover {
+  border-color: var(--color-primary);
+  background: var(--color-surface-hover);
+}
+
+.calib-pin-btn--active {
+  border-color: var(--color-primary);
+  background: var(--color-surface-active);
+}
+
+.calib-pin-btn--a.calib-pin-btn--active {
+  border-color: var(--color-deep-plumage-blue);
+}
+
+.calib-pin-btn--b.calib-pin-btn--active {
+  border-color: #0d9488;
+}
+
+.calib-pin-btn__label {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.calib-pin-btn--a .calib-pin-btn__label {
+  color: var(--color-deep-plumage-blue);
+}
+
+.calib-pin-btn--b .calib-pin-btn__label {
+  color: #0d9488;
+}
+
+/* Pin status tags */
+.calib-pin-status {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.calib-pin-status__tag {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 1px 6px;
+}
+
+.calib-pin-status__tag--set {
+  color: #0d9488;
+  background: rgba(13, 148, 136, 0.08);
+  border-color: rgba(13, 148, 136, 0.3);
+}
+
+/* Panels */
+.calib-screen__panels {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.calib-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.calib-panel--plan {
+  border-right: 2px solid var(--color-border);
+}
+
+/* Panel toolbar */
+.calib-panel__toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
+  background: var(--color-surface-secondary);
+  border-bottom: 1px solid var(--color-border);
+  min-height: 36px;
+}
+
+.calib-panel__toolbar-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Zoom controls */
+.calib-panel__zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.calib-zoom-btn {
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-primary);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  line-height: 1.4;
+  transition: background 0.12s;
+}
+
+.calib-zoom-btn:hover {
+  background: var(--color-surface-hover);
+}
+
+.calib-zoom-btn--reset {
+  font-size: var(--font-size-sm);
+  padding: 2px 10px;
+}
+
+.calib-zoom-level {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  min-width: 40px;
+  text-align: center;
+}
+
+/* Basemap toggle */
+.calib-basemap-btn {
+  padding: 2px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-primary);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.calib-basemap-btn:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+/* Plan image viewer */
+.calib-plan-viewer {
+  flex: 1;
+  overflow: auto;
+  background: #d4d4d4;
+  cursor: crosshair;
+  position: relative;
+}
+
+.calib-plan-viewer__inner {
+  position: relative;
+  display: inline-block;
+  min-width: 100%;
+}
+
+.calib-plan-viewer__img {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Pin overlays on plan image */
+.calib-pin-overlay {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2.5px solid white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  z-index: 2;
+}
+
+.calib-pin-overlay--a {
+  background: var(--color-deep-plumage-blue);
+}
+
+.calib-pin-overlay--b {
+  background: #0d9488;
+}
+
+/* MapLibre container */
+.calib-map-container {
+  flex: 1;
+}
+
+/* Map pin markers (DOM elements for MapLibre Marker) */
+.calib-map-marker {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2.5px solid white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  cursor: grab;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  user-select: none;
+}
+
+.calib-map-marker:active {
+  cursor: grabbing;
+}
+
+.calib-map-marker--a {
+  background: var(--color-deep-plumage-blue);
+}
+
+.calib-map-marker--b {
+  background: #0d9488;
+}
+
+/* Footer */
+.calib-screen__footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--color-surface-primary);
+  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.calib-screen__footer-hint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+  flex: 1;
+}
+
+.calib-screen__footer-actions {
+  display: flex;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+/* Responsive: stack panels vertically on narrow viewports */
+@media (max-width: 768px) {
+  .calib-screen__panels {
+    flex-direction: column;
+  }
+
+  .calib-panel--plan {
+    border-right: none;
+    border-bottom: 2px solid var(--color-border);
+    flex: 0 0 50%;
+  }
+
+  .calib-screen__header {
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .calib-screen__pin-controls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .calib-pin-btn {
+    flex: 1;
+  }
+}

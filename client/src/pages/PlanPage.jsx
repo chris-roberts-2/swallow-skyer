@@ -120,6 +120,30 @@ const PlanPage = () => {
     [projects, currentProjectId]
   );
 
+  const projectCenter = useMemo(() => {
+    const proj = (projects || []).find(p => p.id === currentProjectId);
+    const raw =
+      proj?.address_coord ||
+      proj?.addressCoord ||
+      proj?.address_coordinates ||
+      null;
+    if (!raw) return null;
+    const parsed =
+      typeof raw === 'string'
+        ? (() => {
+            try {
+              return JSON.parse(raw);
+            } catch {
+              return null;
+            }
+          })()
+        : raw;
+    if (!parsed) return null;
+    const lat = Number(parsed.lat ?? parsed.latitude);
+    const lng = Number(parsed.lng ?? parsed.lon ?? parsed.longitude);
+    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+  }, [projects, currentProjectId]);
+
   const [planLoading, setPlanLoading] = useState(true);
   const [planError, setPlanError] = useState('');
   const [plan, setPlan] = useState(null);
@@ -423,6 +447,7 @@ const PlanPage = () => {
           onClose={handleCloseUploadModal}
           projectId={currentProjectId}
           onCalibrationComplete={handleCalibrationComplete}
+          projectCenter={projectCenter}
         />
       </>
     );
@@ -500,6 +525,7 @@ const PlanPage = () => {
         onClose={handleCloseUploadModal}
         projectId={currentProjectId}
         onCalibrationComplete={handleCalibrationComplete}
+        projectCenter={projectCenter}
         isReplaceMode
       />
       <EditLocationModal

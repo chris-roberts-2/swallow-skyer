@@ -5,33 +5,39 @@ import apiClient from '../../services/api';
 import { configureMaplibreWorker } from '../../utils/maplibreWorker';
 import { computePlanCorners } from '../../utils/planGeoreference';
 
-const SATELLITE_RASTER_SOURCE = {
-  type: 'raster',
-  tiles: [
-    'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  ],
-  tileSize: 256,
-  attribution:
-    'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-};
+const STANDARD_STYLE_URL =
+  'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
 const SATELLITE_STYLE = {
   version: 8,
-  sources: { 'satellite-raster': SATELLITE_RASTER_SOURCE },
+  sources: {
+    'satellite-raster': {
+      type: 'raster',
+      tiles: [
+        'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      ],
+      tileSize: 256,
+      attribution:
+        'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+    },
+  },
   layers: [
     { id: 'satellite-raster', type: 'raster', source: 'satellite-raster' },
   ],
 };
 
 const STEP_UPLOAD = 'upload';
-const STEP_POINT1_PLAN = 'point1_plan';
-const STEP_POINT1_MAP = 'point1_map';
-const STEP_POINT2_PLAN = 'point2_plan';
-const STEP_POINT2_MAP = 'point2_map';
+const STEP_CALIBRATE = 'calibrate';
 const STEP_COMPLETE = 'complete';
 
 const ACCEPT_FILES =
   '.pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg';
+
+const PIN_EMPTY = { pixel: null, geo: null };
+
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 5;
+const ZOOM_STEP = 0.5;
 
 const PLAN_ERROR_MESSAGES = {
   rasterization_failed:
@@ -68,29 +74,50 @@ function getPixelFromImageClick(evt, imgEl) {
   return [x, y];
 }
 
+function createMapMarkerEl(pin) {
+  const el = document.createElement('div');
+  el.className = `calib-map-marker calib-map-marker--${pin}`;
+  el.textContent = pin.toUpperCase();
+  el.title = `Pin ${pin.toUpperCase()} — drag to reposition`;
+  return el;
+}
+
 const UploadPlanModal = ({
   open,
   onClose,
   projectId,
   onCalibrationComplete,
   isReplaceMode = false,
+  projectCenter = null,
 }) => {
   const [step, setStep] = useState(STEP_UPLOAD);
   const [file, setFile] = useState(null);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [preview, setPreview] = useState(null);
-  const [point1Pixel, setPoint1Pixel] = useState(null);
-  const [point1Geo, setPoint1Geo] = useState(null);
-  const [point2Pixel, setPoint2Pixel] = useState(null);
-  const [point2Geo, setPoint2Geo] = useState(null);
+  const [pinA, setPinA] = useState(PIN_EMPTY);
+  const [pinB, setPinB] = useState(PIN_EMPTY);
+  const [activePin, setActivePin] = useState('A');
+  const [planZoom, setPlanZoom] = useState(1);
+  const [basemap, setBasemap] = useState('labeled');
   const [georeferenceResult, setGeoreferenceResult] = useState(null);
   const [georeferenceError, setGeoreferenceError] = useState('');
   const [finalizeLoading, setFinalizeLoading] = useState(false);
   const [finalizeError, setFinalizeError] = useState('');
+
   const planImageRef = useRef(null);
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const markerARef = useRef(null);
+  const markerBRef = useRef(null);
+
+  // Keep a ref to activePin so the stable map click handler always sees the current value.
+  const activePinRef = useRef(activePin);
+  useEffect(() => {
+    activePinRef.current = activePin;
+  }, [activePin]);
+
+  const bothPinsSet = pinA.pixel && pinA.geo && pinB.pixel && pinB.geo;
 
   const resetWorkflow = useCallback(() => {
     setStep(STEP_UPLOAD);
@@ -98,10 +125,11 @@ const UploadPlanModal = ({
     setUploadLoading(false);
     setUploadError('');
     setPreview(null);
-    setPoint1Pixel(null);
-    setPoint1Geo(null);
-    setPoint2Pixel(null);
-    setPoint2Geo(null);
+    setPinA(PIN_EMPTY);
+    setPinB(PIN_EMPTY);
+    setActivePin('A');
+    setPlanZoom(1);
+    setBasemap('labeled');
     setGeoreferenceResult(null);
     setGeoreferenceError('');
     setFinalizeLoading(false);
@@ -112,24 +140,153 @@ const UploadPlanModal = ({
     if (open) resetWorkflow();
   }, [open, resetWorkflow]);
 
+  // File upload → rasterize → enter calibration
+  const handleFileChange = useCallback(
+    async e => {
+      const chosen = e?.target?.files?.[0];
+      if (!chosen || !projectId) return;
+      setUploadError('');
+      setFile(chosen);
+      setPreview(null);
+      setUploadLoading(true);
+      const formData = new FormData();
+      formData.append('file', chosen);
+      try {
+        const resp = await apiClient.request(
+          `/v1/projects/${projectId}/plan/calibration`,
+          { method: 'POST', body: formData }
+        );
+        setPreview({
+          imageUrl: resp?.image_url,
+          imageWidth: resp?.image_width,
+          imageHeight: resp?.image_height,
+        });
+        setStep(STEP_CALIBRATE);
+      } catch (err) {
+        setUploadError(getPlanErrorMessage(err));
+        setPreview(null);
+      } finally {
+        setUploadLoading(false);
+      }
+    },
+    [projectId]
+  );
+
+  // MapLibre calibration map — created once when STEP_CALIBRATE is active.
   useEffect(() => {
-    if (
-      step !== STEP_COMPLETE ||
-      !preview?.imageWidth ||
-      !preview?.imageHeight ||
-      !point1Pixel ||
-      !point2Pixel ||
-      !point1Geo ||
-      !point2Geo
-    ) {
-      return;
+    if (step !== STEP_CALIBRATE) return;
+    const el = mapContainerRef.current;
+    if (!el) return;
+
+    configureMaplibreWorker();
+
+    const center = projectCenter
+      ? [projectCenter.lng ?? projectCenter.lon ?? 0, projectCenter.lat]
+      : [-98.5, 39.8];
+    const zoom = projectCenter ? 15 : 3.5;
+
+    const map = new maplibregl.Map({
+      container: el,
+      style: STANDARD_STYLE_URL,
+      center,
+      zoom,
+      transformRequest: (url, resourceType) => {
+        if (
+          resourceType === 'Style' ||
+          resourceType === 'Source' ||
+          resourceType === 'Tile'
+        ) {
+          return { url, headers: {}, credentials: 'omit' };
+        }
+      },
+    });
+
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+    mapInstanceRef.current = map;
+
+    const handleClick = evt => {
+      const { lng, lat } = evt.lngLat;
+      const geo = [lng, lat];
+      const pin = activePinRef.current;
+
+      const placeOrMoveMarker = (markerRef, setPinFn) => {
+        if (markerRef.current) {
+          markerRef.current.setLngLat(geo);
+        } else {
+          const el2 = createMapMarkerEl(pin);
+          const m = new maplibregl.Marker({ element: el2, draggable: true })
+            .setLngLat(geo)
+            .addTo(map);
+          m.on('dragend', () => {
+            const { lng: mLng, lat: mLat } = m.getLngLat();
+            setPinFn(p => ({ ...p, geo: [mLng, mLat] }));
+          });
+          markerRef.current = m;
+        }
+        setPinFn(p => ({ ...p, geo }));
+      };
+
+      if (pin === 'A') {
+        placeOrMoveMarker(markerARef, setPinA);
+      } else {
+        placeOrMoveMarker(markerBRef, setPinB);
+      }
+    };
+
+    map.on('click', handleClick);
+
+    return () => {
+      map.off('click', handleClick);
+      if (markerARef.current) {
+        markerARef.current.remove();
+        markerARef.current = null;
+      }
+      if (markerBRef.current) {
+        markerBRef.current.remove();
+        markerBRef.current = null;
+      }
+      map.remove();
+      mapInstanceRef.current = null;
+    };
+  }, [step, projectCenter]);
+
+  // Basemap toggle
+  const handleBasemapToggle = useCallback(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    if (basemap === 'labeled') {
+      map.setStyle(SATELLITE_STYLE);
+      setBasemap('satellite');
+    } else {
+      map.setStyle(STANDARD_STYLE_URL);
+      setBasemap('labeled');
     }
+  }, [basemap]);
+
+  // Plan image click → set active pin's pixel position
+  const handlePlanImageClick = useCallback(
+    evt => {
+      const img = planImageRef.current;
+      const pixel = getPixelFromImageClick(evt, img);
+      if (!pixel) return;
+      if (activePin === 'A') {
+        setPinA(p => ({ ...p, pixel }));
+      } else {
+        setPinB(p => ({ ...p, pixel }));
+      }
+    },
+    [activePin]
+  );
+
+  // Confirm calibration: compute corners and advance to STEP_COMPLETE
+  const handleConfirmCalibration = useCallback(() => {
+    if (!bothPinsSet || !preview?.imageWidth || !preview?.imageHeight) return;
     const result = computePlanCorners({
       imageWidth: preview.imageWidth,
       imageHeight: preview.imageHeight,
       calibrationPairs: [
-        { pixel: point1Pixel, geo: point1Geo },
-        { pixel: point2Pixel, geo: point2Geo },
+        { pixel: pinA.pixel, geo: pinA.geo },
+        { pixel: pinB.pixel, geo: pinB.geo },
       ],
     });
     if (result.success) {
@@ -139,16 +296,20 @@ const UploadPlanModal = ({
       setGeoreferenceResult(null);
       setGeoreferenceError(result.error || 'Georeferencing failed.');
     }
-  }, [
-    step,
-    preview?.imageWidth,
-    preview?.imageHeight,
-    point1Pixel,
-    point2Pixel,
-    point1Geo,
-    point2Geo,
-  ]);
+    setStep(STEP_COMPLETE);
+  }, [bothPinsSet, preview, pinA, pinB]);
 
+  // Redo calibration: clear pins and return to STEP_CALIBRATE
+  const handleRedoCalibration = useCallback(() => {
+    setGeoreferenceResult(null);
+    setGeoreferenceError('');
+    setPinA(PIN_EMPTY);
+    setPinB(PIN_EMPTY);
+    setActivePin('A');
+    setStep(STEP_CALIBRATE);
+  }, []);
+
+  // Finalize: submit plan to backend
   const handleFinalizeUpload = useCallback(async () => {
     if (!georeferenceResult?.bbox || !file || !projectId) return;
     setFinalizeError('');
@@ -180,292 +341,338 @@ const UploadPlanModal = ({
     onClose,
   ]);
 
-  const handleRedoCalibration = useCallback(() => {
-    setGeoreferenceResult(null);
-    setGeoreferenceError('');
-    setPoint1Pixel(null);
-    setPoint1Geo(null);
-    setPoint2Pixel(null);
-    setPoint2Geo(null);
-    setStep(STEP_POINT1_PLAN);
-  }, []);
-
-  const handleFileChange = useCallback(
-    async e => {
-      const chosen = e?.target?.files?.[0];
-      if (!chosen || !projectId) return;
-      setUploadError('');
-      setFile(chosen);
-      setPreview(null);
-      setUploadLoading(true);
-      const formData = new FormData();
-      formData.append('file', chosen);
-      try {
-        const resp = await apiClient.request(
-          `/v1/projects/${projectId}/plan/calibration`,
-          { method: 'POST', body: formData }
-        );
-        setPreview({
-          imageUrl: resp?.image_url,
-          imageWidth: resp?.image_width,
-          imageHeight: resp?.image_height,
-        });
-        setStep(STEP_POINT1_PLAN);
-      } catch (err) {
-        setUploadError(getPlanErrorMessage(err));
-        setPreview(null);
-      } finally {
-        setUploadLoading(false);
-      }
-    },
-    [projectId]
-  );
-
-  const handlePlanImageClick = useCallback(
-    evt => {
-      const img = planImageRef.current;
-      const pixel = getPixelFromImageClick(evt, img);
-      if (!pixel) return;
-      if (step === STEP_POINT1_PLAN) {
-        setPoint1Pixel(pixel);
-        setStep(STEP_POINT1_MAP);
-      } else if (step === STEP_POINT2_PLAN) {
-        setPoint2Pixel(pixel);
-        setStep(STEP_POINT2_MAP);
-      }
-    },
-    [step]
-  );
-
-  const handleMapClick = useCallback(
-    evt => {
-      const lngLat = evt?.lngLat;
-      if (!lngLat) return;
-      const lon = lngLat.lng != null ? lngLat.lng : lngLat[0];
-      const lat = lngLat.lat != null ? lngLat.lat : lngLat[1];
-      if (step === STEP_POINT1_MAP) {
-        setPoint1Geo([lon, lat]);
-        setStep(STEP_POINT2_PLAN);
-      } else if (step === STEP_POINT2_MAP && point1Geo) {
-        setPoint2Geo([lon, lat]);
-        setStep(STEP_COMPLETE);
-      }
-    },
-    [step, point1Geo]
-  );
-
-  useEffect(() => {
-    if (step !== STEP_POINT1_MAP && step !== STEP_POINT2_MAP) return;
-    const el = mapContainerRef.current;
-    if (!el) return;
-    configureMaplibreWorker();
-    const map = new maplibregl.Map({
-      container: el,
-      style: SATELLITE_STYLE,
-      center: [-98.5, 39.8],
-      zoom: 10,
-      transformRequest: (url, resourceType) => {
-        if (
-          resourceType === 'Style' ||
-          resourceType === 'Source' ||
-          resourceType === 'Tile'
-        ) {
-          return { url, headers: {}, credentials: 'omit' };
-        }
-      },
-    });
-    mapInstanceRef.current = map;
-    map.on('click', handleMapClick);
-    return () => {
-      map.off('click', handleMapClick);
-      map.remove();
-      mapInstanceRef.current = null;
-    };
-  }, [step, handleMapClick]);
-
-  const closeMapModal = useCallback(() => {
-    if (step === STEP_POINT1_MAP) {
-      setPoint1Pixel(null);
-      setStep(STEP_POINT1_PLAN);
-    } else if (step === STEP_POINT2_MAP) {
-      setPoint2Pixel(null);
-      setStep(STEP_POINT2_PLAN);
-    }
-  }, [step]);
-
   if (!open) return null;
 
-  const showMapModal = step === STEP_POINT1_MAP || step === STEP_POINT2_MAP;
-  const pointNumber = step === STEP_POINT1_MAP ? 1 : 2;
+  // ── Side-by-side calibration screen ───────────────────────────────────────
+  if (step === STEP_CALIBRATE && preview) {
+    const pinStatus = (pin, label) => {
+      const hasPlan = !!pin.pixel;
+      const hasMap = !!pin.geo;
+      return (
+        <span className="calib-pin-status">
+          <span
+            className={`calib-pin-status__tag ${hasPlan ? 'calib-pin-status__tag--set' : ''}`}
+          >
+            Plan {hasPlan ? '✓' : '–'}
+          </span>
+          <span
+            className={`calib-pin-status__tag ${hasMap ? 'calib-pin-status__tag--set' : ''}`}
+          >
+            Map {hasMap ? '✓' : '–'}
+          </span>
+        </span>
+      );
+    };
 
-  return (
-    <>
+    return (
       <div
+        className="calib-screen"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="upload-plan-title"
-        className="modal-overlay"
-        onClick={e => e.target === e.currentTarget && onClose()}
+        aria-label={
+          isReplaceMode
+            ? 'Replace and georeference plan'
+            : 'Upload and georeference plan'
+        }
       >
-        <div
-          className="modal-body upload-plan-modal__body"
-          onClick={e => e.stopPropagation()}
-        >
-          <h3 id="upload-plan-title" className="modal-header">
-            {isReplaceMode
-              ? 'Replace and georeference plan'
-              : 'Upload and georeference plan'}
-          </h3>
+        {/* ── Header ─────────────────────────────────────────────────────── */}
+        <div className="calib-screen__header">
+          <div className="calib-screen__header-left">
+            <h2 className="calib-screen__title">
+              {isReplaceMode
+                ? 'Replace and georeference plan'
+                : 'Upload and georeference plan'}
+            </h2>
+            <p className="calib-screen__instructions">
+              Select Pin A and Pin B, then click the same location on both the
+              plan and the map. Choose identifiable features like building
+              corners, road intersections, or site entrances.
+            </p>
+          </div>
 
-          {step === STEP_UPLOAD && (
-            <div className="upload-plan-modal__step modal-form">
-              <p className="upload-plan-modal__instruction">
-                Choose a plan file (PDF, PNG, or JPEG). It will be uploaded so
-                you can place two calibration points on the plan and on the map.
-              </p>
-              <label className="form-label">
-                Plan file
-                <input
-                  type="file"
-                  accept={ACCEPT_FILES}
-                  onChange={handleFileChange}
-                  disabled={uploadLoading}
-                  className="form-input"
+          <div className="calib-screen__pin-controls">
+            <button
+              type="button"
+              className={`calib-pin-btn calib-pin-btn--a ${activePin === 'A' ? 'calib-pin-btn--active' : ''}`}
+              onClick={() => setActivePin('A')}
+              aria-pressed={activePin === 'A'}
+            >
+              <span className="calib-pin-btn__label">Pin A</span>
+              {pinStatus(pinA, 'A')}
+            </button>
+            <button
+              type="button"
+              className={`calib-pin-btn calib-pin-btn--b ${activePin === 'B' ? 'calib-pin-btn--active' : ''}`}
+              onClick={() => setActivePin('B')}
+              aria-pressed={activePin === 'B'}
+            >
+              <span className="calib-pin-btn__label">Pin B</span>
+              {pinStatus(pinB, 'B')}
+            </button>
+          </div>
+        </div>
+
+        {/* ── Panels ─────────────────────────────────────────────────────── */}
+        <div className="calib-screen__panels">
+          {/* LEFT — Plan image */}
+          <div className="calib-panel calib-panel--plan">
+            <div className="calib-panel__toolbar">
+              <span className="calib-panel__toolbar-label">
+                Plan — click to place <strong>Pin {activePin}</strong>
+              </span>
+              <span className="calib-panel__zoom-controls">
+                <button
+                  type="button"
+                  className="calib-zoom-btn"
+                  onClick={() =>
+                    setPlanZoom(z =>
+                      Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(1))
+                    )
+                  }
+                  aria-label="Zoom in"
+                >
+                  +
+                </button>
+                <span className="calib-zoom-level">
+                  {Math.round(planZoom * 100)}%
+                </span>
+                <button
+                  type="button"
+                  className="calib-zoom-btn"
+                  onClick={() =>
+                    setPlanZoom(z =>
+                      Math.max(MIN_ZOOM, +(z - ZOOM_STEP).toFixed(1))
+                    )
+                  }
+                  aria-label="Zoom out"
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  className="calib-zoom-btn calib-zoom-btn--reset"
+                  onClick={() => setPlanZoom(1)}
+                  aria-label="Reset zoom"
+                >
+                  Reset
+                </button>
+              </span>
+            </div>
+
+            <div className="calib-plan-viewer">
+              <div
+                className="calib-plan-viewer__inner"
+                style={{ width: `${planZoom * 100}%` }}
+                onClick={handlePlanImageClick}
+                role="button"
+                tabIndex={0}
+                aria-label="Click to place calibration pin on the plan"
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') e.preventDefault();
+                }}
+              >
+                <img
+                  ref={planImageRef}
+                  src={preview.imageUrl}
+                  alt="Plan preview"
+                  className="calib-plan-viewer__img"
+                  draggable={false}
                 />
-              </label>
-              {uploadLoading && (
-                <p className="upload-plan-modal__status">Uploading…</p>
-              )}
-              {uploadError && (
+                {pinA.pixel && preview && (
+                  <span
+                    className="calib-pin-overlay calib-pin-overlay--a"
+                    style={{
+                      left: `${(pinA.pixel[0] / preview.imageWidth) * 100}%`,
+                      top: `${(pinA.pixel[1] / preview.imageHeight) * 100}%`,
+                    }}
+                    aria-hidden
+                  >
+                    A
+                  </span>
+                )}
+                {pinB.pixel && preview && (
+                  <span
+                    className="calib-pin-overlay calib-pin-overlay--b"
+                    style={{
+                      left: `${(pinB.pixel[0] / preview.imageWidth) * 100}%`,
+                      top: `${(pinB.pixel[1] / preview.imageHeight) * 100}%`,
+                    }}
+                    aria-hidden
+                  >
+                    B
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT — MapLibre map */}
+          <div className="calib-panel calib-panel--map">
+            <div className="calib-panel__toolbar">
+              <span className="calib-panel__toolbar-label">
+                Map — click to place <strong>Pin {activePin}</strong>
+              </span>
+              <button
+                type="button"
+                className="calib-basemap-btn"
+                onClick={handleBasemapToggle}
+              >
+                {basemap === 'labeled'
+                  ? 'Switch to Satellite'
+                  : 'Switch to Labeled'}
+              </button>
+            </div>
+            <div
+              ref={mapContainerRef}
+              className="calib-map-container"
+              aria-label="Calibration map — click to place pin"
+            />
+          </div>
+        </div>
+
+        {/* ── Footer ─────────────────────────────────────────────────────── */}
+        <div className="calib-screen__footer">
+          <p className="calib-screen__footer-hint">
+            {!bothPinsSet
+              ? 'Place both Pin A and Pin B on the plan and the map to continue.'
+              : 'Both pins are set. Confirm to compute the plan corners.'}
+          </p>
+          <div className="calib-screen__footer-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                resetWorkflow();
+                onClose();
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleConfirmCalibration}
+              disabled={!bothPinsSet}
+              title={
+                !bothPinsSet
+                  ? 'Place both pins on the plan and map to continue'
+                  : undefined
+              }
+            >
+              Confirm calibration
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Upload step + completion step (normal modal) ───────────────────────────
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="upload-plan-title"
+      className="modal-overlay"
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        className="modal-body upload-plan-modal__body"
+        onClick={e => e.stopPropagation()}
+      >
+        <h3 id="upload-plan-title" className="modal-header">
+          {isReplaceMode
+            ? 'Replace and georeference plan'
+            : 'Upload and georeference plan'}
+        </h3>
+
+        {step === STEP_UPLOAD && (
+          <div className="upload-plan-modal__step modal-form">
+            <p className="upload-plan-modal__instruction">
+              Choose a plan file (PDF, PNG, or JPEG). After uploading you will
+              place two calibration pins on both the plan and a real-world map
+              to georeference it.
+            </p>
+            <label className="form-label">
+              Plan file
+              <input
+                type="file"
+                accept={ACCEPT_FILES}
+                onChange={handleFileChange}
+                disabled={uploadLoading}
+                className="form-input"
+              />
+            </label>
+            {uploadLoading && (
+              <p className="upload-plan-modal__status">Processing…</p>
+            )}
+            {uploadError && (
+              <p
+                role="alert"
+                className="upload-plan-modal__message upload-plan-modal__message--error"
+              >
+                {uploadError}
+              </p>
+            )}
+          </div>
+        )}
+
+        {step === STEP_COMPLETE && (
+          <div className="upload-plan-modal__step">
+            {georeferenceError ? (
+              <>
                 <p
                   role="alert"
                   className="upload-plan-modal__message upload-plan-modal__message--error"
                 >
-                  {uploadError}
+                  {georeferenceError}
                 </p>
-              )}
-            </div>
-          )}
-
-          {(step === STEP_POINT1_PLAN || step === STEP_POINT2_PLAN) &&
-            preview && (
-              <div className="upload-plan-modal__step">
-                <p className="upload-plan-modal__instruction">
-                  {step === STEP_POINT1_PLAN
-                    ? 'Click a recognizable location on the plan (e.g. building corner or intersection).'
-                    : 'Click a second recognizable location on the plan.'}
-                </p>
-                <div
-                  className="upload-plan-modal__preview-wrap"
-                  style={{
-                    maxWidth: preview.imageWidth,
-                    maxHeight: 400,
-                    overflow: 'auto',
-                  }}
-                >
-                  <div
-                    className="upload-plan-modal__preview-inner"
-                    style={{
-                      position: 'relative',
-                      display: 'inline-block',
-                      cursor: 'crosshair',
-                    }}
-                    onClick={handlePlanImageClick}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' || e.key === ' ')
-                        e.preventDefault();
-                    }}
-                    aria-label="Click to set calibration point"
-                  >
-                    <img
-                      ref={planImageRef}
-                      src={preview.imageUrl}
-                      alt="Plan preview"
-                      style={{
-                        display: 'block',
-                        maxWidth: '100%',
-                        height: 'auto',
-                        maxHeight: 400,
-                      }}
-                      draggable={false}
-                    />
-                    {point1Pixel && preview && (
-                      <span
-                        className="upload-plan-modal__marker"
-                        style={{
-                          left: `${(point1Pixel[0] / preview.imageWidth) * 100}%`,
-                          top: `${(point1Pixel[1] / preview.imageHeight) * 100}%`,
-                          transform: 'translate(-50%, -100%)',
-                        }}
-                        aria-hidden
-                      />
-                    )}
-                    {point2Pixel && preview && (
-                      <span
-                        className="upload-plan-modal__marker upload-plan-modal__marker--second"
-                        style={{
-                          left: `${(point2Pixel[0] / preview.imageWidth) * 100}%`,
-                          top: `${(point2Pixel[1] / preview.imageHeight) * 100}%`,
-                          transform: 'translate(-50%, -100%)',
-                        }}
-                        aria-hidden
-                      />
-                    )}
-                  </div>
-                </div>
                 <p className="upload-plan-modal__hint">
-                  Click on the plan image above to set calibration point{' '}
-                  {step === STEP_POINT1_PLAN ? 1 : 2}.
+                  Choose two calibration points farther apart and try again.
                 </p>
-              </div>
-            )}
-
-          {step === STEP_COMPLETE && (
-            <div className="upload-plan-modal__step">
-              {georeferenceError ? (
-                <>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={handleRedoCalibration}
+                >
+                  Redo calibration
+                </button>
+              </>
+            ) : georeferenceResult ? (
+              <>
+                <p className="upload-plan-modal__message upload-plan-modal__message--success">
+                  Corners computed. Save the plan to store it with the project.
+                </p>
+                {pinA.geo && pinB.geo && (
+                  <p className="upload-plan-modal__hint">
+                    Pin A: {pinA.geo[1].toFixed(5)}, {pinA.geo[0].toFixed(5)}
+                    {' · '}
+                    Pin B: {pinB.geo[1].toFixed(5)}, {pinB.geo[0].toFixed(5)}
+                  </p>
+                )}
+                {finalizeError && (
                   <p
                     role="alert"
                     className="upload-plan-modal__message upload-plan-modal__message--error"
                   >
-                    {georeferenceError}
+                    {finalizeError}
                   </p>
-                  <p className="upload-plan-modal__hint">
-                    Choose two calibration points farther apart and try again.
-                  </p>
+                )}
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 'var(--space-sm)',
+                    marginTop: 'var(--space-sm)',
+                  }}
+                >
                   <button
                     type="button"
                     className="btn-secondary"
                     onClick={handleRedoCalibration}
+                    disabled={finalizeLoading}
                   >
                     Redo calibration
                   </button>
-                </>
-              ) : georeferenceResult ? (
-                <>
-                  <p className="upload-plan-modal__message upload-plan-modal__message--success">
-                    Corners computed. Save the plan to store it with the
-                    project.
-                  </p>
-                  {point1Geo && point2Geo && (
-                    <p className="upload-plan-modal__hint">
-                      Point 1: {point1Geo[1].toFixed(5)},{' '}
-                      {point1Geo[0].toFixed(5)}
-                      {' · '}
-                      Point 2: {point2Geo[1].toFixed(5)},{' '}
-                      {point2Geo[0].toFixed(5)}
-                    </p>
-                  )}
-                  {finalizeError && (
-                    <p
-                      role="alert"
-                      className="upload-plan-modal__message upload-plan-modal__message--error"
-                    >
-                      {finalizeError}
-                    </p>
-                  )}
                   <button
                     type="button"
                     className="btn-primary"
@@ -478,68 +685,28 @@ const UploadPlanModal = ({
                         ? 'Replace plan'
                         : 'Save plan'}
                   </button>
-                </>
-              ) : (
-                <p className="upload-plan-modal__status">Computing corners…</p>
-              )}
-            </div>
-          )}
-
-          <div className="modal-footer">
-            {showMapModal ? null : (
-              <>
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => {
-                    resetWorkflow();
-                    onClose();
-                  }}
-                >
-                  Cancel
-                </button>
+                </div>
               </>
+            ) : (
+              <p className="upload-plan-modal__status">Computing corners…</p>
             )}
           </div>
+        )}
+
+        <div className="modal-footer">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              resetWorkflow();
+              onClose();
+            }}
+          >
+            Cancel
+          </button>
         </div>
       </div>
-
-      {showMapModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="calibration-map-title"
-          className="modal-overlay upload-plan-modal__map-overlay"
-          onClick={e => e.target === e.currentTarget && closeMapModal()}
-        >
-          <div
-            className="upload-plan-modal__map-body"
-            onClick={e => e.stopPropagation()}
-          >
-            <h3 id="calibration-map-title" className="modal-header">
-              Set real-world location for point {pointNumber}
-            </h3>
-            <p className="upload-plan-modal__instruction">
-              Click the same location on the satellite map below.
-            </p>
-            <div
-              ref={mapContainerRef}
-              className="upload-plan-modal__map-container"
-              aria-label="Satellite map for calibration"
-            />
-            <div className="modal-footer">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={closeMapModal}
-              >
-                Back
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   );
 };
 
