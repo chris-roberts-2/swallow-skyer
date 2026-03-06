@@ -43,6 +43,28 @@ const MINIMAL_BASE_STYLE = {
 const DEFAULT_CENTER = [-98.5, 39.8];
 const DEFAULT_ZOOM = 3.5;
 
+const PLAN_FIT_PADDING = 50;
+const PLAN_FIT_MAX_ZOOM = 22;
+
+/**
+ * Compute MapLibre LngLatBounds from plan metadata corner coordinates.
+ * Uses corner_nw, corner_ne, corner_se, corner_sw (from stored min/max or API).
+ * Returns null if any corner is missing.
+ */
+function getPlanBounds(planMetadata) {
+  if (!planMetadata) return null;
+  const coords = [
+    planMetadata.corner_nw,
+    planMetadata.corner_ne,
+    planMetadata.corner_se,
+    planMetadata.corner_sw,
+  ].filter(Boolean);
+  if (coords.length !== 4) return null;
+  const bounds = new maplibregl.LngLatBounds();
+  coords.forEach(c => bounds.extend(c));
+  return bounds;
+}
+
 function derivePlanCorners(plan) {
   const minLat = plan?.min_lat;
   const minLng = plan?.min_lng;
@@ -102,6 +124,8 @@ const PlanPage = () => {
   const [planError, setPlanError] = useState('');
   const [plan, setPlan] = useState(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [removePlanLoading, setRemovePlanLoading] = useState(false);
+  const [removePlanError, setRemovePlanError] = useState('');
   const [isMapReady, setIsMapReady] = useState(false);
   const [editLocationOpen, setEditLocationOpen] = useState(false);
   const [projectMarkerForEdit, setProjectMarkerForEdit] = useState(null);
@@ -229,13 +253,14 @@ const PlanPage = () => {
         }
         planOverlayAddedRef.current = true;
 
-        const bounds = new maplibregl.LngLatBounds();
-        coords.forEach(c => bounds.extend(c));
-        map.fitBounds(bounds, {
-          padding: 40,
-          maxZoom: 22,
-          duration: 0,
-        });
+        const bounds = getPlanBounds(planMetadata);
+        if (bounds) {
+          map.fitBounds(bounds, {
+            padding: PLAN_FIT_PADDING,
+            maxZoom: PLAN_FIT_MAX_ZOOM,
+            duration: 0,
+          });
+        }
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('Plan overlay error:', err);
@@ -282,6 +307,34 @@ const PlanPage = () => {
     setUploadModalOpen(true);
   }, []);
 
+  const handleReplacePlan = useCallback(() => {
+    setRemovePlanError('');
+    setUploadModalOpen(true);
+  }, []);
+
+  const handleRemovePlan = useCallback(async () => {
+    if (
+      !currentProjectId ||
+      !window.confirm(
+        'Remove this plan? Photos and locations will not be affected.'
+      )
+    ) {
+      return;
+    }
+    setRemovePlanLoading(true);
+    setRemovePlanError('');
+    try {
+      await apiClient.delete(`/v1/projects/${currentProjectId}/plan`);
+      setPlan(null);
+    } catch (err) {
+      setRemovePlanError(
+        err?.payload?.message || err?.message || 'Unable to remove plan'
+      );
+    } finally {
+      setRemovePlanLoading(false);
+    }
+  }, [currentProjectId]);
+
   const handleCalibrationComplete = useCallback(
     (payload = {}) => {
       if (payload?.planCreated) {
@@ -294,6 +347,18 @@ const PlanPage = () => {
   const handleCloseUploadModal = useCallback(() => {
     setUploadModalOpen(false);
   }, []);
+
+  const handleFitPlan = useCallback(() => {
+    const map = mapInstance.current;
+    if (!map || !planMetadata) return;
+    const bounds = getPlanBounds(planMetadata);
+    if (!bounds) return;
+    map.fitBounds(bounds, {
+      padding: PLAN_FIT_PADDING,
+      maxZoom: PLAN_FIT_MAX_ZOOM,
+      duration: 300,
+    });
+  }, [planMetadata]);
 
   const handleEditProjectLocation = useCallback(marker => {
     setProjectMarkerForEdit(marker);
@@ -366,6 +431,14 @@ const PlanPage = () => {
   return (
     <div className="plan-page plan-page--with-map">
       <h2 className="page-header__title">Plan</h2>
+      {removePlanError && (
+        <p
+          role="alert"
+          className="plan-page__message plan-page__message--error plan-page__message--inline"
+        >
+          {removePlanError}
+        </p>
+      )}
       <div
         ref={mapWrapperRef}
         className="plan-page__map-wrapper"
@@ -376,6 +449,40 @@ const PlanPage = () => {
           className="plan-page__map map-container"
           aria-label="Plan map"
         />
+        <div className="plan-page__map-controls">
+          <button
+            type="button"
+            className="plan-page__fit-plan-btn maplibregl-ctrl maplibregl-ctrl-group"
+            onClick={handleFitPlan}
+            title="Fit plan to view"
+            aria-label="Fit plan to view"
+          >
+            Fit Plan
+          </button>
+          {canManagePlan && (
+            <>
+              <button
+                type="button"
+                className="plan-page__manage-btn plan-page__replace-btn maplibregl-ctrl maplibregl-ctrl-group"
+                onClick={handleReplacePlan}
+                title="Replace plan"
+                aria-label="Replace plan"
+              >
+                Replace Plan
+              </button>
+              <button
+                type="button"
+                className="plan-page__manage-btn plan-page__remove-btn maplibregl-ctrl maplibregl-ctrl-group"
+                onClick={handleRemovePlan}
+                disabled={removePlanLoading}
+                title="Remove plan"
+                aria-label="Remove plan"
+              >
+                {removePlanLoading ? 'Removing…' : 'Remove Plan'}
+              </button>
+            </>
+          )}
+        </div>
         <PlanMapMarkers
           mapInstanceRef={mapInstance}
           mapContainerRef={mapWrapperRef}
@@ -388,6 +495,13 @@ const PlanPage = () => {
           refreshMarkersKey={refreshMarkersKey}
         />
       </div>
+      <UploadPlanModal
+        open={uploadModalOpen}
+        onClose={handleCloseUploadModal}
+        projectId={currentProjectId}
+        onCalibrationComplete={handleCalibrationComplete}
+        isReplaceMode
+      />
       <EditLocationModal
         open={editLocationOpen}
         onClose={() => {

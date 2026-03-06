@@ -33,6 +33,31 @@ const STEP_COMPLETE = 'complete';
 const ACCEPT_FILES =
   '.pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg';
 
+const PLAN_ERROR_MESSAGES = {
+  rasterization_failed:
+    'The file could not be processed as an image. Try a different file or format.',
+  invalid_metadata:
+    'Invalid plan data. Check that all required fields are provided.',
+  invalid_geometry:
+    'Calibration points produced invalid geometry. Choose two points farther apart and try again.',
+  invalid_file: 'The uploaded file could not be used. Try a different file.',
+  upload_failed: 'Upload failed. Please try again.',
+  database_error: 'Failed to save the plan. Please try again.',
+  storage_not_configured: 'Storage is not configured. Contact support.',
+  database_not_configured: 'Database is not configured. Contact support.',
+  plan_already_exists:
+    'This project already has a plan. Use Replace plan to overwrite.',
+  not_found: 'No plan found for this project.',
+};
+
+function getPlanErrorMessage(err) {
+  const msg = err?.payload?.message;
+  if (msg && typeof msg === 'string') return msg;
+  const code = err?.payload?.error;
+  if (code && PLAN_ERROR_MESSAGES[code]) return PLAN_ERROR_MESSAGES[code];
+  return err?.message || 'Something went wrong. Please try again.';
+}
+
 function getPixelFromImageClick(evt, imgEl) {
   if (!imgEl) return null;
   const rect = imgEl.getBoundingClientRect();
@@ -48,6 +73,7 @@ const UploadPlanModal = ({
   onClose,
   projectId,
   onCalibrationComplete,
+  isReplaceMode = false,
 }) => {
   const [step, setStep] = useState(STEP_UPLOAD);
   const [file, setFile] = useState(null);
@@ -135,19 +161,24 @@ const UploadPlanModal = ({
     formData.append('max_lng', String(georeferenceResult.bbox.max_lng));
     try {
       await apiClient.request(`/v1/projects/${projectId}/plan`, {
-        method: 'POST',
+        method: isReplaceMode ? 'PATCH' : 'POST',
         body: formData,
       });
       onCalibrationComplete?.({ planCreated: true });
       onClose();
     } catch (err) {
-      setFinalizeError(
-        err?.payload?.message || err?.message || 'Failed to save plan.'
-      );
+      setFinalizeError(getPlanErrorMessage(err));
     } finally {
       setFinalizeLoading(false);
     }
-  }, [georeferenceResult, file, projectId, onCalibrationComplete, onClose]);
+  }, [
+    georeferenceResult,
+    file,
+    projectId,
+    isReplaceMode,
+    onCalibrationComplete,
+    onClose,
+  ]);
 
   const handleRedoCalibration = useCallback(() => {
     setGeoreferenceResult(null);
@@ -163,8 +194,9 @@ const UploadPlanModal = ({
     async e => {
       const chosen = e?.target?.files?.[0];
       if (!chosen || !projectId) return;
-      setFile(chosen);
       setUploadError('');
+      setFile(chosen);
+      setPreview(null);
       setUploadLoading(true);
       const formData = new FormData();
       formData.append('file', chosen);
@@ -180,9 +212,7 @@ const UploadPlanModal = ({
         });
         setStep(STEP_POINT1_PLAN);
       } catch (err) {
-        setUploadError(
-          err?.payload?.message || err?.message || 'Upload failed'
-        );
+        setUploadError(getPlanErrorMessage(err));
         setPreview(null);
       } finally {
         setUploadLoading(false);
@@ -282,7 +312,9 @@ const UploadPlanModal = ({
           onClick={e => e.stopPropagation()}
         >
           <h3 id="upload-plan-title" className="modal-header">
-            Upload and georeference plan
+            {isReplaceMode
+              ? 'Replace and georeference plan'
+              : 'Upload and georeference plan'}
           </h3>
 
           {step === STEP_UPLOAD && (
@@ -440,7 +472,11 @@ const UploadPlanModal = ({
                     onClick={handleFinalizeUpload}
                     disabled={finalizeLoading}
                   >
-                    {finalizeLoading ? 'Saving…' : 'Save plan'}
+                    {finalizeLoading
+                      ? 'Saving…'
+                      : isReplaceMode
+                        ? 'Replace plan'
+                        : 'Save plan'}
                   </button>
                 </>
               ) : (

@@ -478,6 +478,83 @@ def _parse_plan_bounds(form):
     return min_lat, min_lng, max_lat, max_lng, None
 
 
+def _validate_rasterization_output(png_bytes, image_width, image_height):
+    """
+    Verify rasterization produced a valid PNG and dimensions.
+    Returns (True, None) or (False, error_code, message).
+    """
+    if not png_bytes or not isinstance(png_bytes, bytes) or len(png_bytes) == 0:
+        return False, "rasterization_failed", "Rasterization produced no image data."
+    try:
+        w = int(image_width)
+        h = int(image_height)
+    except (TypeError, ValueError):
+        return False, "rasterization_failed", "Rasterization returned invalid dimensions."
+    if w != image_width or h != image_height or w <= 0 or h <= 0:
+        return False, "rasterization_failed", "Image dimensions must be positive integers."
+    if len(png_bytes) < 8 or png_bytes[:8] != b"\x89PNG\r\n\x1a\n":
+        return False, "rasterization_failed", "Rasterization did not produce a valid PNG image."
+    return True, None, None
+
+
+def _validate_plan_geometry(min_lat, min_lng, max_lat, max_lng):
+    """
+    Ensure the four corner coordinates form a non-degenerate quadrilateral.
+    Returns (True, None) or (False, error_code, message).
+    """
+    if min_lat >= max_lat or min_lng >= max_lng:
+        return False, "invalid_geometry", "Calibration produced invalid bounds; min must be less than max."
+    area = (max_lat - min_lat) * (max_lng - min_lng)
+    if area < 1e-12:
+        return (
+            False,
+            "invalid_geometry",
+            "Calibration points are too close or overlapping. Choose two points farther apart.",
+        )
+    return True, None, None
+
+
+def _validate_plan_metadata(
+    project_id,
+    file_name,
+    image_width,
+    image_height,
+    min_lat,
+    min_lng,
+    max_lat,
+    max_lng,
+):
+    """
+    Validate required plan metadata before storage.
+    Returns (True, None) or (False, error_code, message).
+    """
+    if not project_id or not str(project_id).strip():
+        return False, "invalid_metadata", "Project ID is required."
+    if not file_name or not str(file_name).strip():
+        return False, "invalid_metadata", "File name is required."
+    try:
+        w = int(image_width)
+        h = int(image_height)
+    except (TypeError, ValueError):
+        return False, "invalid_metadata", "Image width and height must be positive integers."
+    if w <= 0 or h <= 0:
+        return False, "invalid_metadata", "Image width and height must be positive."
+    if not isinstance(min_lat, (int, float)) or not isinstance(min_lng, (int, float)):
+        return False, "invalid_metadata", "Corner coordinates must be numeric."
+    if not isinstance(max_lat, (int, float)) or not isinstance(max_lng, (int, float)):
+        return False, "invalid_metadata", "Corner coordinates must be numeric."
+    if not (-90 <= min_lat <= 90) or not (-90 <= max_lat <= 90):
+        return False, "invalid_metadata", "Latitude must be between -90 and 90."
+    if not (-180 <= min_lng <= 180) or not (-180 <= max_lng <= 180):
+        return False, "invalid_metadata", "Longitude must be between -180 and 180."
+    return True, None, None
+
+
+def _plan_error_response(error_code, message, status_code=400):
+    """Return a consistent JSON error payload and status code."""
+    return jsonify({"error": error_code, "message": message}), status_code
+
+
 def _plan_ext_from_filename(filename, mime_type):
     """Extract plan file extension (pdf, png, jpeg, jpg)."""
     _, ext = os.path.splitext(filename or "")
@@ -526,45 +603,49 @@ def upload_project_plan(project_id):
 
     file_item = request.files.get("file")
     if not file_item or not getattr(file_item, "filename", None):
-        return jsonify({"error": "Plan file is required", "message": "Include a PDF or PNG file"}), 400
+        return _plan_error_response(
+            "invalid_file", "Plan file is required. Include a PDF, PNG, or JPEG file."
+        )
 
     mime = (getattr(file_item, "mimetype", "") or "").lower()
     ext = _plan_ext_from_filename(file_item.filename, mime)
     if not ext:
-        return (
-            jsonify({
-                "error": "invalid_metadata",
-                "message": "Plan must be PDF, PNG, or JPEG",
-            }),
-            400,
+        return _plan_error_response(
+            "invalid_metadata", "Plan must be PDF, PNG, or JPEG."
         )
 
     min_lat, min_lng, max_lat, max_lng, bounds_err = _parse_plan_bounds(request.form)
     if bounds_err:
-        return jsonify({"error": "invalid_metadata", "message": bounds_err}), 400
+        return _plan_error_response("invalid_metadata", bounds_err)
 
     existing = plan_service.get_plan_by_project_id(project_id)
     if existing:
-        return (
-            jsonify({"error": "plan_already_exists", "message": "Project already has a plan. Use PATCH to replace."}),
+        return _plan_error_response(
+            "plan_already_exists",
+            "Project already has a plan. Use Replace plan to overwrite.",
             409,
         )
 
     if not r2_client.client:
         config_msg = getattr(r2_client, "_config_error", None) or "Check R2 environment variables."
-        return jsonify({"error": "Storage not configured", "message": config_msg}), 500
+        return _plan_error_response("storage_not_configured", config_msg, 500)
 
     if not supabase_client.client:
-        return jsonify({"error": "Database not configured", "message": "Check Supabase environment variables."}), 500
+        return _plan_error_response(
+            "database_not_configured",
+            "Check Supabase environment variables.",
+            500,
+        )
 
     try:
         file_bytes = _read_plan_file_bytes(file_item)
     except ValueError as exc:
-        return jsonify({"error": "invalid_file", "message": str(exc)}), 400
+        return _plan_error_response("invalid_file", str(exc))
 
     if len(file_bytes) > MAX_PLAN_BYTES:
-        return (
-            jsonify({"error": "invalid_file", "message": f"Plan file too large (max {MAX_PLAN_BYTES // (1024*1024)}MB)"}),
+        return _plan_error_response(
+            "invalid_file",
+            f"Plan file too large (max {MAX_PLAN_BYTES // (1024 * 1024)}MB).",
             413,
         )
 
@@ -575,17 +656,46 @@ def upload_project_plan(project_id):
             mime_hint=mime,
         )
     except RasterizeError as e:
-        return jsonify({"error": "invalid_file", "message": e.message}), 400
+        return _plan_error_response("rasterization_failed", e.message)
+
+    ok, err_code, err_msg = _validate_rasterization_output(
+        png_bytes, image_width, image_height
+    )
+    if not ok:
+        return _plan_error_response(err_code, err_msg)
+
+    ok, err_code, err_msg = _validate_plan_geometry(
+        min_lat, min_lng, max_lat, max_lng
+    )
+    if not ok:
+        return _plan_error_response(err_code, err_msg)
+
+    ok, err_code, err_msg = _validate_plan_metadata(
+        project_id,
+        "plan.png",
+        image_width,
+        image_height,
+        min_lat,
+        min_lng,
+        max_lat,
+        max_lng,
+    )
+    if not ok:
+        return _plan_error_response(err_code, err_msg)
 
     try:
         r2_key = r2_client.upload_project_plan(
             project_id, png_bytes, "png", content_type=PNG_MIME
         )
-    except Exception as exc:
-        return jsonify({"error": "Upload failed", "message": str(exc)}), 500
+    except Exception:
+        return _plan_error_response(
+            "upload_failed", "Failed to upload plan to storage.", 500
+        )
 
     if not r2_key:
-        return jsonify({"error": "Upload failed", "message": "Failed to upload plan to storage"}), 502
+        return _plan_error_response(
+            "upload_failed", "Failed to upload plan to storage.", 502
+        )
 
     try:
         record = plan_service.create_plan_record(
@@ -602,13 +712,17 @@ def upload_project_plan(project_id):
             image_width=image_width,
             image_height=image_height,
         )
-    except Exception as exc:
+    except Exception:
         r2_client.delete_file(r2_key)
-        return jsonify({"error": "Database error", "message": str(exc)}), 500
+        return _plan_error_response(
+            "database_error", "Failed to store plan metadata.", 500
+        )
 
     if not record:
         r2_client.delete_file(r2_key)
-        return jsonify({"error": "Database error", "message": "Failed to store plan metadata"}), 502
+        return _plan_error_response(
+            "database_error", "Failed to store plan metadata.", 502
+        )
 
     signed_url = r2_client.generate_presigned_url(r2_key, expires_in=600)
     response_data = {
@@ -657,31 +771,30 @@ def upload_project_plan_calibration(project_id):
 
     file_item = request.files.get("file")
     if not file_item or not getattr(file_item, "filename", None):
-        return jsonify({"error": "Plan file is required", "message": "Include a PDF or PNG file"}), 400
+        return _plan_error_response(
+            "invalid_file", "Plan file is required. Include a PDF, PNG, or JPEG file."
+        )
 
     mime = (getattr(file_item, "mimetype", "") or "").lower()
     ext = _plan_ext_from_filename(file_item.filename, mime)
     if not ext:
-        return (
-            jsonify({
-                "error": "invalid_metadata",
-                "message": "Plan must be PDF, PNG, or JPEG",
-            }),
-            400,
+        return _plan_error_response(
+            "invalid_metadata", "Plan must be PDF, PNG, or JPEG."
         )
 
     if not r2_client.client:
         config_msg = getattr(r2_client, "_config_error", None) or "Check R2 environment variables."
-        return jsonify({"error": "Storage not configured", "message": config_msg}), 500
+        return _plan_error_response("storage_not_configured", config_msg, 500)
 
     try:
         file_bytes = _read_plan_file_bytes(file_item)
     except ValueError as exc:
-        return jsonify({"error": "invalid_file", "message": str(exc)}), 400
+        return _plan_error_response("invalid_file", str(exc))
 
     if len(file_bytes) > MAX_PLAN_BYTES:
-        return (
-            jsonify({"error": "invalid_file", "message": f"Plan file too large (max {MAX_PLAN_BYTES // (1024*1024)}MB)"}),
+        return _plan_error_response(
+            "invalid_file",
+            f"Plan file too large (max {MAX_PLAN_BYTES // (1024 * 1024)}MB).",
             413,
         )
 
@@ -692,16 +805,26 @@ def upload_project_plan_calibration(project_id):
             mime_hint=mime,
         )
     except RasterizeError as e:
-        return jsonify({"error": "invalid_file", "message": e.message}), 400
+        return _plan_error_response("rasterization_failed", e.message)
+
+    ok, err_code, err_msg = _validate_rasterization_output(
+        png_bytes, image_width, image_height
+    )
+    if not ok:
+        return _plan_error_response(err_code, err_msg)
 
     key = CALIBRATION_PLAN_KEY_TEMPLATE.format(project_id=project_id)
     try:
         ok = r2_client.upload_bytes(png_bytes, key, content_type=PNG_MIME)
-    except Exception as exc:
-        return jsonify({"error": "Upload failed", "message": str(exc)}), 500
+    except Exception:
+        return _plan_error_response(
+            "upload_failed", "Failed to upload calibration image.", 500
+        )
 
     if not ok:
-        return jsonify({"error": "Upload failed", "message": "Failed to upload calibration image"}), 502
+        return _plan_error_response(
+            "upload_failed", "Failed to upload calibration image.", 502
+        )
 
     signed_url = r2_client.generate_presigned_url(key, expires_in=600)
     return (
@@ -785,39 +908,40 @@ def replace_project_plan(project_id):
 
     existing = plan_service.get_plan_by_project_id(project_id)
     if not existing:
-        return jsonify({"error": "not_found", "message": "No plan exists for this project. Use POST to upload."}), 404
+        return _plan_error_response(
+            "not_found", "No plan exists for this project. Use Upload plan first.", 404
+        )
 
     file_item = request.files.get("file")
     if not file_item or not getattr(file_item, "filename", None):
-        return jsonify({
-            "error": "Plan file is required",
-            "message": "Include a PDF, PNG, or JPEG file",
-        }), 400
+        return _plan_error_response(
+            "invalid_file", "Plan file is required. Include a PDF, PNG, or JPEG file."
+        )
 
     mime = (getattr(file_item, "mimetype", "") or "").lower()
     ext = _plan_ext_from_filename(file_item.filename, mime)
     if not ext:
-        return (
-            jsonify({"error": "invalid_metadata", "message": "Plan must be PDF, PNG, or JPEG"}),
-            400,
+        return _plan_error_response(
+            "invalid_metadata", "Plan must be PDF, PNG, or JPEG."
         )
 
     min_lat, min_lng, max_lat, max_lng, bounds_err = _parse_plan_bounds(request.form)
     if bounds_err:
-        return jsonify({"error": "invalid_metadata", "message": bounds_err}), 400
+        return _plan_error_response("invalid_metadata", bounds_err)
 
     if not r2_client.client:
         config_msg = getattr(r2_client, "_config_error", None) or "Check R2 environment variables."
-        return jsonify({"error": "Storage not configured", "message": config_msg}), 500
+        return _plan_error_response("storage_not_configured", config_msg, 500)
 
     try:
         file_bytes = _read_plan_file_bytes(file_item)
     except ValueError as exc:
-        return jsonify({"error": "invalid_file", "message": str(exc)}), 400
+        return _plan_error_response("invalid_file", str(exc))
 
     if len(file_bytes) > MAX_PLAN_BYTES:
-        return (
-            jsonify({"error": "invalid_file", "message": f"Plan file too large (max {MAX_PLAN_BYTES // (1024*1024)}MB)"}),
+        return _plan_error_response(
+            "invalid_file",
+            f"Plan file too large (max {MAX_PLAN_BYTES // (1024 * 1024)}MB).",
             413,
         )
 
@@ -828,17 +952,46 @@ def replace_project_plan(project_id):
             mime_hint=mime,
         )
     except RasterizeError as e:
-        return jsonify({"error": "invalid_file", "message": e.message}), 400
+        return _plan_error_response("rasterization_failed", e.message)
+
+    ok, err_code, err_msg = _validate_rasterization_output(
+        png_bytes, image_width, image_height
+    )
+    if not ok:
+        return _plan_error_response(err_code, err_msg)
+
+    ok, err_code, err_msg = _validate_plan_geometry(
+        min_lat, min_lng, max_lat, max_lng
+    )
+    if not ok:
+        return _plan_error_response(err_code, err_msg)
+
+    ok, err_code, err_msg = _validate_plan_metadata(
+        project_id,
+        "plan.png",
+        image_width,
+        image_height,
+        min_lat,
+        min_lng,
+        max_lat,
+        max_lng,
+    )
+    if not ok:
+        return _plan_error_response(err_code, err_msg)
 
     try:
         r2_key = r2_client.upload_project_plan(
             project_id, png_bytes, "png", content_type=PNG_MIME
         )
-    except Exception as exc:
-        return jsonify({"error": "Upload failed", "message": str(exc)}), 500
+    except Exception:
+        return _plan_error_response(
+            "upload_failed", "Failed to upload plan to storage.", 500
+        )
 
     if not r2_key:
-        return jsonify({"error": "Upload failed", "message": "Failed to upload plan to storage"}), 502
+        return _plan_error_response(
+            "upload_failed", "Failed to upload plan to storage.", 502
+        )
 
     try:
         record = plan_service.replace_plan(
@@ -855,13 +1008,17 @@ def replace_project_plan(project_id):
             image_width=image_width,
             image_height=image_height,
         )
-    except Exception as exc:
+    except Exception:
         r2_client.delete_file(r2_key)
-        return jsonify({"error": "Database error", "message": str(exc)}), 500
+        return _plan_error_response(
+            "database_error", "Failed to update plan metadata.", 500
+        )
 
     if not record:
         r2_client.delete_file(r2_key)
-        return jsonify({"error": "Database error", "message": "Failed to update plan metadata"}), 502
+        return _plan_error_response(
+            "database_error", "Failed to update plan metadata.", 502
+        )
 
     signed_url = r2_client.generate_presigned_url(r2_key, expires_in=600)
     response_data = {
