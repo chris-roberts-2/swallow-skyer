@@ -18,6 +18,7 @@ import {
   LoginPage,
   RegisterPage,
   MapPage,
+  PlanPage,
   PhotosPage,
   ProfilePage,
   ProjectsPage,
@@ -82,6 +83,14 @@ const SecondaryNav = () => {
         <NavLink to="/map" className={navLinkClass}>
           Map
         </NavLink>
+        {hasActiveProject && (
+          <NavLink
+            to={`/projects/${activeProject?.id || activeProject}/plan`}
+            className={navLinkClass}
+          >
+            Plan
+          </NavLink>
+        )}
       </div>
     </nav>
   );
@@ -194,6 +203,14 @@ export function AppRoutes() {
             element={
               <AuthLayout>
                 <ProjectMembersPage />
+              </AuthLayout>
+            }
+          />
+          <Route
+            path="/projects/:id/plan"
+            element={
+              <AuthLayout>
+                <PlanPage />
               </AuthLayout>
             }
           />

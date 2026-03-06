@@ -633,6 +633,87 @@ def upload_project_plan(project_id):
     return jsonify(response_data), 201
 
 
+CALIBRATION_PLAN_KEY_TEMPLATE = "projects/{project_id}/plans/calibration.png"
+
+
+@projects_bp.route("/<project_id>/plan/calibration", methods=["POST"])
+@jwt_required
+def upload_project_plan_calibration(project_id):
+    """Upload a plan file for calibration only. Rasterizes and returns image URL + dimensions. No DB write."""
+    try:
+        user_id = _require_auth()
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 401
+
+    try:
+        _validate_project_id(project_id)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    permission = require_role(project_id, PLAN_ADMIN_ROLES, user_id=user_id)
+    if isinstance(permission, tuple):
+        payload, status_code = permission
+        return jsonify(payload), status_code
+
+    file_item = request.files.get("file")
+    if not file_item or not getattr(file_item, "filename", None):
+        return jsonify({"error": "Plan file is required", "message": "Include a PDF or PNG file"}), 400
+
+    mime = (getattr(file_item, "mimetype", "") or "").lower()
+    ext = _plan_ext_from_filename(file_item.filename, mime)
+    if not ext:
+        return (
+            jsonify({
+                "error": "invalid_metadata",
+                "message": "Plan must be PDF, PNG, or JPEG",
+            }),
+            400,
+        )
+
+    if not r2_client.client:
+        config_msg = getattr(r2_client, "_config_error", None) or "Check R2 environment variables."
+        return jsonify({"error": "Storage not configured", "message": config_msg}), 500
+
+    try:
+        file_bytes = _read_plan_file_bytes(file_item)
+    except ValueError as exc:
+        return jsonify({"error": "invalid_file", "message": str(exc)}), 400
+
+    if len(file_bytes) > MAX_PLAN_BYTES:
+        return (
+            jsonify({"error": "invalid_file", "message": f"Plan file too large (max {MAX_PLAN_BYTES // (1024*1024)}MB)"}),
+            413,
+        )
+
+    try:
+        png_bytes, image_width, image_height = rasterize_to_png(
+            file_bytes,
+            filename_hint=file_item.filename or "",
+            mime_hint=mime,
+        )
+    except RasterizeError as e:
+        return jsonify({"error": "invalid_file", "message": e.message}), 400
+
+    key = CALIBRATION_PLAN_KEY_TEMPLATE.format(project_id=project_id)
+    try:
+        ok = r2_client.upload_bytes(png_bytes, key, content_type=PNG_MIME)
+    except Exception as exc:
+        return jsonify({"error": "Upload failed", "message": str(exc)}), 500
+
+    if not ok:
+        return jsonify({"error": "Upload failed", "message": "Failed to upload calibration image"}), 502
+
+    signed_url = r2_client.generate_presigned_url(key, expires_in=600)
+    return (
+        jsonify({
+            "image_url": signed_url,
+            "image_width": image_width,
+            "image_height": image_height,
+        }),
+        200,
+    )
+
+
 @projects_bp.route("/<project_id>/plan", methods=["GET"])
 @jwt_required
 def get_project_plan(project_id):

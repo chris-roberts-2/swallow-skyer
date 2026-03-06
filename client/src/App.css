@@ -264,6 +264,70 @@
   overflow: hidden;
 }
 
+/* Plan page — project plan view with MapLibre */
+.plan-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.plan-page--loading,
+.plan-page--error,
+.plan-page--empty {
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-lg);
+}
+
+.plan-page__message {
+  margin: 0;
+  color: var(--color-charcoal-slate);
+  font-size: var(--font-size-md);
+}
+
+.plan-page__message--error {
+  color: var(--color-error, #b91c1c);
+}
+
+.plan-page__message--success {
+  color: var(--color-success, #0d9488);
+}
+
+.plan-page__empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  max-width: 420px;
+  text-align: center;
+}
+
+.plan-page__upload-btn {
+  margin-top: var(--space-sm);
+}
+
+.plan-page--with-map {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.plan-page__map-wrapper {
+  flex: 1;
+  min-height: 400px;
+  position: relative;
+  width: 100%;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.plan-page__map-wrapper .map-container {
+  position: absolute;
+  inset: 0;
+}
+
 .map-container {
   flex: 1;
   position: relative;
@@ -1344,6 +1408,97 @@
 /* ===========================
    SHARED FORM SYSTEM
    =========================== */
+
+/* Upload plan workflow modal */
+.upload-plan-modal__body {
+  width: min(560px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.upload-plan-modal__step {
+  margin-bottom: var(--space-md);
+}
+
+.upload-plan-modal__instruction {
+  margin: 0 0 var(--space-sm) 0;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-relaxed);
+}
+
+.upload-plan-modal__hint {
+  margin: var(--space-xs) 0 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.upload-plan-modal__status {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.upload-plan-modal__message {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.upload-plan-modal__message--error {
+  color: var(--color-error, #b91c1c);
+}
+
+.upload-plan-modal__message--success {
+  color: var(--color-success, #0d9488);
+}
+
+.upload-plan-modal__preview-wrap {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-secondary, #f5f5f5);
+}
+
+.upload-plan-modal__preview-inner {
+  position: relative;
+}
+
+.upload-plan-modal__marker {
+  position: absolute;
+  width: 24px;
+  height: 32px;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='32' viewBox='0 0 24 32'%3E%3Cpath d='M12 1C6.477 1 2 5.477 2 11c0 7.732 10 20 10 20s10-12.268 10-20C22 5.477 17.523 1 12 1z' fill='%231f3a5f' stroke='%23fff' stroke-width='1.5'/%3E%3Ccircle cx='12' cy='11' r='3.5' fill='%23fff'/%3E%3C/svg%3E") no-repeat center;
+  background-size: contain;
+}
+
+.upload-plan-modal__marker--second {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='32' viewBox='0 0 24 32'%3E%3Cpath d='M12 1C6.477 1 2 5.477 2 11c0 7.732 10 20 10 20s10-12.268 10-20C22 5.477 17.523 1 12 1z' fill='%230d9488' stroke='%23fff' stroke-width='1.5'/%3E%3Ccircle cx='12' cy='11' r='3.5' fill='%23fff'/%3E%3C/svg%3E");
+}
+
+.upload-plan-modal__map-overlay {
+  z-index: 1001;
+}
+
+.upload-plan-modal__map-body {
+  background: var(--color-surface-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  width: min(520px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-xl);
+  box-sizing: border-box;
+}
+
+.upload-plan-modal__map-container {
+  width: 100%;
+  height: 320px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  margin-top: var(--space-sm);
+}
 
 .modal-form {
   display: flex;
