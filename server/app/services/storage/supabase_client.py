@@ -2,6 +2,7 @@
 Supabase client for metadata operations.
 """
 
+import logging
 import os
 import re
 import time
@@ -1053,9 +1054,20 @@ class SupabaseClient:
             raise RuntimeError("Supabase client not initialized")
         try:
             response = self.client.table("project_plans").insert(payload).execute()
-            return response.data[0] if response.data else None
-        except Exception:
-            return None
+            if not response.data or len(response.data) < 1:
+                logging.warning(
+                    "project_plans insert returned no row; payload keys=%s",
+                    list(payload.keys()),
+                )
+                return None
+            return response.data[0]
+        except Exception as e:
+            logging.exception(
+                "project_plans insert failed: %s; payload project_id=%s",
+                e,
+                payload.get("project_id"),
+            )
+            raise
 
     def get_project_plan(self, project_id: str) -> Optional[Dict[str, Any]]:
         """Return the plan record for a project, or None if absent."""

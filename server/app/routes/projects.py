@@ -698,6 +698,11 @@ def upload_project_plan(project_id):
         )
 
     try:
+        supabase_client.ensure_user_exists(user_id)
+    except Exception:
+        pass
+
+    try:
         record = plan_service.create_plan_record(
             project_id=project_id,
             r2_path=r2_key,

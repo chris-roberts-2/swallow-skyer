@@ -74,11 +74,22 @@ function getPixelFromImageClick(evt, imgEl) {
   return [x, y];
 }
 
+const PIN_A_FILL = '#1F3A5F';
+const PIN_B_FILL = '#3F6FA0';
+
 function createMapMarkerEl(pin) {
   const el = document.createElement('div');
   el.className = `calib-map-marker calib-map-marker--${pin}`;
   el.textContent = pin.toUpperCase();
   el.title = `Pin ${pin.toUpperCase()} — drag to reposition`;
+  const fill = pin.toUpperCase() === 'A' ? PIN_A_FILL : PIN_B_FILL;
+  el.style.cssText = `
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 2.5px solid white; background: ${fill};
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: white;
+    cursor: grab; box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  `;
   return el;
 }
 
@@ -375,10 +386,11 @@ const UploadPlanModal = ({
             : 'Upload and georeference plan'
         }
       >
-        {/* ── Header ─────────────────────────────────────────────────────── */}
-        <div className="calib-screen__header">
-          <div className="calib-screen__header-left">
-            <h2 className="calib-screen__title">
+        {/* ── Header (platform page-header structure) ─────────────────────── */}
+        <header className="calib-screen__header page-header">
+          <div className="page-header__left" />
+          <div className="page-header__center calib-screen__header-center">
+            <h2 className="page-header__title">
               {isReplaceMode
                 ? 'Replace and georeference plan'
                 : 'Upload and georeference plan'}
@@ -389,8 +401,7 @@ const UploadPlanModal = ({
               corners, road intersections, or site entrances.
             </p>
           </div>
-
-          <div className="calib-screen__pin-controls">
+          <div className="page-header__right calib-screen__pin-controls">
             <button
               type="button"
               className={`calib-pin-btn calib-pin-btn--a ${activePin === 'A' ? 'calib-pin-btn--active' : ''}`}
@@ -410,7 +421,7 @@ const UploadPlanModal = ({
               {pinStatus(pinB, 'B')}
             </button>
           </div>
-        </div>
+        </header>
 
         {/* ── Panels ─────────────────────────────────────────────────────── */}
         <div className="calib-screen__panels">
@@ -530,8 +541,8 @@ const UploadPlanModal = ({
           </div>
         </div>
 
-        {/* ── Footer ─────────────────────────────────────────────────────── */}
-        <div className="calib-screen__footer">
+        {/* ── Footer (platform modal-footer convention) ─────────────────── */}
+        <footer className="calib-screen__footer modal-footer">
           <p className="calib-screen__footer-hint">
             {!bothPinsSet
               ? 'Place both Pin A and Pin B on the plan and the map to continue.'
@@ -562,7 +573,7 @@ const UploadPlanModal = ({
               Confirm calibration
             </button>
           </div>
-        </div>
+        </footer>
       </div>
     );
   }

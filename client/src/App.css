@@ -1756,28 +1756,24 @@
   overflow: hidden;
 }
 
-/* Header */
+/* Header — uses platform page-header grid and layout margin */
 .calib-screen__header {
   flex-shrink: 0;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-lg);
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-md) var(--layout-margin-x);
   background: var(--color-surface-primary);
   border-bottom: 1px solid var(--color-border);
-  flex-wrap: wrap;
 }
 
-.calib-screen__header-left {
-  flex: 1;
-  min-width: 240px;
+.calib-screen__header-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-xs);
 }
 
-.calib-screen__title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  margin: 0 0 var(--space-xs) 0;
+.calib-screen__header-center .page-header__title {
+  margin: 0;
 }
 
 .calib-screen__instructions {
@@ -1785,6 +1781,7 @@
   color: var(--color-text-secondary);
   margin: 0;
   line-height: var(--line-height-relaxed);
+  max-width: 520px;
 }
 
 /* Pin toggle controls */
@@ -1826,7 +1823,7 @@
 }
 
 .calib-pin-btn--b.calib-pin-btn--active {
-  border-color: #0d9488;
+  border-color: var(--color-mid-sky-blue);
 }
 
 .calib-pin-btn__label {
@@ -1840,7 +1837,7 @@
 }
 
 .calib-pin-btn--b .calib-pin-btn__label {
-  color: #0d9488;
+  color: var(--color-mid-sky-blue);
 }
 
 /* Pin status tags */
@@ -2001,7 +1998,7 @@
 }
 
 .calib-pin-overlay--b {
-  background: #0d9488;
+  background: var(--color-mid-sky-blue);
 }
 
 /* MapLibre container */
@@ -2035,20 +2032,25 @@
 }
 
 .calib-map-marker--b {
-  background: #0d9488;
+  background: var(--color-mid-sky-blue);
 }
 
-/* Footer */
+/* Footer — platform modal-footer spacing and layout margin */
 .calib-screen__footer {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-md) var(--layout-margin-x);
+  margin-top: var(--space-xl);
   background: var(--color-surface-primary);
   border-top: 1px solid var(--color-border);
   flex-wrap: wrap;
+}
+
+.calib-screen__footer.modal-footer {
+  margin-top: 0;
 }
 
 .calib-screen__footer-hint {
