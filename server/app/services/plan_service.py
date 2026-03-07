@@ -106,7 +106,9 @@ def replace_plan(
     if not plan:
         return None
     old_r2_path = plan.get("r2_path")
-    if old_r2_path and r2_client.client:
+    # Only delete the old object when it is a different key; otherwise we would
+    # delete the newly uploaded file (replace PDF→PNG or PNG→PNG both use plan.png).
+    if old_r2_path and r2_client.client and old_r2_path != r2_path:
         r2_client.delete_file(old_r2_path)
     corners = _bounds_to_corners(min_lat, min_lng, max_lat, max_lng)
     return supabase_client.update_project_plan(
