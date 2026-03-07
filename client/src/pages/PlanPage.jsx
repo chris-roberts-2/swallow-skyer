@@ -521,10 +521,13 @@ const PlanPage = () => {
           className="plan-page__map map-container"
           aria-label="Plan map"
         />
-        <div className="plan-page__map-controls plan-page__map-controls--top-right">
+        <div
+          className="maplibregl-ctrl maplibregl-ctrl-group plan-page__map-controls plan-page__map-controls--top-right"
+          role="group"
+          aria-label="Plan map controls"
+        >
           <button
             type="button"
-            className="plan-page__fit-plan-btn maplibregl-ctrl maplibregl-ctrl-group"
             onClick={handleFitPlan}
             title="Fit plan to view"
             aria-label="Fit plan to view"
@@ -535,7 +538,6 @@ const PlanPage = () => {
             <>
               <button
                 type="button"
-                className="plan-page__manage-btn plan-page__replace-btn maplibregl-ctrl maplibregl-ctrl-group"
                 onClick={handleReplacePlan}
                 title="Replace plan"
                 aria-label="Replace plan"
@@ -544,7 +546,6 @@ const PlanPage = () => {
               </button>
               <button
                 type="button"
-                className="plan-page__manage-btn plan-page__remove-btn maplibregl-ctrl maplibregl-ctrl-group"
                 onClick={handleRemovePlan}
                 disabled={removePlanLoading}
                 title="Remove plan"

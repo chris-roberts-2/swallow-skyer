@@ -662,6 +662,11 @@ const PhotoMapLive = () => {
   }, [activeProjectId]);
 
   useEffect(() => {
+    hasAutoFitRef.current = false;
+    userInteractedRef.current = false;
+  }, [activeProjectId]);
+
+  useEffect(() => {
     if (!activeStack) return;
     const stackIds = new Set(activeStack.photos.map(photo => photo.id));
     const stillPresent = clusters.some(cluster =>
@@ -859,6 +864,8 @@ const PhotoMapLive = () => {
     }
 
     return () => clearMarkers(markerRefs);
+    // selectedProjectCoord/selectedProjectName omitted to avoid re-running when only
+    // reference identity changes (e.g. context re-render), which would clear open popups.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     clusters,
@@ -868,8 +875,6 @@ const PhotoMapLive = () => {
     isMapReady,
     canManage,
     projectMarker,
-    selectedProjectCoord,
-    selectedProjectName,
   ]);
 
   useEffect(() => {

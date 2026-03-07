@@ -525,6 +525,10 @@ export function addMarkersToMap(map, refs, options) {
       if (projectLocationPopupRef)
         projectLocationPopupRef.current = projectPopup;
       pinMarker.setPopup(projectPopup);
+      pinEl.addEventListener('click', evt => {
+        evt.stopPropagation();
+        pinMarker.togglePopup();
+      });
     }
 
     if (markersRef) markersRef.current.push(pinMarker);
