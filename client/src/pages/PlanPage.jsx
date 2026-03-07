@@ -522,7 +522,7 @@ const PlanPage = () => {
           aria-label="Plan map"
         />
         <div
-          className="maplibregl-ctrl maplibregl-ctrl-group plan-page__map-controls plan-page__map-controls--top-right"
+          className="plan-page__map-controls"
           role="group"
           aria-label="Plan map controls"
         >
