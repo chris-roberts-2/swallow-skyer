@@ -555,6 +555,24 @@ def _plan_error_response(error_code, message, status_code=400):
     return jsonify({"error": error_code, "message": message}), status_code
 
 
+def _bounds_from_plan(plan):
+    """
+    Derive min_lat, min_lng, max_lat, max_lng from plan record with corner_* fields.
+    Returns (min_lat, min_lng, max_lat, max_lng) or None if corners missing.
+    """
+    if not plan:
+        return None
+    keys = (
+        "corner_nw_lat", "corner_nw_lng", "corner_ne_lat", "corner_ne_lng",
+        "corner_se_lat", "corner_se_lng", "corner_sw_lat", "corner_sw_lng",
+    )
+    if any(plan.get(k) is None for k in keys):
+        return None
+    lats = [plan["corner_nw_lat"], plan["corner_ne_lat"], plan["corner_se_lat"], plan["corner_sw_lat"]]
+    lngs = [plan["corner_nw_lng"], plan["corner_ne_lng"], plan["corner_se_lng"], plan["corner_sw_lng"]]
+    return min(lats), min(lngs), max(lats), max(lngs)
+
+
 def _plan_ext_from_filename(filename, mime_type):
     """Extract plan file extension (pdf, png, jpeg, jpg)."""
     _, ext = os.path.splitext(filename or "")
@@ -708,7 +726,6 @@ def upload_project_plan(project_id):
             r2_path=r2_key,
             file_name="plan.png",
             file_type=PNG_MIME,
-            file_size=len(png_bytes),
             user_id=user_id,
             min_lat=min_lat,
             min_lng=min_lng,
@@ -730,24 +747,22 @@ def upload_project_plan(project_id):
         )
 
     signed_url = r2_client.generate_presigned_url(r2_key, expires_in=600)
+    bounds = _bounds_from_plan(record)
+    min_lat_r, min_lng_r, max_lat_r, max_lng_r = bounds if bounds else (min_lat, min_lng, max_lat, max_lng)
     response_data = {
         "project_id": project_id,
         "r2_path": r2_key,
         "file_name": record.get("file_name"),
         "file_type": record.get("file_type"),
-        "file_size": record.get("file_size"),
-        "user_id": record.get("user_id"),
+        "user_id": record.get("uploaded_by_user_id"),
         "image_width": record.get("image_width"),
         "image_height": record.get("image_height"),
-        "width": record.get("width"),
-        "height": record.get("height"),
-        "min_lat": min_lat,
-        "min_lng": min_lng,
-        "max_lat": max_lat,
-        "max_lng": max_lng,
+        "min_lat": min_lat_r,
+        "min_lng": min_lng_r,
+        "max_lat": max_lat_r,
+        "max_lng": max_lng_r,
         "image_url": signed_url,
-        "created_at": record.get("created_at"),
-        "updated_at": record.get("updated_at"),
+        "uploaded_at": record.get("uploaded_at"),
     }
     return jsonify(response_data), 201
 
@@ -867,6 +882,8 @@ def get_project_plan(project_id):
 
     r2_path = plan.get("r2_path")
     signed_url = r2_client.generate_presigned_url(r2_path, expires_in=600) if r2_path and r2_client.client else None
+    bounds = _bounds_from_plan(plan)
+    min_lat_p, min_lng_p, max_lat_p, max_lng_p = bounds if bounds else (None, None, None, None)
 
     response_data = {
         "plan": {
@@ -874,19 +891,15 @@ def get_project_plan(project_id):
             "r2_path": r2_path,
             "file_name": plan.get("file_name"),
             "file_type": plan.get("file_type"),
-            "file_size": plan.get("file_size"),
-            "user_id": plan.get("user_id"),
+            "user_id": plan.get("uploaded_by_user_id"),
             "image_width": plan.get("image_width"),
             "image_height": plan.get("image_height"),
-            "width": plan.get("width"),
-            "height": plan.get("height"),
-            "min_lat": plan.get("min_lat"),
-            "min_lng": plan.get("min_lng"),
-            "max_lat": plan.get("max_lat"),
-            "max_lng": plan.get("max_lng"),
+            "min_lat": min_lat_p,
+            "min_lng": min_lng_p,
+            "max_lat": max_lat_p,
+            "max_lng": max_lng_p,
             "image_url": signed_url,
-            "created_at": plan.get("created_at"),
-            "updated_at": plan.get("updated_at"),
+            "uploaded_at": plan.get("uploaded_at"),
         }
     }
     return jsonify(response_data), 200
@@ -1004,7 +1017,6 @@ def replace_project_plan(project_id):
             r2_path=r2_key,
             file_name="plan.png",
             file_type=PNG_MIME,
-            file_size=len(png_bytes),
             user_id=user_id,
             min_lat=min_lat,
             min_lng=min_lng,
@@ -1026,24 +1038,22 @@ def replace_project_plan(project_id):
         )
 
     signed_url = r2_client.generate_presigned_url(r2_key, expires_in=600)
+    bounds = _bounds_from_plan(record)
+    min_lat_r, min_lng_r, max_lat_r, max_lng_r = bounds if bounds else (min_lat, min_lng, max_lat, max_lng)
     response_data = {
         "project_id": project_id,
         "r2_path": r2_key,
         "file_name": record.get("file_name"),
         "file_type": record.get("file_type"),
-        "file_size": record.get("file_size"),
-        "user_id": record.get("user_id"),
+        "user_id": record.get("uploaded_by_user_id"),
         "image_width": record.get("image_width"),
         "image_height": record.get("image_height"),
-        "width": record.get("width"),
-        "height": record.get("height"),
-        "min_lat": min_lat,
-        "min_lng": min_lng,
-        "max_lat": max_lat,
-        "max_lng": max_lng,
+        "min_lat": min_lat_r,
+        "min_lng": min_lng_r,
+        "max_lat": max_lat_r,
+        "max_lng": max_lng_r,
         "image_url": signed_url,
-        "created_at": record.get("created_at"),
-        "updated_at": record.get("updated_at"),
+        "uploaded_at": record.get("uploaded_at"),
     }
     return jsonify(response_data), 200
 

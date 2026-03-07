@@ -1081,7 +1081,10 @@ class SupabaseClient:
                 .maybe_single()
                 .execute()
             )
-            return response.data if hasattr(response, "data") else None
+            if not hasattr(response, "data"):
+                return None
+            data = response.data
+            return data[0] if isinstance(data, list) and data else (data if data else None)
         except Exception:
             return None
 
@@ -1105,17 +1108,19 @@ class SupabaseClient:
         project_id: str,
         r2_path: str,
         file_name: str,
-        file_type: str,
-        file_size: int,
-        user_id: str,
-        min_lat: float,
-        min_lng: float,
-        max_lat: float,
-        max_lng: float,
-        image_width: Optional[int] = None,
-        image_height: Optional[int] = None,
-        width: Optional[int] = None,
-        height: Optional[int] = None,
+        file_type: Optional[str],
+        r2_url: Optional[str],
+        uploaded_by_user_id: str,
+        image_width: int,
+        image_height: int,
+        corner_nw_lat: float,
+        corner_nw_lng: float,
+        corner_ne_lat: float,
+        corner_ne_lng: float,
+        corner_se_lat: float,
+        corner_se_lng: float,
+        corner_sw_lat: float,
+        corner_sw_lng: float,
     ) -> Optional[Dict[str, Any]]:
         """Update the plan record for a project. Returns updated record or None."""
         if not self.client:
@@ -1124,22 +1129,19 @@ class SupabaseClient:
             "r2_path": r2_path,
             "file_name": file_name,
             "file_type": file_type,
-            "file_size": file_size,
-            "user_id": user_id,
-            "min_lat": min_lat,
-            "min_lng": min_lng,
-            "max_lat": max_lat,
-            "max_lng": max_lng,
-            "updated_at": datetime.datetime.utcnow().isoformat() + "Z",
+            "r2_url": r2_url,
+            "uploaded_by_user_id": uploaded_by_user_id,
+            "image_width": image_width,
+            "image_height": image_height,
+            "corner_nw_lat": corner_nw_lat,
+            "corner_nw_lng": corner_nw_lng,
+            "corner_ne_lat": corner_ne_lat,
+            "corner_ne_lng": corner_ne_lng,
+            "corner_se_lat": corner_se_lat,
+            "corner_se_lng": corner_se_lng,
+            "corner_sw_lat": corner_sw_lat,
+            "corner_sw_lng": corner_sw_lng,
         }
-        if image_width is not None:
-            fields["image_width"] = image_width
-        if image_height is not None:
-            fields["image_height"] = image_height
-        if width is not None:
-            fields["width"] = width
-        if height is not None:
-            fields["height"] = height
         try:
             response = (
                 self.client.table("project_plans")
