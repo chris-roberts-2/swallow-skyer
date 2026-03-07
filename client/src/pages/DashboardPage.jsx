@@ -4,7 +4,6 @@ import maplibregl from 'maplibre-gl';
 import { useAuth } from '../context';
 import apiClient from '../services/api';
 import EditProjectModal from '../components/projects/EditProjectModal';
-import { configureMaplibreWorker } from '../utils/maplibreWorker';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 const StatCard = ({ label, value }) => (
@@ -47,7 +46,6 @@ const parseCoord = raw => {
 };
 
 const DashboardPage = () => {
-  configureMaplibreWorker();
   const navigate = useNavigate();
   const {
     activeProject,

@@ -310,17 +310,23 @@
 .plan-page--with-map {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .plan-page__map-wrapper {
   flex: 1;
-  min-height: 400px;
+  min-height: 0;
   position: relative;
   width: 100%;
-  border-radius: var(--radius-lg);
   overflow: hidden;
-  border: 1px solid var(--color-border);
+}
+
+.plan-page__map-controls--top-right {
+  top: 8px;
+  left: auto;
+  right: 8px;
 }
 
 .plan-page__map-wrapper .map-container {
@@ -332,7 +338,7 @@
   position: absolute;
   top: 10px;
   left: 10px;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   gap: 6px;

@@ -55,6 +55,6 @@ test('shows profile navigation when signed in', () => {
   expect(
     screen.getByRole('button', { name: /open profile menu/i })
   ).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: /projects/i })).toBeInTheDocument();
+  expect(screen.getAllByRole('link', { name: /projects/i }).length).toBeGreaterThan(0);
   expect(screen.getByRole('link', { name: /map/i })).toBeInTheDocument();
 });

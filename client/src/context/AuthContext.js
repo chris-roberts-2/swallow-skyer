@@ -305,16 +305,16 @@ export const AuthProvider = ({ children }) => {
 
   const refreshProjects = useCallback(
     async ({ redirectWhenEmpty = false, force = false } = {}) => {
-      if (isFetchingProjects.current) return;
+      if (isFetchingProjects.current) return false;
       if (!authState.session) {
         setAuthState(prev => ({ ...prev, projects: [] }));
-        return;
+        return false;
       }
 
       // Throttle to avoid hammering backend/Supabase (multiple consumers + retries).
       const now = Date.now();
       if (!force && now - lastProjectsFetchAt.current < 300_000) {
-        return;
+        return false;
       }
       lastProjectsFetchAt.current = now;
 
@@ -356,15 +356,58 @@ export const AuthProvider = ({ children }) => {
         });
 
         // Redirect removed to avoid unexpected tab switches; callers can handle UI.
+        isFetchingProjects.current = false;
+        return true;
       } catch (err) {
+        isFetchingProjects.current = false;
         // eslint-disable-next-line no-console
         console.error('Failed to load projects', err);
-      } finally {
-        isFetchingProjects.current = false;
+        throw err;
       }
     },
     [authState.session]
   );
+
+  const isRetryableError = useCallback(err => {
+    if (!err) return false;
+    if (err.isRetryable === true) return true;
+    if (err.name === 'AbortError') return true;
+    if (
+      err.message === 'Failed to fetch' ||
+      (err.message && err.message.includes('network'))
+    )
+      return true;
+    if (typeof err.status === 'number' && err.status >= 500 && err.status < 600)
+      return true;
+    return false;
+  }, []);
+
+  const loadProjectsWithRetry = useCallback(async () => {
+    if (!authState.session) return;
+    const maxRetries = 20;
+    const maxSkips = 30;
+    const backoffMs = [2000, 4000, 8000, 16000, 30000];
+    let attempt = 0;
+    let skips = 0;
+    while (true) {
+      try {
+        const didLoad = await refreshProjects({ force: true });
+        if (didLoad) return;
+        skips += 1;
+        if (skips >= maxSkips) return;
+        await new Promise(r => setTimeout(r, 2000));
+      } catch (err) {
+        if (!isRetryableError(err) || attempt >= maxRetries) {
+          // eslint-disable-next-line no-console
+          console.error('Projects load failed after retries', err);
+          return;
+        }
+        attempt += 1;
+        const delay = backoffMs[Math.min(attempt - 1, backoffMs.length - 1)];
+        await new Promise(r => setTimeout(r, delay));
+      }
+    }
+  }, [authState.session, refreshProjects, isRetryableError]);
 
   useEffect(() => {
     let isMounted = true;
@@ -382,7 +425,7 @@ export const AuthProvider = ({ children }) => {
         } else {
           syncSession(data?.session ?? null);
           if (data?.session) {
-            refreshProjects({ redirectWhenEmpty: false });
+            loadProjectsWithRetry();
           }
         }
       } catch (err) {
@@ -408,7 +451,7 @@ export const AuthProvider = ({ children }) => {
       }
       syncSession(nextSession || null);
       if (nextSession) {
-        refreshProjects({ redirectWhenEmpty: false });
+        loadProjectsWithRetry();
       } else {
         setAuthState(prev => ({
           ...prev,
@@ -423,7 +466,7 @@ export const AuthProvider = ({ children }) => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [refreshProjects, syncSession]);
+  }, [loadProjectsWithRetry, syncSession]);
 
   useEffect(() => {
     if (authState.session?.user?.id) {

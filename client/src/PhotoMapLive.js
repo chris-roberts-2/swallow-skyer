@@ -11,7 +11,6 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useAuth } from './context';
 import EditLocationModal from './components/map/EditLocationModal';
 import { getApiCandidates } from './utils/apiEnv';
-import { configureMaplibreWorker } from './utils/maplibreWorker';
 import { useProjectMapData } from './hooks/useProjectMapData';
 import { formatLocalDateTimeParts } from './utils/mapDataUtils';
 import {
@@ -132,7 +131,6 @@ class BasemapToggleControl {
 }
 
 const PhotoMapLive = () => {
-  configureMaplibreWorker();
   const navigate = useNavigate();
   const { activeProject, projects, setActiveProject, roleForActiveProject } =
     useAuth();
@@ -144,7 +142,6 @@ const PhotoMapLive = () => {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
-  const [mapZoom, setMapZoom] = useState(3.5);
   const [activeStack, setActiveStack] = useState(null);
   const [projectMarkerOverride, setProjectMarkerOverride] = useState(null);
   const [editLocationOpen, setEditLocationOpen] = useState(false);
@@ -297,23 +294,6 @@ const PhotoMapLive = () => {
       );
     }
 
-    const initialZoom =
-      typeof mapInstance.current.getZoom === 'function'
-        ? mapInstance.current.getZoom()
-        : 3.5;
-    setMapZoom(initialZoom);
-
-    const handleZoom = () => {
-      setMapZoom(prevZoom => {
-        const zoomFn = mapInstance.current?.getZoom;
-        if (typeof zoomFn === 'function') {
-          const nextZoom = zoomFn.call(mapInstance.current);
-          return Number.isFinite(nextZoom) ? nextZoom : prevZoom;
-        }
-        return prevZoom;
-      });
-    };
-
     const handleLoad = () => {
       setIsMapReady(true);
     };
@@ -327,7 +307,6 @@ const PhotoMapLive = () => {
     if (supportsEvents) {
       mapInstance.current.on('load', handleLoad);
       mapInstance.current.on('error', handleError);
-      mapInstance.current.on('zoomend', handleZoom);
       const setInteracted = () => {
         userInteractedRef.current = true;
       };
@@ -608,7 +587,7 @@ const PhotoMapLive = () => {
       setIsMapReady(false);
       if (supportsEvents && typeof mapInstance.current?.off === 'function') {
         mapInstance.current.off('load', handleLoad);
-        mapInstance.current.off('zoomend', handleZoom);
+        mapInstance.current.off('error', handleError);
         if (mapInstance.current.__setInteracted) {
           mapInstance.current.off(
             'dragstart',
@@ -839,7 +818,6 @@ const PhotoMapLive = () => {
       closeStack,
       setActiveStack,
       onEditProjectLocation: () => setEditLocationOpen(true),
-      mapZoom,
       formatDateTimeParts: formatLocalDateTimeParts,
       isDragMode,
     });
@@ -915,9 +893,13 @@ const PhotoMapLive = () => {
         Number.isFinite(photo.mapLongitude) &&
         Number.isFinite(photo.mapLatitude);
       if (canFly) {
+        const currentZoom = mapInstance.current.getZoom?.();
+        const zoom = Number.isFinite(currentZoom)
+          ? Math.max(currentZoom, 11)
+          : 11;
         mapInstance.current.flyTo({
           center: [photo.mapLongitude, photo.mapLatitude],
-          zoom: Math.max(mapZoom, 11),
+          zoom,
           essential: true,
         });
       }

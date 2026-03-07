@@ -118,7 +118,7 @@ const RootRedirect = () => {
     }
   }
 
-  return <Navigate to={user ? '/map' : '/login'} replace />;
+  return <Navigate to={user ? '/projects' : '/login'} replace />;
 };
 
 /**
@@ -209,9 +209,9 @@ export function AppRoutes() {
           <Route
             path="/projects/:id/plan"
             element={
-              <AuthLayout>
+              <AuthGuard>
                 <PlanPage />
-              </AuthLayout>
+              </AuthGuard>
             }
           />
           <Route

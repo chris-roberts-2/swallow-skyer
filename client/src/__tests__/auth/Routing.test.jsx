@@ -13,6 +13,8 @@ const renderWithRouter = (initialEntries, value) => {
     login: jest.fn(),
     signup: jest.fn(),
     logout: jest.fn(),
+    refreshProfile: jest.fn(),
+    refreshProjects: jest.fn(),
     session: null,
   };
 
@@ -37,10 +39,10 @@ test('protected routes render when user is present', () => {
   expect(screen.getByRole('heading', { name: /profile/i })).toBeInTheDocument();
 });
 
-test('root redirect sends authenticated users to /map', () => {
+test('root redirect sends authenticated users to /projects', () => {
   renderWithRouter(['/'], { user: { email: 'pilot@example.com' } });
 
-  expect(screen.getByText('Mock Photo Map')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /^projects$/i })).toBeInTheDocument();
 });
 
 test('root redirect sends guests to /login', () => {

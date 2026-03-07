@@ -40,13 +40,19 @@ class ApiClient {
       headers.Authorization = `Bearer ${accessToken}`;
     }
 
+    const timeoutMs = options.timeout ?? 25000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     const config = {
       ...options,
       headers,
+      signal: controller.signal,
     };
 
     try {
       const response = await fetch(url, config);
+      clearTimeout(timeoutId);
       if (response.status === 401 && attempt === 0 && this.refreshTokens) {
         await this._refreshTokens();
         return this.request(endpoint, options, attempt + 1);
@@ -68,8 +74,24 @@ class ApiClient {
 
       return await response.json();
     } catch (error) {
+      clearTimeout(timeoutId);
       if (error.status === 401 && this.logout) {
         this.logout();
+      }
+      if (error.name === 'AbortError') {
+        const timeoutErr = new Error('Request timeout');
+        timeoutErr.name = 'AbortError';
+        timeoutErr.isRetryable = true;
+        throw timeoutErr;
+      }
+      if (
+        error.message === 'Failed to fetch' ||
+        error.message?.includes('network')
+      ) {
+        error.isRetryable = true;
+      }
+      if (error.status >= 500 && error.status < 600) {
+        error.isRetryable = true;
       }
       // eslint-disable-next-line no-console
       console.error('API request failed:', error);

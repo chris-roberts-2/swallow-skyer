@@ -45,7 +45,7 @@ export function clearMarkers(refs) {
  * @param {Object} refs - { markersRef, photoPopupRef, projectLocationPopupRef }
  * @param {Object} options - clusters, projectMarker, canManage, selectedProjectName,
  *   openPhotoOptions, closePhotoPopup, closeStack, setActiveStack, onEditProjectLocation,
- *   mapZoom, formatDateTimeParts, isDragMode (optional, default false)
+ *   formatDateTimeParts, isDragMode (optional, default false)
  */
 export function addMarkersToMap(map, refs, options) {
   if (!map || !refs)
@@ -61,7 +61,6 @@ export function addMarkersToMap(map, refs, options) {
     closeStack = () => {},
     setActiveStack = () => {},
     onEditProjectLocation = () => {},
-    mapZoom = 10,
     formatDateTimeParts = () => ({ dateLabel: '', timeLabel: '' }),
     isDragMode = false,
   } = options;
@@ -389,7 +388,7 @@ export function addMarkersToMap(map, refs, options) {
       });
       map?.flyTo?.({
         center: [lng, lat],
-        zoom: Math.max(map.getZoom?.() ?? mapZoom, 9),
+        zoom: Math.max(map.getZoom?.() ?? 10, 9),
         essential: true,
       });
     };

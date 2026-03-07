@@ -10,7 +10,6 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useAuth } from '../context';
 import apiClient from '../services/api';
-import { configureMaplibreWorker } from '../utils/maplibreWorker';
 import UploadPlanModal from '../components/plan/UploadPlanModal';
 import PlanMapMarkers from '../components/plan/PlanMapMarkers';
 import EditLocationModal from '../components/map/EditLocationModal';
@@ -95,6 +94,8 @@ const PlanPage = () => {
   const navigate = useNavigate();
   const { activeProject, setActiveProject, roleForActiveProject, projects } =
     useAuth();
+  const projectSelectRef = useRef(null);
+  const [projectSelectWidth, setProjectSelectWidth] = useState(180);
 
   const projectId = id || null;
   const activeProjectId = activeProject?.id || activeProject || null;
@@ -119,6 +120,19 @@ const PlanPage = () => {
     () => (projects || []).find(p => p.id === currentProjectId)?.name || '',
     [projects, currentProjectId]
   );
+
+  useEffect(() => {
+    const selectEl = projectSelectRef.current;
+    if (!selectEl || !selectedProjectName) return;
+    selectEl.style.width = 'auto';
+    const scrollWidth = selectEl.scrollWidth;
+    const buffer = 18;
+    const computed = Math.min(
+      Math.max(scrollWidth + buffer, 140),
+      typeof window !== 'undefined' ? window.innerWidth * 0.9 : 400
+    );
+    setProjectSelectWidth(computed);
+  }, [selectedProjectName, projects.length]);
 
   const projectCenter = useMemo(() => {
     const proj = (projects || []).find(p => p.id === currentProjectId);
@@ -196,7 +210,6 @@ const PlanPage = () => {
   useEffect(() => {
     if (!plan || !mapRef.current || mapInstance.current) return;
 
-    configureMaplibreWorker();
     planOverlayAddedRef.current = false;
 
     try {
@@ -454,8 +467,7 @@ const PlanPage = () => {
   }
 
   return (
-    <div className="plan-page plan-page--with-map">
-      <h2 className="page-header__title">Plan</h2>
+    <div className="plan-page plan-page--with-map" data-plan-page="1">
       {removePlanError && (
         <p
           role="alert"
@@ -470,11 +482,46 @@ const PlanPage = () => {
         data-plan-page-map="1"
       >
         <div
+          style={{
+            position: 'absolute',
+            zIndex: 3,
+            top: 8,
+            left: 8,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <select
+            className="btn-format-1"
+            ref={projectSelectRef}
+            value={currentProjectId || ''}
+            onChange={e => {
+              const nextId = e.target.value || null;
+              if (nextId) {
+                setActiveProject(nextId);
+                navigate(`/projects/${nextId}/plan`);
+              }
+            }}
+            style={{
+              paddingRight: 28,
+              width: `${projectSelectWidth}px`,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {(projects || []).map(p => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div
           ref={mapRef}
           className="plan-page__map map-container"
           aria-label="Plan map"
         />
-        <div className="plan-page__map-controls">
+        <div className="plan-page__map-controls plan-page__map-controls--top-right">
           <button
             type="button"
             className="plan-page__fit-plan-btn maplibregl-ctrl maplibregl-ctrl-group"

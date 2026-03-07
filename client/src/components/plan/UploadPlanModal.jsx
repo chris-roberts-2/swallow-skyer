@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import apiClient from '../../services/api';
-import { configureMaplibreWorker } from '../../utils/maplibreWorker';
 import { computePlanCorners } from '../../utils/planGeoreference';
 
 const STANDARD_STYLE_URL =
@@ -188,8 +187,6 @@ const UploadPlanModal = ({
     if (step !== STEP_CALIBRATE) return;
     const el = mapContainerRef.current;
     if (!el) return;
-
-    configureMaplibreWorker();
 
     const center = projectCenter
       ? [projectCenter.lng ?? projectCenter.lon ?? 0, projectCenter.lat]
